@@ -12,6 +12,7 @@ table is grouped by contamination status rather than reported as one average.
 import argparse
 import csv
 import math
+import os
 import sys
 from collections import defaultdict
 
@@ -19,8 +20,29 @@ from collections import defaultdict
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-SKS_CSV = "v2_review/breakdown_v2.csv"
-ZWX_CSV = "zwx10_review/breakdown_zwx10.csv"
+# The CSVs sit in per-run review folders in the working project, but the published
+# repo flattens them into <실습N>/data/. Look in both so the script runs unchanged
+# from either -- on the web the repo layout is all that exists.
+CANDIDATES = {
+    "sks": ["v2_review/breakdown_v2.csv", "data/breakdown_v2.csv"],
+    "zwx": ["zwx10_review/breakdown_zwx10.csv", "data/breakdown_zwx10.csv"],
+}
+
+
+def find_csv(key, explicit=None):
+    if explicit:
+        return explicit
+    here = os.path.dirname(os.path.abspath(__file__))
+    roots = [os.getcwd(), here, os.path.join(here, "..")]
+    for root in roots:
+        for rel in CANDIDATES[key]:
+            p = os.path.normpath(os.path.join(root, rel))
+            if os.path.exists(p):
+                return p
+    raise SystemExit(
+        f"{key} CSV not found. Looked for {CANDIDATES[key]} under "
+        f"{[os.path.normpath(r) for r in roots]}. Pass --{key} explicitly.")
+
 
 # from the 0-prompt visual scan, compare/sks_scan_p0.jpg (FINDINGS 4.7)
 CONTAMINATED = {
@@ -93,9 +115,12 @@ def fmt_delta(d):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--md", help="also write the tables as markdown to this path")
+    ap.add_argument("--sks", help="breakdown CSV for the sks run (auto-located)")
+    ap.add_argument("--zwx", help="breakdown CSV for the zwx run (auto-located)")
     args = ap.parse_args()
 
-    sks, zwx = load(SKS_CSV), load(ZWX_CSV)
+    sks_csv, zwx_csv = find_csv("sks", args.sks), find_csv("zwx", args.zwx)
+    sks, zwx = load(sks_csv), load(zwx_csv)
     concepts = sorted({c for (c, _, _) in zwx})
     groups = [
         ("오염 4컨셉", [c for c in concepts if c in CONTAMINATED]),
@@ -112,7 +137,7 @@ def main():
 
     emit("# 트리거 토큰 `sks` → `zwx` — 10컨셉 평가")
     emit()
-    emit(f"비교: `{SKS_CSV}` (sks) vs `{ZWX_CSV}` (zwx). rank 16 / 256 학습 / 512 생성 /")
+    emit(f"비교: `{sks_csv}` (sks) vs `{zwx_csv}` (zwx). rank 16 / 256 학습 / 512 생성 /")
     emit("best-of-4 동일, 트리거 토큰만 다름. Δ는 프롬프트 단위 짝지은 차이(zwx − sks)이고")
     emit("괄호는 상승 프롬프트 수와 양측 부호검정 p.")
     emit()

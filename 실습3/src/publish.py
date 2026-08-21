@@ -250,6 +250,10 @@ def main():
 
     n = copy(".", proj, FILES)
     n += copy(".", proj, [(p, f"src/{os.path.basename(p)}") for p in SRC])
+    # the prompt lists are 14KB of text and every scoring script needs them, so unlike
+    # the 420MB dataset they come along -- that is what makes re-scoring possible on the web
+    n += copy(".", proj, [(f"prompts/{f}", f"prompts/{f}")
+                          for f in sorted(os.listdir("prompts")) if f.endswith(".txt")])
     n += copy(".", proj, [(p, f"figures/{os.path.basename(p)}") for p in FIGURES])
     n += copy(".", proj, [(f"{args.viewers}/viewer_{c}.html", f"viewer/viewer_{c}.html")
                           for c in viewers])

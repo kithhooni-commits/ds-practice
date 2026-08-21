@@ -22,8 +22,31 @@ CustomConcept101 10개 컨셉에 적용하고, CLIP T2I/I2I와 DINO로 채점한
 | `tables/zwx_table.md` | 트리거 토큰 평가 표 (컨셉 단위 검정 포함) |
 | `data/breakdown_*.csv` | 프롬프트 단위 원점수 — T2I · I2I · DINO |
 | `src/` | 학습 · 생성 · 평가 · 시각화 스크립트 |
+| `prompts/` | 컨셉별 프롬프트 10개 (채점에 필요) |
 | `figures/` | 발표에 쓴 비교 그림 |
 | `발표_파이프라인.pptx` | 발표 자료 13슬라이드 |
+
+## 웹에서 이어서 작업할 때
+
+이 저장소에는 **코드 · 점수 · 프롬프트**가 들어 있고 **레퍼런스 이미지(420MB) · 학습
+가중치 · 생성 이미지**는 빠져 있다. 그래서 되는 것과 안 되는 것이 갈린다.
+
+| 스크립트 | 저장소만으로 | 필요한 것 |
+|---|---|---|
+| `zwx_table.py` | ✅ | `data/*.csv` — 경로 자동 탐색 |
+| `eval_breakdown.py`, `evaluation.py` | ❌ | 생성 이미지 + 레퍼런스 이미지 |
+| `make_viewer.py`, `compare_res.py`, `make_deck3.py` | ❌ | 생성 이미지 |
+| `run_all.py`, `train_*.py`, `generate.py` | ❌ | 데이터셋 + GPU (Colab) |
+| `publish.py` | ❌ | 원본 프로젝트 레이아웃 |
+
+즉 웹에서는 **분석 · 문서 · 표 재생성**이 되고, **재학습과 뷰어 재생성은 로컬/Colab**
+몫이다. `zwx_table.py`는 작업 디렉터리·`src/`·상위 폴더를 차례로 뒤져 CSV를 찾으므로
+어디서 실행해도 된다.
+
+```bash
+python src/zwx_table.py --md tables/zwx_table.md   # 저장소 루트에서
+cd src && python zwx_table.py                       # src/ 안에서도 동일
+```
 
 ## 파이프라인
 
