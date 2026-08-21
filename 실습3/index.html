@@ -1,0 +1,115 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>이미지 생성 모델 개인화 — 파이프라인과 지표 검증</title>
+<style>
+:root{
+  --paper:#FAF9F5; --band:#F5F2EA; --card:#FFFFFF; --ink:#1F1E1D; --ink2:#55524C;
+  --ink3:#8A867E; --line:#E3DED2; --coral:#C15F3C; --coral-soft:#F3E4DC; --ochre:#8A6A2F;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --paper:#171614; --band:#1E1D1A; --card:#211F1C; --ink:#F2EFE8; --ink2:#BDB8AE;
+  --ink3:#8A867E; --line:#33302A; --coral:#E08256; --coral-soft:#3A2620; --ochre:#C9A54F;
+}}
+:root[data-theme="dark"]{
+  --paper:#171614; --band:#1E1D1A; --card:#211F1C; --ink:#F2EFE8; --ink2:#BDB8AE;
+  --ink3:#8A867E; --line:#33302A; --coral:#E08256; --coral-soft:#3A2620; --ochre:#C9A54F;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:15px/1.72 -apple-system,"Segoe UI","Malgun Gothic","맑은 고딕",system-ui,sans-serif;}
+.wrap{max-width:980px;margin:0 auto;padding:0 24px 80px}
+header.top{background:var(--band);border-bottom:1px solid var(--line);margin-bottom:34px}
+header.top .wrap{padding-top:38px;padding-bottom:30px}
+.eyebrow{font:600 12px/1 ui-monospace,Consolas,monospace;letter-spacing:.09em;
+  color:var(--coral);text-transform:uppercase}
+h1{font-size:30px;line-height:1.28;margin:14px 0 12px;letter-spacing:-.01em}
+h2{font-size:21px;margin:38px 0 12px;padding-top:16px;border-top:1px solid var(--line)}
+h3{font-size:16.5px;margin:26px 0 8px}
+h4{font-size:14.5px;margin:20px 0 6px;color:var(--ink2)}
+p{margin:0 0 13px;color:var(--ink2)}
+h1+p,.lede{color:var(--ink2);font-size:16px}
+a{color:var(--coral)}
+code{font:13px ui-monospace,Consolas,monospace;background:var(--band);
+  border:1px solid var(--line);border-radius:3px;padding:1px 5px}
+pre{background:var(--band);border:1px solid var(--line);border-radius:4px;
+  padding:13px 15px;overflow-x:auto}
+pre code{background:none;border:0;padding:0}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px;display:block;
+  overflow-x:auto;white-space:nowrap}
+th,td{border:1px solid var(--line);padding:7px 11px;text-align:left}
+th{background:var(--coral-soft);color:var(--ink);font-weight:600}
+td:not(:first-child){font-family:ui-monospace,Consolas,monospace}
+blockquote{border-left:2px solid var(--coral);margin:14px 0;padding:2px 0 2px 15px;color:var(--ink2)}
+hr{border:0;border-top:1px solid var(--line);margin:30px 0}
+ul,ol{color:var(--ink2);padding-left:22px}
+li{margin:4px 0}
+img{max-width:100%;height:auto;border:1px solid var(--line);border-radius:3px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:13px;margin:16px 0}
+.card{display:block;background:var(--card);border:1px solid var(--line);border-radius:4px;
+  padding:14px 15px;text-decoration:none;color:inherit;transition:border-color .12s}
+.card:hover{border-color:var(--coral)}
+.card .k{font:600 14.5px/1.3 ui-monospace,Consolas,monospace;color:var(--ink)}
+.card .d{font-size:12px;color:var(--ink3);margin-top:5px;line-height:1.5}
+.note{border-left:2px solid var(--coral);background:var(--card);padding:12px 16px;
+  margin:18px 0;font-size:13.5px;color:var(--ink2)}
+.note.warn{border-left-color:var(--ochre);background:var(--band)}
+.note b{color:var(--ink)}
+nav.crumb{font-size:12.5px;color:var(--ink3);margin-bottom:6px}
+nav.crumb a{color:var(--ink3)}
+footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--ink3)}
+</style>
+<header class="top"><div class="wrap">
+  <div class="eyebrow">실습3 · CustomConcept101 · SD3.5-medium</div>
+  <h1>이미지 생성 모델 개인화 — 파이프라인과 지표 검증</h1>
+  <p class="lede">SD3.5-medium에 Textual Inversion · LoRA · DoRA · prior-preservation을 적용하고, CLIP T2I/I2I와 DINO로 채점한 뒤 그 지표 자체를 검증한 실험.</p>
+</div></header>
+<div class="wrap">
+
+<h2>핵심 발견</h2>
+<p>가장 큰 결함은 하이퍼파라미터가 아니라 <b>단어 하나</b>였다. DreamBooth 관행대로 트리거 토큰을
+<code>sks</code>로 잡았는데, SD3.5의 텍스트 인코더는 이것을 <b>SKS 소총</b>으로 읽는다. 요청하지 않은
+소총과 군복이 이미지에 들어왔다.</p>
+<figure style="margin:0 0 18px"><img src="figures/trigger.jpg" alt=""></figure>
+<p>더 흥미로운 것은 지표의 반응이다. 이 결함을 고쳤더니(<code>zwx</code>로 교체) <b>DINO가 10컨셉 중
+8개에서 오히려 하락</b>했다. CLIP T2I·I2I·DINO 세 지표를 다 써도 "폭포 앞에 소총이 떠 있다"를
+잡아내지 못한다.</p>
+<div class="note">이 실험의 결론은 "어떤 방법이 좋은가"보다 <b>"무엇으로 재는가"</b>에 있다.
+지표는 게이밍당하고(best-of-N), 보지 못하고(학습 해상도 512), 때로는 반대로 채점한다(트리거 토큰).</div>
+
+<h2>문서</h2>
+<div class="grid">
+  <a class="card" href="findings.html"><div class="k">FINDINGS</div>
+    <div class="d">전체 분석 — 지표 검증 · ablation 8건 · 정성 관찰 · 한계</div></a>
+  <a class="card" href="tables/zwx_table.html"><div class="k">트리거 토큰 평가 표</div>
+    <div class="d">sks → zwx, 10컨셉 × LoRA/DoRA, 컨셉 단위 검정</div></a>
+  <a class="card" href="발표_파이프라인.pptx"><div class="k">발표 자료 (.pptx)</div>
+    <div class="d">파이프라인과 결과 13슬라이드</div></a>
+</div>
+
+<h2>생성 이미지 뷰어</h2>
+<p>컨셉을 고르면 프롬프트별로 모든 런·방법의 생성물이 나란히 놓인다. 두 지표 모두 프롬프트별 교란을
+가지므로 <b>같은 프롬프트 안에서 방법끼리</b> 비교하는 것만 유효하고, 레이아웃이 정확히 그 형태다.</p>
+<div class="note warn"><b>공개본에서 제외된 컨셉:</b> <code>person_3</code> — 레퍼런스가 실존 인물의 셀피라 이미지를 공개 저장소에 올리지 않았다. 수치는 모든 표와 CSV에 그대로 들어 있다.</div>
+<div class="grid"><a class="card" href="viewer/viewer_actionfigure_2.html"><div class="k">actionfigure_2</div><div class="d">4개 런 · 최대 11개 방법 · 프롬프트 10개</div></a>
+<a class="card" href="viewer/viewer_decoritems_woodenpot.html"><div class="k">decoritems_woodenpot</div><div class="d">4개 런 · 최대 11개 방법 · 프롬프트 10개</div></a>
+<a class="card" href="viewer/viewer_furniture_sofa2.html"><div class="k">furniture_sofa2</div><div class="d">4개 런 · 최대 11개 방법 · 프롬프트 10개</div></a>
+<a class="card" href="viewer/viewer_instrument_music2.html"><div class="k">instrument_music2</div><div class="d">4개 런 · 최대 11개 방법 · 프롬프트 10개</div></a>
+<a class="card" href="viewer/viewer_luggage_backpack1.html"><div class="k">luggage_backpack1</div><div class="d">4개 런 · 최대 11개 방법 · 프롬프트 10개</div></a>
+<a class="card" href="viewer/viewer_pet_cat5.html"><div class="k">pet_cat5</div><div class="d">4개 런 · 최대 11개 방법 · 프롬프트 10개</div></a>
+<a class="card" href="viewer/viewer_scene_waterfall.html"><div class="k">scene_waterfall</div><div class="d">4개 런 · 최대 11개 방법 · 프롬프트 10개</div></a>
+<a class="card" href="viewer/viewer_transport_tank.html"><div class="k">transport_tank</div><div class="d">4개 런 · 최대 11개 방법 · 프롬프트 10개</div></a>
+<a class="card" href="viewer/viewer_wearable_jacket1.html"><div class="k">wearable_jacket1</div><div class="d">4개 런 · 최대 11개 방법 · 프롬프트 10개</div></a></div>
+
+<h2>데이터와 코드</h2>
+<div class="grid">
+  <a class="card" href="data/"><div class="k">breakdown_*.csv</div>
+    <div class="d">프롬프트 단위 원점수 — T2I · I2I · DINO</div></a>
+  <a class="card" href="src/"><div class="k">src/</div>
+    <div class="d">학습 · 생성 · 평가 · 시각화 스크립트</div></a>
+  <a class="card" href="figures/"><div class="k">figures/</div>
+    <div class="d">발표에 쓴 비교 그림</div></a>
+</div>
+
+<footer>CustomConcept101 · Stable Diffusion 3.5 Medium · CLIP ViT-B/32 · DINO ViT-S/16</footer>
+</div>

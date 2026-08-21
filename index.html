@@ -1,0 +1,71 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>데이터 사이언스 실습</title>
+<style>
+:root{
+  --paper:#FAF9F5; --band:#F5F2EA; --card:#FFFFFF; --ink:#1F1E1D; --ink2:#55524C;
+  --ink3:#8A867E; --line:#E3DED2; --coral:#C15F3C; --coral-soft:#F3E4DC; --ochre:#8A6A2F;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --paper:#171614; --band:#1E1D1A; --card:#211F1C; --ink:#F2EFE8; --ink2:#BDB8AE;
+  --ink3:#8A867E; --line:#33302A; --coral:#E08256; --coral-soft:#3A2620; --ochre:#C9A54F;
+}}
+:root[data-theme="dark"]{
+  --paper:#171614; --band:#1E1D1A; --card:#211F1C; --ink:#F2EFE8; --ink2:#BDB8AE;
+  --ink3:#8A867E; --line:#33302A; --coral:#E08256; --coral-soft:#3A2620; --ochre:#C9A54F;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:15px/1.72 -apple-system,"Segoe UI","Malgun Gothic","맑은 고딕",system-ui,sans-serif;}
+.wrap{max-width:980px;margin:0 auto;padding:0 24px 80px}
+header.top{background:var(--band);border-bottom:1px solid var(--line);margin-bottom:34px}
+header.top .wrap{padding-top:38px;padding-bottom:30px}
+.eyebrow{font:600 12px/1 ui-monospace,Consolas,monospace;letter-spacing:.09em;
+  color:var(--coral);text-transform:uppercase}
+h1{font-size:30px;line-height:1.28;margin:14px 0 12px;letter-spacing:-.01em}
+h2{font-size:21px;margin:38px 0 12px;padding-top:16px;border-top:1px solid var(--line)}
+h3{font-size:16.5px;margin:26px 0 8px}
+h4{font-size:14.5px;margin:20px 0 6px;color:var(--ink2)}
+p{margin:0 0 13px;color:var(--ink2)}
+h1+p,.lede{color:var(--ink2);font-size:16px}
+a{color:var(--coral)}
+code{font:13px ui-monospace,Consolas,monospace;background:var(--band);
+  border:1px solid var(--line);border-radius:3px;padding:1px 5px}
+pre{background:var(--band);border:1px solid var(--line);border-radius:4px;
+  padding:13px 15px;overflow-x:auto}
+pre code{background:none;border:0;padding:0}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px;display:block;
+  overflow-x:auto;white-space:nowrap}
+th,td{border:1px solid var(--line);padding:7px 11px;text-align:left}
+th{background:var(--coral-soft);color:var(--ink);font-weight:600}
+td:not(:first-child){font-family:ui-monospace,Consolas,monospace}
+blockquote{border-left:2px solid var(--coral);margin:14px 0;padding:2px 0 2px 15px;color:var(--ink2)}
+hr{border:0;border-top:1px solid var(--line);margin:30px 0}
+ul,ol{color:var(--ink2);padding-left:22px}
+li{margin:4px 0}
+img{max-width:100%;height:auto;border:1px solid var(--line);border-radius:3px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:13px;margin:16px 0}
+.card{display:block;background:var(--card);border:1px solid var(--line);border-radius:4px;
+  padding:14px 15px;text-decoration:none;color:inherit;transition:border-color .12s}
+.card:hover{border-color:var(--coral)}
+.card .k{font:600 14.5px/1.3 ui-monospace,Consolas,monospace;color:var(--ink)}
+.card .d{font-size:12px;color:var(--ink3);margin-top:5px;line-height:1.5}
+.note{border-left:2px solid var(--coral);background:var(--card);padding:12px 16px;
+  margin:18px 0;font-size:13.5px;color:var(--ink2)}
+.note.warn{border-left-color:var(--ochre);background:var(--band)}
+.note b{color:var(--ink)}
+nav.crumb{font-size:12.5px;color:var(--ink3);margin-bottom:6px}
+nav.crumb a{color:var(--ink3)}
+footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--ink3)}
+</style>
+<header class="top"><div class="wrap">
+  <div class="eyebrow">ds-practice</div>
+  <h1>데이터 사이언스 실습</h1>
+  <p class="lede">로컬 · Colab · Claude Code on the web에서 이어서 작업하는 저장소.
+  실습 하나당 폴더 하나.</p>
+</div></header>
+<div class="wrap">
+<div class="grid"><a class="card" href="실습3/"><div class="k">실습3</div><div class="d">이미지 생성 모델 개인화 — 파이프라인과 지표 검증</div></a></div>
+<footer>github.com/kithhooni-commits/ds-practice</footer>
+</div>

@@ -1,0 +1,501 @@
+concept,method,prompt_idx,prompt,t2i,i2i,dino
+actionfigure_2,ti,0,photo of a action figure.,0.2696,0.5153,0.3124
+actionfigure_2,ti,1,"The action figure, surrounded by towering skyscrapers.",0.3098,0.4283,0.0565
+actionfigure_2,ti,2,"The action figure stands atop a snowy mountain peak, overlooking a vast icy landscape.",0.3174,0.4078,0.1553
+actionfigure_2,ti,3,In a lush forest stands action figure.,0.2609,0.3672,0.0127
+actionfigure_2,ti,4,action figure in times square.,0.233,0.4203,0.1052
+actionfigure_2,ti,5,"action figure on a sandy beach, with waves in the background.",0.2876,0.4013,0.1617
+actionfigure_2,ti,6,action figure riding a motorcycle.,0.2701,0.3497,0.2637
+actionfigure_2,ti,7,action figure riding a flying broom.,0.3088,0.4782,0.1534
+actionfigure_2,ti,8,action figure holding a futuristic energy sword.,0.3028,0.4601,0.2044
+actionfigure_2,ti,9,The action figure rides a majestic dragon.,0.2776,0.4878,0.1847
+actionfigure_2,lora,0,photo of a action figure.,0.3018,0.7905,0.4697
+actionfigure_2,lora,1,"The action figure, surrounded by towering skyscrapers.",0.3072,0.7159,0.5987
+actionfigure_2,lora,2,"The action figure stands atop a snowy mountain peak, overlooking a vast icy landscape.",0.3507,0.438,0.2845
+actionfigure_2,lora,3,In a lush forest stands action figure.,0.3357,0.643,0.302
+actionfigure_2,lora,4,action figure in times square.,0.3162,0.5912,0.501
+actionfigure_2,lora,5,"action figure on a sandy beach, with waves in the background.",0.3412,0.6849,0.5391
+actionfigure_2,lora,6,action figure riding a motorcycle.,0.3571,0.606,0.3932
+actionfigure_2,lora,7,action figure riding a flying broom.,0.3024,0.8339,0.4922
+actionfigure_2,lora,8,action figure holding a futuristic energy sword.,0.3089,0.7512,0.4641
+actionfigure_2,lora,9,The action figure rides a majestic dragon.,0.3259,0.626,0.2638
+actionfigure_2,dora,0,photo of a action figure.,0.2796,0.7508,0.5032
+actionfigure_2,dora,1,"The action figure, surrounded by towering skyscrapers.",0.2945,0.7311,0.5374
+actionfigure_2,dora,2,"The action figure stands atop a snowy mountain peak, overlooking a vast icy landscape.",0.3682,0.555,0.4559
+actionfigure_2,dora,3,In a lush forest stands action figure.,0.3391,0.7504,0.4873
+actionfigure_2,dora,4,action figure in times square.,0.3036,0.6565,0.571
+actionfigure_2,dora,5,"action figure on a sandy beach, with waves in the background.",0.3396,0.6353,0.4451
+actionfigure_2,dora,6,action figure riding a motorcycle.,0.3537,0.6473,0.4501
+actionfigure_2,dora,7,action figure riding a flying broom.,0.3071,0.8079,0.5371
+actionfigure_2,dora,8,action figure holding a futuristic energy sword.,0.3082,0.7831,0.5625
+actionfigure_2,dora,9,The action figure rides a majestic dragon.,0.2255,0.5805,0.3571
+actionfigure_2,lora_prior,0,photo of a action figure.,0.3078,0.5206,0.2889
+actionfigure_2,lora_prior,1,"The action figure, surrounded by towering skyscrapers.",0.3444,0.5885,0.2895
+actionfigure_2,lora_prior,2,"The action figure stands atop a snowy mountain peak, overlooking a vast icy landscape.",0.3628,0.4363,0.2386
+actionfigure_2,lora_prior,3,In a lush forest stands action figure.,0.3459,0.5468,0.1733
+actionfigure_2,lora_prior,4,action figure in times square.,0.3438,0.4776,0.2965
+actionfigure_2,lora_prior,5,"action figure on a sandy beach, with waves in the background.",0.3731,0.4752,0.2677
+actionfigure_2,lora_prior,6,action figure riding a motorcycle.,0.3488,0.5709,0.3058
+actionfigure_2,lora_prior,7,action figure riding a flying broom.,0.3235,0.6438,0.388
+actionfigure_2,lora_prior,8,action figure holding a futuristic energy sword.,0.3424,0.6209,0.3475
+actionfigure_2,lora_prior,9,The action figure rides a majestic dragon.,0.3382,0.5494,0.335
+actionfigure_2,dora_prior,0,photo of a action figure.,0.2972,0.6037,0.3111
+actionfigure_2,dora_prior,1,"The action figure, surrounded by towering skyscrapers.",0.3384,0.4929,0.3392
+actionfigure_2,dora_prior,2,"The action figure stands atop a snowy mountain peak, overlooking a vast icy landscape.",0.3647,0.428,0.2191
+actionfigure_2,dora_prior,3,In a lush forest stands action figure.,0.3436,0.5433,0.1741
+actionfigure_2,dora_prior,4,action figure in times square.,0.3434,0.5464,0.2037
+actionfigure_2,dora_prior,5,"action figure on a sandy beach, with waves in the background.",0.3825,0.4536,0.2631
+actionfigure_2,dora_prior,6,action figure riding a motorcycle.,0.3278,0.4667,0.2717
+actionfigure_2,dora_prior,7,action figure riding a flying broom.,0.3443,0.6837,0.3155
+actionfigure_2,dora_prior,8,action figure holding a futuristic energy sword.,0.3422,0.6098,0.2731
+actionfigure_2,dora_prior,9,The action figure rides a majestic dragon.,0.3491,0.6013,0.274
+decoritems_woodenpot,ti,0,Photo of a wooden pot.,0.2484,0.6114,0.2107
+decoritems_woodenpot,ti,1,wooden pot in grand canyon.,0.2775,0.4763,0.0958
+decoritems_woodenpot,ti,2,wooden pot with mountains and sunset in the background.,0.2731,0.5224,0.0315
+decoritems_woodenpot,ti,3,wooden pot floating in a pool.,0.2681,0.4331,0.0557
+decoritems_woodenpot,ti,4,A wide shot of wooden pot in times square.,0.2597,0.4671,0.0182
+decoritems_woodenpot,ti,5,wooden pot and chocolate cake on a table.,0.2842,0.4774,0.2873
+decoritems_woodenpot,ti,6,Rose flowers in wooden pot on a table.,0.3183,0.5857,0.229
+decoritems_woodenpot,ti,7,Marigold flowers in the wooden pot.,0.2879,0.5636,0.1065
+decoritems_woodenpot,ti,8,The wooden pot at the entrance to a medieval castle.,0.2771,0.4744,0.0947
+decoritems_woodenpot,ti,9,wooden pot with pens in it.,0.2977,0.6371,0.2193
+decoritems_woodenpot,lora,0,Photo of a wooden pot.,0.3192,0.8366,0.6856
+decoritems_woodenpot,lora,1,wooden pot in grand canyon.,0.3724,0.6747,0.5129
+decoritems_woodenpot,lora,2,wooden pot with mountains and sunset in the background.,0.4137,0.7054,0.6047
+decoritems_woodenpot,lora,3,wooden pot floating in a pool.,0.3407,0.7948,0.4943
+decoritems_woodenpot,lora,4,A wide shot of wooden pot in times square.,0.4165,0.7127,0.6235
+decoritems_woodenpot,lora,5,wooden pot and chocolate cake on a table.,0.3079,0.7434,0.5606
+decoritems_woodenpot,lora,6,Rose flowers in wooden pot on a table.,0.3476,0.669,0.3867
+decoritems_woodenpot,lora,7,Marigold flowers in the wooden pot.,0.3323,0.6049,0.1936
+decoritems_woodenpot,lora,8,The wooden pot at the entrance to a medieval castle.,0.3199,0.7323,0.601
+decoritems_woodenpot,lora,9,wooden pot with pens in it.,0.3568,0.821,0.5085
+decoritems_woodenpot,dora,0,Photo of a wooden pot.,0.3369,0.8305,0.6697
+decoritems_woodenpot,dora,1,wooden pot in grand canyon.,0.3833,0.6842,0.5235
+decoritems_woodenpot,dora,2,wooden pot with mountains and sunset in the background.,0.4214,0.7061,0.6409
+decoritems_woodenpot,dora,3,wooden pot floating in a pool.,0.3611,0.7065,0.471
+decoritems_woodenpot,dora,4,A wide shot of wooden pot in times square.,0.4075,0.706,0.5749
+decoritems_woodenpot,dora,5,wooden pot and chocolate cake on a table.,0.3129,0.7639,0.5015
+decoritems_woodenpot,dora,6,Rose flowers in wooden pot on a table.,0.3417,0.6453,0.3799
+decoritems_woodenpot,dora,7,Marigold flowers in the wooden pot.,0.3454,0.5947,0.2463
+decoritems_woodenpot,dora,8,The wooden pot at the entrance to a medieval castle.,0.3444,0.6358,0.4644
+decoritems_woodenpot,dora,9,wooden pot with pens in it.,0.3506,0.7783,0.4508
+decoritems_woodenpot,lora_prior,0,Photo of a wooden pot.,0.3327,0.7662,0.4103
+decoritems_woodenpot,lora_prior,1,wooden pot in grand canyon.,0.4049,0.5715,0.3364
+decoritems_woodenpot,lora_prior,2,wooden pot with mountains and sunset in the background.,0.4117,0.6501,0.3786
+decoritems_woodenpot,lora_prior,3,wooden pot floating in a pool.,0.3831,0.6747,0.3051
+decoritems_woodenpot,lora_prior,4,A wide shot of wooden pot in times square.,0.4587,0.6284,0.3067
+decoritems_woodenpot,lora_prior,5,wooden pot and chocolate cake on a table.,0.3214,0.7148,0.3199
+decoritems_woodenpot,lora_prior,6,Rose flowers in wooden pot on a table.,0.3484,0.6222,0.3324
+decoritems_woodenpot,lora_prior,7,Marigold flowers in the wooden pot.,0.3733,0.6649,0.2455
+decoritems_woodenpot,lora_prior,8,The wooden pot at the entrance to a medieval castle.,0.3616,0.6441,0.3476
+decoritems_woodenpot,lora_prior,9,wooden pot with pens in it.,0.369,0.7731,0.3695
+decoritems_woodenpot,dora_prior,0,Photo of a wooden pot.,0.3259,0.7822,0.3475
+decoritems_woodenpot,dora_prior,1,wooden pot in grand canyon.,0.3912,0.6132,0.3884
+decoritems_woodenpot,dora_prior,2,wooden pot with mountains and sunset in the background.,0.4293,0.6817,0.3462
+decoritems_woodenpot,dora_prior,3,wooden pot floating in a pool.,0.3919,0.6884,0.3092
+decoritems_woodenpot,dora_prior,4,A wide shot of wooden pot in times square.,0.4472,0.6089,0.2102
+decoritems_woodenpot,dora_prior,5,wooden pot and chocolate cake on a table.,0.3393,0.665,0.3351
+decoritems_woodenpot,dora_prior,6,Rose flowers in wooden pot on a table.,0.3255,0.6441,0.29
+decoritems_woodenpot,dora_prior,7,Marigold flowers in the wooden pot.,0.3534,0.597,0.2127
+decoritems_woodenpot,dora_prior,8,The wooden pot at the entrance to a medieval castle.,0.3376,0.6636,0.2782
+decoritems_woodenpot,dora_prior,9,wooden pot with pens in it.,0.3639,0.7226,0.3276
+furniture_sofa2,ti,0,Photo of a sofa.,0.1852,0.6769,0.2415
+furniture_sofa2,ti,1,sofa near a pool.,0.2456,0.7018,0.1241
+furniture_sofa2,ti,2,sofa at a beach with a view of the seashore.,0.2439,0.5917,0.1881
+furniture_sofa2,ti,3,sofa in a garden.,0.2368,0.6043,0.0586
+furniture_sofa2,ti,4,sofa in grand canyon.,0.2647,0.5375,0.1272
+furniture_sofa2,ti,5,sofa in front of a medieval castle.,0.2883,0.5419,0.0961
+furniture_sofa2,ti,6,sofa and a coffee table.,0.2744,0.8021,0.3825
+furniture_sofa2,ti,7,floor lamp on the side of sofa.,0.3084,0.7734,0.2199
+furniture_sofa2,ti,8,sofa and an orange sofa.,0.3002,0.827,0.4858
+furniture_sofa2,ti,9,sofa and a table with chocolate cake on it.,0.2489,0.5638,0.1833
+furniture_sofa2,lora,0,Photo of a sofa.,0.3053,0.9135,0.696
+furniture_sofa2,lora,1,sofa near a pool.,0.3194,0.8412,0.5945
+furniture_sofa2,lora,2,sofa at a beach with a view of the seashore.,0.3197,0.7981,0.582
+furniture_sofa2,lora,3,sofa in a garden.,0.3294,0.8203,0.5771
+furniture_sofa2,lora,4,sofa in grand canyon.,0.3592,0.6566,0.5564
+furniture_sofa2,lora,5,sofa in front of a medieval castle.,0.3869,0.6625,0.5123
+furniture_sofa2,lora,6,sofa and a coffee table.,0.2991,0.9449,0.7245
+furniture_sofa2,lora,7,floor lamp on the side of sofa.,0.2729,0.9136,0.6987
+furniture_sofa2,lora,8,sofa and an orange sofa.,0.3089,0.909,0.7237
+furniture_sofa2,lora,9,sofa and a table with chocolate cake on it.,0.3318,0.8662,0.5264
+furniture_sofa2,dora,0,Photo of a sofa.,0.2999,0.9187,0.74
+furniture_sofa2,dora,1,sofa near a pool.,0.3194,0.8134,0.6666
+furniture_sofa2,dora,2,sofa at a beach with a view of the seashore.,0.3361,0.7674,0.5576
+furniture_sofa2,dora,3,sofa in a garden.,0.3251,0.8644,0.5992
+furniture_sofa2,dora,4,sofa in grand canyon.,0.3924,0.7118,0.6546
+furniture_sofa2,dora,5,sofa in front of a medieval castle.,0.3884,0.6115,0.4273
+furniture_sofa2,dora,6,sofa and a coffee table.,0.2897,0.9374,0.7454
+furniture_sofa2,dora,7,floor lamp on the side of sofa.,0.2954,0.9434,0.7245
+furniture_sofa2,dora,8,sofa and an orange sofa.,0.3225,0.9026,0.6772
+furniture_sofa2,dora,9,sofa and a table with chocolate cake on it.,0.3332,0.8956,0.6245
+furniture_sofa2,lora_prior,0,Photo of a sofa.,0.3092,0.8112,0.5342
+furniture_sofa2,lora_prior,1,sofa near a pool.,0.3179,0.846,0.5274
+furniture_sofa2,lora_prior,2,sofa at a beach with a view of the seashore.,0.3297,0.7918,0.5475
+furniture_sofa2,lora_prior,3,sofa in a garden.,0.3306,0.8021,0.4883
+furniture_sofa2,lora_prior,4,sofa in grand canyon.,0.3856,0.7513,0.6519
+furniture_sofa2,lora_prior,5,sofa in front of a medieval castle.,0.3741,0.6838,0.3761
+furniture_sofa2,lora_prior,6,sofa and a coffee table.,0.2939,0.8838,0.7117
+furniture_sofa2,lora_prior,7,floor lamp on the side of sofa.,0.3223,0.8437,0.5844
+furniture_sofa2,lora_prior,8,sofa and an orange sofa.,0.3357,0.8474,0.5823
+furniture_sofa2,lora_prior,9,sofa and a table with chocolate cake on it.,0.3566,0.816,0.5855
+furniture_sofa2,dora_prior,0,Photo of a sofa.,0.3092,0.8272,0.5333
+furniture_sofa2,dora_prior,1,sofa near a pool.,0.3185,0.8216,0.4585
+furniture_sofa2,dora_prior,2,sofa at a beach with a view of the seashore.,0.3346,0.7913,0.6115
+furniture_sofa2,dora_prior,3,sofa in a garden.,0.3222,0.8305,0.5506
+furniture_sofa2,dora_prior,4,sofa in grand canyon.,0.385,0.7295,0.509
+furniture_sofa2,dora_prior,5,sofa in front of a medieval castle.,0.3915,0.6965,0.4174
+furniture_sofa2,dora_prior,6,sofa and a coffee table.,0.3022,0.9333,0.6537
+furniture_sofa2,dora_prior,7,floor lamp on the side of sofa.,0.3239,0.8515,0.5729
+furniture_sofa2,dora_prior,8,sofa and an orange sofa.,0.3399,0.8517,0.5849
+furniture_sofa2,dora_prior,9,sofa and a table with chocolate cake on it.,0.3545,0.8324,0.4009
+instrument_music2,ti,0,photo of a guitar.,0.3022,0.7529,0.5891
+instrument_music2,ti,1,A guitar resting against a rustic wall.,0.3118,0.7915,0.6556
+instrument_music2,ti,2,A guitar glowing under the disco lights.,0.3132,0.7383,0.6012
+instrument_music2,ti,3,A guitar at display in a music shop.,0.2866,0.6646,0.6709
+instrument_music2,ti,4,A guitar resting on the sandy ocean floor with a turtle swimming by.,0.3787,0.6007,0.384
+instrument_music2,ti,5,A cardinal is sitting beside the guitar.,0.3527,0.6434,0.2896
+instrument_music2,ti,6,C-3PO playing with the guitar.,0.3624,0.6518,0.3826
+instrument_music2,ti,7,guitar beside a towering redwood tree.,0.4023,0.6605,0.6158
+instrument_music2,ti,8,"A neon guitar in a rainy, Blade Runner-style cityscape.",0.3721,0.7079,0.5824
+instrument_music2,ti,9,"A vintage guitar at a train station, a suitcase lying next to it.",0.3414,0.6411,0.2257
+instrument_music2,lora,0,photo of a guitar.,0.29,0.8589,0.7129
+instrument_music2,lora,1,A guitar resting against a rustic wall.,0.3006,0.8674,0.7513
+instrument_music2,lora,2,A guitar glowing under the disco lights.,0.3875,0.8028,0.6138
+instrument_music2,lora,3,A guitar at display in a music shop.,0.3179,0.773,0.705
+instrument_music2,lora,4,A guitar resting on the sandy ocean floor with a turtle swimming by.,0.3959,0.7519,0.6366
+instrument_music2,lora,5,A cardinal is sitting beside the guitar.,0.347,0.8068,0.7603
+instrument_music2,lora,6,C-3PO playing with the guitar.,0.3822,0.7366,0.2806
+instrument_music2,lora,7,guitar beside a towering redwood tree.,0.3329,0.8058,0.6617
+instrument_music2,lora,8,"A neon guitar in a rainy, Blade Runner-style cityscape.",0.4312,0.7088,0.6659
+instrument_music2,lora,9,"A vintage guitar at a train station, a suitcase lying next to it.",0.348,0.821,0.6714
+instrument_music2,dora,0,photo of a guitar.,0.2961,0.8929,0.7338
+instrument_music2,dora,1,A guitar resting against a rustic wall.,0.3133,0.863,0.7281
+instrument_music2,dora,2,A guitar glowing under the disco lights.,0.3785,0.8012,0.6641
+instrument_music2,dora,3,A guitar at display in a music shop.,0.3278,0.831,0.7493
+instrument_music2,dora,4,A guitar resting on the sandy ocean floor with a turtle swimming by.,0.4203,0.6954,0.5782
+instrument_music2,dora,5,A cardinal is sitting beside the guitar.,0.3349,0.7568,0.7332
+instrument_music2,dora,6,C-3PO playing with the guitar.,0.3875,0.709,0.3199
+instrument_music2,dora,7,guitar beside a towering redwood tree.,0.3974,0.7922,0.6744
+instrument_music2,dora,8,"A neon guitar in a rainy, Blade Runner-style cityscape.",0.4529,0.7086,0.6106
+instrument_music2,dora,9,"A vintage guitar at a train station, a suitcase lying next to it.",0.3727,0.7541,0.6035
+instrument_music2,lora_prior,0,photo of a guitar.,0.3114,0.8011,0.6906
+instrument_music2,lora_prior,1,A guitar resting against a rustic wall.,0.2872,0.7992,0.7387
+instrument_music2,lora_prior,2,A guitar glowing under the disco lights.,0.3613,0.7884,0.4721
+instrument_music2,lora_prior,3,A guitar at display in a music shop.,0.307,0.7187,0.6969
+instrument_music2,lora_prior,4,A guitar resting on the sandy ocean floor with a turtle swimming by.,0.3785,0.6501,0.4152
+instrument_music2,lora_prior,5,A cardinal is sitting beside the guitar.,0.3612,0.7007,0.5924
+instrument_music2,lora_prior,6,C-3PO playing with the guitar.,0.3744,0.6833,0.3754
+instrument_music2,lora_prior,7,guitar beside a towering redwood tree.,0.4093,0.7121,0.4686
+instrument_music2,lora_prior,8,"A neon guitar in a rainy, Blade Runner-style cityscape.",0.4193,0.7195,0.6444
+instrument_music2,lora_prior,9,"A vintage guitar at a train station, a suitcase lying next to it.",0.3575,0.7477,0.6849
+instrument_music2,dora_prior,0,photo of a guitar.,0.3075,0.8075,0.5694
+instrument_music2,dora_prior,1,A guitar resting against a rustic wall.,0.3064,0.7941,0.6942
+instrument_music2,dora_prior,2,A guitar glowing under the disco lights.,0.3439,0.7492,0.5524
+instrument_music2,dora_prior,3,A guitar at display in a music shop.,0.3133,0.7385,0.7331
+instrument_music2,dora_prior,4,A guitar resting on the sandy ocean floor with a turtle swimming by.,0.3905,0.6867,0.4854
+instrument_music2,dora_prior,5,A cardinal is sitting beside the guitar.,0.3639,0.6716,0.5496
+instrument_music2,dora_prior,6,C-3PO playing with the guitar.,0.3694,0.6827,0.403
+instrument_music2,dora_prior,7,guitar beside a towering redwood tree.,0.4043,0.7625,0.5481
+instrument_music2,dora_prior,8,"A neon guitar in a rainy, Blade Runner-style cityscape.",0.4211,0.6888,0.6253
+instrument_music2,dora_prior,9,"A vintage guitar at a train station, a suitcase lying next to it.",0.3696,0.7538,0.6732
+luggage_backpack1,ti,0,photo of a backpack.,0.225,0.6663,0.2015
+luggage_backpack1,ti,1,backpack on a rustic wooden dock overlooking a peaceful lake.,0.2923,0.5875,0.0815
+luggage_backpack1,ti,2,backpack on a café table with a steaming cup of coffee nearby.,0.26,0.6549,0.1785
+luggage_backpack1,ti,3,A backpack on a trail in a pine forest.,0.3129,0.5981,0.028
+luggage_backpack1,ti,4,A backpack on a bicycle parked in a tulip field.,0.3676,0.5984,0.0561
+luggage_backpack1,ti,5,backpack on the glass table of a high-rise penthouse overlooking a stunning city skyline.,0.3053,0.6154,0.067
+luggage_backpack1,ti,6,A backpack with the night sky.,0.2612,0.6191,0.0243
+luggage_backpack1,ti,7,A backpack lying beside a bookshelf in a study room.,0.3051,0.6521,0.2704
+luggage_backpack1,ti,8,A person is walking with backpack in hand.,0.3109,0.6475,0.26
+luggage_backpack1,ti,9,A cat is looking from inside the backpack.,0.2647,0.5895,0.0544
+luggage_backpack1,lora,0,photo of a backpack.,0.3028,0.87,0.674
+luggage_backpack1,lora,1,backpack on a rustic wooden dock overlooking a peaceful lake.,0.3191,0.8553,0.6126
+luggage_backpack1,lora,2,backpack on a café table with a steaming cup of coffee nearby.,0.3271,0.8474,0.5515
+luggage_backpack1,lora,3,A backpack on a trail in a pine forest.,0.3374,0.8015,0.5136
+luggage_backpack1,lora,4,A backpack on a bicycle parked in a tulip field.,0.401,0.7733,0.4024
+luggage_backpack1,lora,5,backpack on the glass table of a high-rise penthouse overlooking a stunning city skyline.,0.3586,0.8271,0.5533
+luggage_backpack1,lora,6,A backpack with the night sky.,0.3283,0.71,0.5394
+luggage_backpack1,lora,7,A backpack lying beside a bookshelf in a study room.,0.2969,0.8521,0.5564
+luggage_backpack1,lora,8,A person is walking with backpack in hand.,0.3017,0.8698,0.6065
+luggage_backpack1,lora,9,A cat is looking from inside the backpack.,0.3338,0.5775,0.1242
+luggage_backpack1,dora,0,photo of a backpack.,0.2943,0.8487,0.71
+luggage_backpack1,dora,1,backpack on a rustic wooden dock overlooking a peaceful lake.,0.322,0.8529,0.5543
+luggage_backpack1,dora,2,backpack on a café table with a steaming cup of coffee nearby.,0.3268,0.8807,0.6429
+luggage_backpack1,dora,3,A backpack on a trail in a pine forest.,0.3374,0.7973,0.4695
+luggage_backpack1,dora,4,A backpack on a bicycle parked in a tulip field.,0.4179,0.7524,0.3359
+luggage_backpack1,dora,5,backpack on the glass table of a high-rise penthouse overlooking a stunning city skyline.,0.3567,0.7976,0.509
+luggage_backpack1,dora,6,A backpack with the night sky.,0.3185,0.6172,0.5009
+luggage_backpack1,dora,7,A backpack lying beside a bookshelf in a study room.,0.3035,0.8815,0.5715
+luggage_backpack1,dora,8,A person is walking with backpack in hand.,0.3135,0.8367,0.5829
+luggage_backpack1,dora,9,A cat is looking from inside the backpack.,0.3484,0.6913,0.1181
+luggage_backpack1,lora_prior,0,photo of a backpack.,0.292,0.7551,0.3707
+luggage_backpack1,lora_prior,1,backpack on a rustic wooden dock overlooking a peaceful lake.,0.3537,0.7551,0.4523
+luggage_backpack1,lora_prior,2,backpack on a café table with a steaming cup of coffee nearby.,0.3499,0.7471,0.4914
+luggage_backpack1,lora_prior,3,A backpack on a trail in a pine forest.,0.3619,0.7305,0.3521
+luggage_backpack1,lora_prior,4,A backpack on a bicycle parked in a tulip field.,0.3992,0.7056,0.3105
+luggage_backpack1,lora_prior,5,backpack on the glass table of a high-rise penthouse overlooking a stunning city skyline.,0.3745,0.7134,0.3039
+luggage_backpack1,lora_prior,6,A backpack with the night sky.,0.3438,0.5899,0.3238
+luggage_backpack1,lora_prior,7,A backpack lying beside a bookshelf in a study room.,0.3364,0.7804,0.4285
+luggage_backpack1,lora_prior,8,A person is walking with backpack in hand.,0.3224,0.794,0.4376
+luggage_backpack1,lora_prior,9,A cat is looking from inside the backpack.,0.3491,0.6686,0.0973
+luggage_backpack1,dora_prior,0,photo of a backpack.,0.3091,0.7504,0.4252
+luggage_backpack1,dora_prior,1,backpack on a rustic wooden dock overlooking a peaceful lake.,0.3474,0.7954,0.4986
+luggage_backpack1,dora_prior,2,backpack on a café table with a steaming cup of coffee nearby.,0.3412,0.8371,0.5343
+luggage_backpack1,dora_prior,3,A backpack on a trail in a pine forest.,0.343,0.7291,0.4104
+luggage_backpack1,dora_prior,4,A backpack on a bicycle parked in a tulip field.,0.4243,0.6904,0.3219
+luggage_backpack1,dora_prior,5,backpack on the glass table of a high-rise penthouse overlooking a stunning city skyline.,0.3764,0.752,0.4517
+luggage_backpack1,dora_prior,6,A backpack with the night sky.,0.3476,0.6965,0.335
+luggage_backpack1,dora_prior,7,A backpack lying beside a bookshelf in a study room.,0.3278,0.7747,0.4218
+luggage_backpack1,dora_prior,8,A person is walking with backpack in hand.,0.305,0.7577,0.5539
+luggage_backpack1,dora_prior,9,A cat is looking from inside the backpack.,0.3486,0.6786,0.1009
+person_3,ti,0,photo of a person.,0.2696,0.4856,0.3142
+person_3,ti,1,person selfie standing under the pink blossoms of a cherry tree.,0.3543,0.4539,0.3765
+person_3,ti,2,"person in a chef's outfit, cooking in a kitchen.",0.3109,0.4003,0.2265
+person_3,ti,3,person paddling a canoe on a tranquil lake.,0.3121,0.5304,0.0547
+person_3,ti,4,person playing with their pet dog.,0.2642,0.4473,0.1414
+person_3,ti,5,Photo of person taking a shot in basketball.,0.2826,0.3759,0.0964
+person_3,ti,6,person selfie with eiffel tower in the background.,0.3273,0.6751,0.3759
+person_3,ti,7,"person in an astronaut suit, floating in a spaceship.",0.3261,0.5186,0.2106
+person_3,ti,8,"person dressed in a a firefighter's outfit, a raging forest fire in the background.",0.2921,0.5203,0.2292
+person_3,ti,9,"person wearing Victorian-era clothing, reading a book in a classic British library.",0.3342,0.3985,0.2304
+person_3,lora,0,photo of a person.,0.2484,0.497,0.253
+person_3,lora,1,person selfie standing under the pink blossoms of a cherry tree.,0.3543,0.6299,0.4264
+person_3,lora,2,"person in a chef's outfit, cooking in a kitchen.",0.3182,0.5182,0.3366
+person_3,lora,3,person paddling a canoe on a tranquil lake.,0.3092,0.5354,0.2255
+person_3,lora,4,person playing with their pet dog.,0.2805,0.488,0.2699
+person_3,lora,5,Photo of person taking a shot in basketball.,0.2932,0.3935,0.0794
+person_3,lora,6,person selfie with eiffel tower in the background.,0.3237,0.7401,0.5429
+person_3,lora,7,"person in an astronaut suit, floating in a spaceship.",0.3149,0.5436,0.245
+person_3,lora,8,"person dressed in a a firefighter's outfit, a raging forest fire in the background.",0.322,0.5163,0.3195
+person_3,lora,9,"person wearing Victorian-era clothing, reading a book in a classic British library.",0.3308,0.4651,0.2845
+person_3,dora,0,photo of a person.,0.2508,0.4564,0.2696
+person_3,dora,1,person selfie standing under the pink blossoms of a cherry tree.,0.3651,0.6634,0.371
+person_3,dora,2,"person in a chef's outfit, cooking in a kitchen.",0.3316,0.5616,0.3219
+person_3,dora,3,person paddling a canoe on a tranquil lake.,0.3097,0.5418,0.1496
+person_3,dora,4,person playing with their pet dog.,0.3022,0.537,0.2257
+person_3,dora,5,Photo of person taking a shot in basketball.,0.279,0.3724,0.0308
+person_3,dora,6,person selfie with eiffel tower in the background.,0.3427,0.5748,0.3728
+person_3,dora,7,"person in an astronaut suit, floating in a spaceship.",0.3243,0.5284,0.2312
+person_3,dora,8,"person dressed in a a firefighter's outfit, a raging forest fire in the background.",0.3377,0.5051,0.2871
+person_3,dora,9,"person wearing Victorian-era clothing, reading a book in a classic British library.",0.3567,0.4845,0.3026
+person_3,lora_prior,0,photo of a person.,0.2541,0.5147,0.2976
+person_3,lora_prior,1,person selfie standing under the pink blossoms of a cherry tree.,0.3606,0.5913,0.413
+person_3,lora_prior,2,"person in a chef's outfit, cooking in a kitchen.",0.3116,0.4944,0.2439
+person_3,lora_prior,3,person paddling a canoe on a tranquil lake.,0.329,0.5196,0.0698
+person_3,lora_prior,4,person playing with their pet dog.,0.2865,0.5293,0.155
+person_3,lora_prior,5,Photo of person taking a shot in basketball.,0.3044,0.3859,0.1065
+person_3,lora_prior,6,person selfie with eiffel tower in the background.,0.3181,0.6638,0.3812
+person_3,lora_prior,7,"person in an astronaut suit, floating in a spaceship.",0.3165,0.5871,0.2872
+person_3,lora_prior,8,"person dressed in a a firefighter's outfit, a raging forest fire in the background.",0.328,0.5324,0.2846
+person_3,lora_prior,9,"person wearing Victorian-era clothing, reading a book in a classic British library.",0.3325,0.3877,0.2723
+person_3,dora_prior,0,photo of a person.,0.2655,0.5027,0.3514
+person_3,dora_prior,1,person selfie standing under the pink blossoms of a cherry tree.,0.3567,0.5277,0.3851
+person_3,dora_prior,2,"person in a chef's outfit, cooking in a kitchen.",0.316,0.4925,0.2675
+person_3,dora_prior,3,person paddling a canoe on a tranquil lake.,0.3311,0.5578,0.0684
+person_3,dora_prior,4,person playing with their pet dog.,0.2968,0.4923,0.1929
+person_3,dora_prior,5,Photo of person taking a shot in basketball.,0.2803,0.4005,0.0853
+person_3,dora_prior,6,person selfie with eiffel tower in the background.,0.3396,0.6478,0.3908
+person_3,dora_prior,7,"person in an astronaut suit, floating in a spaceship.",0.3149,0.5699,0.2884
+person_3,dora_prior,8,"person dressed in a a firefighter's outfit, a raging forest fire in the background.",0.2969,0.496,0.3042
+person_3,dora_prior,9,"person wearing Victorian-era clothing, reading a book in a classic British library.",0.3395,0.4611,0.2761
+pet_cat5,ti,0,Photo of a cat.,0.2823,0.8335,0.6295
+pet_cat5,ti,1,cat swimming in a pool.,0.3628,0.7756,0.4712
+pet_cat5,ti,2,cat at a beach with a view of the seashore.,0.3549,0.7018,0.4465
+pet_cat5,ti,3,cat sitting on a window.,0.3147,0.8314,0.4965
+pet_cat5,ti,4,cat in times square.,0.3436,0.7714,0.6825
+pet_cat5,ti,5,cat is wearing sunglasses.,0.3182,0.7622,0.5911
+pet_cat5,ti,6,cat wearing a construction outfit.,0.3579,0.7564,0.6156
+pet_cat5,ti,7,cat is playing with a ball.,0.3229,0.7968,0.5566
+pet_cat5,ti,8,cat is wearing headphones.,0.3181,0.7481,0.6693
+pet_cat5,ti,9,cat oil painting ghibli inspired.,0.2868,0.7204,0.6352
+pet_cat5,lora,0,Photo of a cat.,0.29,0.8511,0.7404
+pet_cat5,lora,1,cat swimming in a pool.,0.3405,0.7713,0.5376
+pet_cat5,lora,2,cat at a beach with a view of the seashore.,0.3578,0.7957,0.5309
+pet_cat5,lora,3,cat sitting on a window.,0.3238,0.8515,0.6468
+pet_cat5,lora,4,cat in times square.,0.3631,0.7805,0.6478
+pet_cat5,lora,5,cat is wearing sunglasses.,0.3381,0.8052,0.7021
+pet_cat5,lora,6,cat wearing a construction outfit.,0.378,0.7478,0.671
+pet_cat5,lora,7,cat is playing with a ball.,0.3285,0.8131,0.705
+pet_cat5,lora,8,cat is wearing headphones.,0.3492,0.7463,0.6845
+pet_cat5,lora,9,cat oil painting ghibli inspired.,0.3059,0.7325,0.7121
+pet_cat5,dora,0,Photo of a cat.,0.2949,0.883,0.7692
+pet_cat5,dora,1,cat swimming in a pool.,0.3466,0.7729,0.6645
+pet_cat5,dora,2,cat at a beach with a view of the seashore.,0.3581,0.818,0.5846
+pet_cat5,dora,3,cat sitting on a window.,0.3022,0.8546,0.7176
+pet_cat5,dora,4,cat in times square.,0.3446,0.8276,0.728
+pet_cat5,dora,5,cat is wearing sunglasses.,0.3339,0.8167,0.7198
+pet_cat5,dora,6,cat wearing a construction outfit.,0.369,0.8073,0.7164
+pet_cat5,dora,7,cat is playing with a ball.,0.328,0.8355,0.7656
+pet_cat5,dora,8,cat is wearing headphones.,0.3389,0.737,0.7306
+pet_cat5,dora,9,cat oil painting ghibli inspired.,0.2961,0.7557,0.7406
+pet_cat5,lora_prior,0,Photo of a cat.,0.286,0.8627,0.6471
+pet_cat5,lora_prior,1,cat swimming in a pool.,0.3384,0.7395,0.3926
+pet_cat5,lora_prior,2,cat at a beach with a view of the seashore.,0.3689,0.7814,0.5833
+pet_cat5,lora_prior,3,cat sitting on a window.,0.3148,0.8392,0.6209
+pet_cat5,lora_prior,4,cat in times square.,0.36,0.7939,0.6288
+pet_cat5,lora_prior,5,cat is wearing sunglasses.,0.3194,0.7576,0.5648
+pet_cat5,lora_prior,6,cat wearing a construction outfit.,0.3691,0.7484,0.5898
+pet_cat5,lora_prior,7,cat is playing with a ball.,0.3252,0.7696,0.6404
+pet_cat5,lora_prior,8,cat is wearing headphones.,0.3264,0.7416,0.5938
+pet_cat5,lora_prior,9,cat oil painting ghibli inspired.,0.2877,0.7435,0.5404
+pet_cat5,dora_prior,0,Photo of a cat.,0.2967,0.8355,0.6645
+pet_cat5,dora_prior,1,cat swimming in a pool.,0.3556,0.745,0.4853
+pet_cat5,dora_prior,2,cat at a beach with a view of the seashore.,0.3663,0.7737,0.4597
+pet_cat5,dora_prior,3,cat sitting on a window.,0.3208,0.8339,0.5729
+pet_cat5,dora_prior,4,cat in times square.,0.3626,0.7337,0.5883
+pet_cat5,dora_prior,5,cat is wearing sunglasses.,0.3227,0.7713,0.6202
+pet_cat5,dora_prior,6,cat wearing a construction outfit.,0.4033,0.7394,0.604
+pet_cat5,dora_prior,7,cat is playing with a ball.,0.3219,0.8313,0.6827
+pet_cat5,dora_prior,8,cat is wearing headphones.,0.3314,0.7363,0.628
+pet_cat5,dora_prior,9,cat oil painting ghibli inspired.,0.2868,0.7428,0.6345
+scene_waterfall,ti,0,photo of a waterfall.,0.2123,0.5192,0.1389
+scene_waterfall,ti,1,The waterfall at dusk with the first rays of sunlight creeping in.,0.2336,0.5916,0.1683
+scene_waterfall,ti,2,waterfall at night full of stars.,0.2357,0.635,0.2378
+scene_waterfall,ti,3,A frozen waterfall in the winter season and snow all around.,0.2099,0.5219,0.1561
+scene_waterfall,ti,4,A waterfall in a neon-lit cyberpunk cityscape.,0.3492,0.546,0.2395
+scene_waterfall,ti,5,A golden retriever in front of the waterfall.,0.2526,0.5313,0.0992
+scene_waterfall,ti,6,A cat sitting in front of the waterfall.,0.2285,0.5549,0.0706
+scene_waterfall,ti,7,waterfall with a vibrant rainbow arching across its mist.,0.2663,0.6947,0.161
+scene_waterfall,ti,8,A flock of flamingos standing in the shallow waters of the waterfall.,0.3242,0.5676,0.0922
+scene_waterfall,ti,9,A painter painting the scene of the waterfall on canvas.,0.3386,0.5273,0.2329
+scene_waterfall,lora,0,photo of a waterfall.,0.2988,0.8507,0.6712
+scene_waterfall,lora,1,The waterfall at dusk with the first rays of sunlight creeping in.,0.3095,0.903,0.7385
+scene_waterfall,lora,2,waterfall at night full of stars.,0.3356,0.8331,0.6452
+scene_waterfall,lora,3,A frozen waterfall in the winter season and snow all around.,0.3297,0.7956,0.5032
+scene_waterfall,lora,4,A waterfall in a neon-lit cyberpunk cityscape.,0.3941,0.6228,0.4602
+scene_waterfall,lora,5,A golden retriever in front of the waterfall.,0.3982,0.751,0.5434
+scene_waterfall,lora,6,A cat sitting in front of the waterfall.,0.3791,0.7401,0.3622
+scene_waterfall,lora,7,waterfall with a vibrant rainbow arching across its mist.,0.3549,0.8624,0.6188
+scene_waterfall,lora,8,A flock of flamingos standing in the shallow waters of the waterfall.,0.3862,0.7261,0.3157
+scene_waterfall,lora,9,A painter painting the scene of the waterfall on canvas.,0.3924,0.6228,0.3812
+scene_waterfall,dora,0,photo of a waterfall.,0.2884,0.8082,0.7611
+scene_waterfall,dora,1,The waterfall at dusk with the first rays of sunlight creeping in.,0.3211,0.8714,0.7427
+scene_waterfall,dora,2,waterfall at night full of stars.,0.3313,0.8505,0.6846
+scene_waterfall,dora,3,A frozen waterfall in the winter season and snow all around.,0.3232,0.8032,0.6559
+scene_waterfall,dora,4,A waterfall in a neon-lit cyberpunk cityscape.,0.3951,0.6168,0.5826
+scene_waterfall,dora,5,A golden retriever in front of the waterfall.,0.4019,0.7825,0.4106
+scene_waterfall,dora,6,A cat sitting in front of the waterfall.,0.3848,0.6954,0.3154
+scene_waterfall,dora,7,waterfall with a vibrant rainbow arching across its mist.,0.3468,0.8551,0.6495
+scene_waterfall,dora,8,A flock of flamingos standing in the shallow waters of the waterfall.,0.3836,0.7476,0.3942
+scene_waterfall,dora,9,A painter painting the scene of the waterfall on canvas.,0.4072,0.655,0.5065
+scene_waterfall,lora_prior,0,photo of a waterfall.,0.2977,0.8839,0.7888
+scene_waterfall,lora_prior,1,The waterfall at dusk with the first rays of sunlight creeping in.,0.3084,0.8866,0.7138
+scene_waterfall,lora_prior,2,waterfall at night full of stars.,0.3345,0.8437,0.6575
+scene_waterfall,lora_prior,3,A frozen waterfall in the winter season and snow all around.,0.3403,0.7807,0.4171
+scene_waterfall,lora_prior,4,A waterfall in a neon-lit cyberpunk cityscape.,0.401,0.6443,0.5397
+scene_waterfall,lora_prior,5,A golden retriever in front of the waterfall.,0.4031,0.7297,0.314
+scene_waterfall,lora_prior,6,A cat sitting in front of the waterfall.,0.3869,0.7124,0.3035
+scene_waterfall,lora_prior,7,waterfall with a vibrant rainbow arching across its mist.,0.3403,0.8314,0.6701
+scene_waterfall,lora_prior,8,A flock of flamingos standing in the shallow waters of the waterfall.,0.3912,0.7425,0.4461
+scene_waterfall,lora_prior,9,A painter painting the scene of the waterfall on canvas.,0.4208,0.6886,0.5105
+scene_waterfall,dora_prior,0,photo of a waterfall.,0.3039,0.8599,0.7711
+scene_waterfall,dora_prior,1,The waterfall at dusk with the first rays of sunlight creeping in.,0.3099,0.8666,0.7187
+scene_waterfall,dora_prior,2,waterfall at night full of stars.,0.3406,0.8109,0.664
+scene_waterfall,dora_prior,3,A frozen waterfall in the winter season and snow all around.,0.3393,0.7551,0.5846
+scene_waterfall,dora_prior,4,A waterfall in a neon-lit cyberpunk cityscape.,0.3927,0.6036,0.4979
+scene_waterfall,dora_prior,5,A golden retriever in front of the waterfall.,0.4221,0.7072,0.2308
+scene_waterfall,dora_prior,6,A cat sitting in front of the waterfall.,0.3961,0.7489,0.4138
+scene_waterfall,dora_prior,7,waterfall with a vibrant rainbow arching across its mist.,0.3452,0.832,0.6219
+scene_waterfall,dora_prior,8,A flock of flamingos standing in the shallow waters of the waterfall.,0.3825,0.7201,0.3024
+scene_waterfall,dora_prior,9,A painter painting the scene of the waterfall on canvas.,0.3978,0.659,0.2663
+transport_tank,ti,0,photo of a tank.,0.2986,0.6065,0.1906
+transport_tank,ti,1,"tank at the edge Grand Canyon, with the sun setting in the background.",0.2729,0.4857,0.0196
+transport_tank,ti,2,A graffiti-covered tank parked on a street.,0.373,0.5305,0.0992
+transport_tank,ti,3,Photo of snow-covered tank in a forest.,0.2895,0.4822,0.0154
+transport_tank,ti,4,The tank in a rustic barnyard.,0.272,0.5278,0.1632
+transport_tank,ti,5,The tank in a cherry blossom park.,0.2728,0.4906,0.018
+transport_tank,ti,6,A tank under a clear night sky.,0.3564,0.5842,0.1888
+transport_tank,ti,7,A squirrel perched on the tank.,0.3017,0.6209,0.1577
+transport_tank,ti,8,"tank on Mars, an astronaut planting a flag nearby.",0.3271,0.543,0.1378
+transport_tank,ti,9,Photo of a drone hovering beside the tank.,0.3064,0.6275,0.1889
+transport_tank,lora,0,photo of a tank.,0.2887,0.6879,0.4017
+transport_tank,lora,1,"tank at the edge Grand Canyon, with the sun setting in the background.",0.3195,0.5624,0.3209
+transport_tank,lora,2,A graffiti-covered tank parked on a street.,0.3649,0.6075,0.3197
+transport_tank,lora,3,Photo of snow-covered tank in a forest.,0.3691,0.5442,0.2434
+transport_tank,lora,4,The tank in a rustic barnyard.,0.295,0.6794,0.3698
+transport_tank,lora,5,The tank in a cherry blossom park.,0.3802,0.6359,0.3545
+transport_tank,lora,6,A tank under a clear night sky.,0.3437,0.5951,0.3339
+transport_tank,lora,7,A squirrel perched on the tank.,0.304,0.6302,0.285
+transport_tank,lora,8,"tank on Mars, an astronaut planting a flag nearby.",0.3553,0.5124,0.3387
+transport_tank,lora,9,Photo of a drone hovering beside the tank.,0.3201,0.7518,0.3662
+transport_tank,dora,0,photo of a tank.,0.2795,0.6874,0.4791
+transport_tank,dora,1,"tank at the edge Grand Canyon, with the sun setting in the background.",0.311,0.5531,0.3623
+transport_tank,dora,2,A graffiti-covered tank parked on a street.,0.3441,0.5489,0.3064
+transport_tank,dora,3,Photo of snow-covered tank in a forest.,0.3554,0.5486,0.2717
+transport_tank,dora,4,The tank in a rustic barnyard.,0.2699,0.7212,0.4251
+transport_tank,dora,5,The tank in a cherry blossom park.,0.3757,0.6274,0.4309
+transport_tank,dora,6,A tank under a clear night sky.,0.3746,0.5906,0.3122
+transport_tank,dora,7,A squirrel perched on the tank.,0.3091,0.6227,0.2736
+transport_tank,dora,8,"tank on Mars, an astronaut planting a flag nearby.",0.34,0.5432,0.3688
+transport_tank,dora,9,Photo of a drone hovering beside the tank.,0.3143,0.6582,0.4031
+transport_tank,lora_prior,0,photo of a tank.,0.2998,0.6638,0.3164
+transport_tank,lora_prior,1,"tank at the edge Grand Canyon, with the sun setting in the background.",0.3325,0.5836,0.1892
+transport_tank,lora_prior,2,A graffiti-covered tank parked on a street.,0.3451,0.5949,0.1616
+transport_tank,lora_prior,3,Photo of snow-covered tank in a forest.,0.3476,0.5429,0.1601
+transport_tank,lora_prior,4,The tank in a rustic barnyard.,0.235,0.5628,0.1556
+transport_tank,lora_prior,5,The tank in a cherry blossom park.,0.3853,0.6173,0.1714
+transport_tank,lora_prior,6,A tank under a clear night sky.,0.3284,0.5724,0.1488
+transport_tank,lora_prior,7,A squirrel perched on the tank.,0.3058,0.5928,0.1825
+transport_tank,lora_prior,8,"tank on Mars, an astronaut planting a flag nearby.",0.3164,0.5563,0.1813
+transport_tank,lora_prior,9,Photo of a drone hovering beside the tank.,0.3139,0.6374,0.3022
+transport_tank,dora_prior,0,photo of a tank.,0.2915,0.594,0.2408
+transport_tank,dora_prior,1,"tank at the edge Grand Canyon, with the sun setting in the background.",0.331,0.5865,0.2036
+transport_tank,dora_prior,2,A graffiti-covered tank parked on a street.,0.3234,0.5925,0.1404
+transport_tank,dora_prior,3,Photo of snow-covered tank in a forest.,0.3525,0.5637,0.1538
+transport_tank,dora_prior,4,The tank in a rustic barnyard.,0.248,0.5975,0.2005
+transport_tank,dora_prior,5,The tank in a cherry blossom park.,0.3776,0.5993,0.1541
+transport_tank,dora_prior,6,A tank under a clear night sky.,0.3082,0.5829,0.1748
+transport_tank,dora_prior,7,A squirrel perched on the tank.,0.3216,0.6223,0.1347
+transport_tank,dora_prior,8,"tank on Mars, an astronaut planting a flag nearby.",0.3199,0.5957,0.1931
+transport_tank,dora_prior,9,Photo of a drone hovering beside the tank.,0.3021,0.6092,0.267
+wearable_jacket1,ti,0,photo of a jacket.,0.1841,0.4955,0.091
+wearable_jacket1,ti,1,jacket on a rustic wooden bench in a park.,0.2687,0.56,0.0302
+wearable_jacket1,ti,2,jacket hanging on a golden coat rack.,0.3079,0.6843,0.2501
+wearable_jacket1,ti,3,jacket resting on the back of a chair in a cafe.,0.2749,0.5036,0.1553
+wearable_jacket1,ti,4,A jacket on a hanger in the window of a shop.,0.3023,0.6378,0.1653
+wearable_jacket1,ti,5,A jacket on a hook in a study room with bookshelves.,0.276,0.6166,0.1616
+wearable_jacket1,ti,6,jacket placed on a beach chair on a sunny Caribbean beach.,0.2953,0.5401,0.1196
+wearable_jacket1,ti,7,A humanoid robot wearing jacket with a futuristic city in the background.,0.3087,0.4709,0.0779
+wearable_jacket1,ti,8,jacket hanging from a wall hook.,0.3042,0.6718,0.1708
+wearable_jacket1,ti,9,A mannequin showcasing jacket.,0.2403,0.624,0.2072
+wearable_jacket1,lora,0,photo of a jacket.,0.3125,0.8619,0.6664
+wearable_jacket1,lora,1,jacket on a rustic wooden bench in a park.,0.3673,0.7157,0.3739
+wearable_jacket1,lora,2,jacket hanging on a golden coat rack.,0.3201,0.8366,0.6428
+wearable_jacket1,lora,3,jacket resting on the back of a chair in a cafe.,0.3218,0.7496,0.4999
+wearable_jacket1,lora,4,A jacket on a hanger in the window of a shop.,0.3596,0.7668,0.5368
+wearable_jacket1,lora,5,A jacket on a hook in a study room with bookshelves.,0.3372,0.8136,0.6195
+wearable_jacket1,lora,6,jacket placed on a beach chair on a sunny Caribbean beach.,0.3653,0.6132,0.1992
+wearable_jacket1,lora,7,A humanoid robot wearing jacket with a futuristic city in the background.,0.3195,0.5169,0.3156
+wearable_jacket1,lora,8,jacket hanging from a wall hook.,0.2804,0.8451,0.6753
+wearable_jacket1,lora,9,A mannequin showcasing jacket.,0.3359,0.8019,0.6434
+wearable_jacket1,dora,0,photo of a jacket.,0.3144,0.8344,0.6633
+wearable_jacket1,dora,1,jacket on a rustic wooden bench in a park.,0.3774,0.7002,0.3693
+wearable_jacket1,dora,2,jacket hanging on a golden coat rack.,0.3229,0.8341,0.6837
+wearable_jacket1,dora,3,jacket resting on the back of a chair in a cafe.,0.3154,0.7552,0.5396
+wearable_jacket1,dora,4,A jacket on a hanger in the window of a shop.,0.3581,0.7714,0.5801
+wearable_jacket1,dora,5,A jacket on a hook in a study room with bookshelves.,0.348,0.766,0.6228
+wearable_jacket1,dora,6,jacket placed on a beach chair on a sunny Caribbean beach.,0.3914,0.6549,0.2704
+wearable_jacket1,dora,7,A humanoid robot wearing jacket with a futuristic city in the background.,0.3214,0.4874,0.2134
+wearable_jacket1,dora,8,jacket hanging from a wall hook.,0.2917,0.8376,0.6378
+wearable_jacket1,dora,9,A mannequin showcasing jacket.,0.3293,0.7899,0.6679
+wearable_jacket1,lora_prior,0,photo of a jacket.,0.303,0.7335,0.492
+wearable_jacket1,lora_prior,1,jacket on a rustic wooden bench in a park.,0.3568,0.6957,0.1997
+wearable_jacket1,lora_prior,2,jacket hanging on a golden coat rack.,0.3331,0.7696,0.5039
+wearable_jacket1,lora_prior,3,jacket resting on the back of a chair in a cafe.,0.3272,0.645,0.1901
+wearable_jacket1,lora_prior,4,A jacket on a hanger in the window of a shop.,0.331,0.7611,0.4093
+wearable_jacket1,lora_prior,5,A jacket on a hook in a study room with bookshelves.,0.3461,0.7598,0.464
+wearable_jacket1,lora_prior,6,jacket placed on a beach chair on a sunny Caribbean beach.,0.3612,0.6382,0.2188
+wearable_jacket1,lora_prior,7,A humanoid robot wearing jacket with a futuristic city in the background.,0.338,0.5474,0.1803
+wearable_jacket1,lora_prior,8,jacket hanging from a wall hook.,0.3436,0.7092,0.4209
+wearable_jacket1,lora_prior,9,A mannequin showcasing jacket.,0.3135,0.7497,0.5385
+wearable_jacket1,dora_prior,0,photo of a jacket.,0.2991,0.6788,0.4856
+wearable_jacket1,dora_prior,1,jacket on a rustic wooden bench in a park.,0.3766,0.6944,0.3065
+wearable_jacket1,dora_prior,2,jacket hanging on a golden coat rack.,0.3396,0.739,0.3145
+wearable_jacket1,dora_prior,3,jacket resting on the back of a chair in a cafe.,0.3404,0.7173,0.2833
+wearable_jacket1,dora_prior,4,A jacket on a hanger in the window of a shop.,0.3458,0.7313,0.5091
+wearable_jacket1,dora_prior,5,A jacket on a hook in a study room with bookshelves.,0.3586,0.7041,0.5325
+wearable_jacket1,dora_prior,6,jacket placed on a beach chair on a sunny Caribbean beach.,0.3672,0.6316,0.1755
+wearable_jacket1,dora_prior,7,A humanoid robot wearing jacket with a futuristic city in the background.,0.3362,0.4923,0.1324
+wearable_jacket1,dora_prior,8,jacket hanging from a wall hook.,0.3221,0.719,0.4893
+wearable_jacket1,dora_prior,9,A mannequin showcasing jacket.,0.3147,0.7391,0.51

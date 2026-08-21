@@ -1,0 +1,348 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>트리거 토큰 평가 표</title>
+<style>
+:root{
+  --paper:#FAF9F5; --band:#F5F2EA; --card:#FFFFFF; --ink:#1F1E1D; --ink2:#55524C;
+  --ink3:#8A867E; --line:#E3DED2; --coral:#C15F3C; --coral-soft:#F3E4DC; --ochre:#8A6A2F;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --paper:#171614; --band:#1E1D1A; --card:#211F1C; --ink:#F2EFE8; --ink2:#BDB8AE;
+  --ink3:#8A867E; --line:#33302A; --coral:#E08256; --coral-soft:#3A2620; --ochre:#C9A54F;
+}}
+:root[data-theme="dark"]{
+  --paper:#171614; --band:#1E1D1A; --card:#211F1C; --ink:#F2EFE8; --ink2:#BDB8AE;
+  --ink3:#8A867E; --line:#33302A; --coral:#E08256; --coral-soft:#3A2620; --ochre:#C9A54F;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:15px/1.72 -apple-system,"Segoe UI","Malgun Gothic","맑은 고딕",system-ui,sans-serif;}
+.wrap{max-width:980px;margin:0 auto;padding:0 24px 80px}
+header.top{background:var(--band);border-bottom:1px solid var(--line);margin-bottom:34px}
+header.top .wrap{padding-top:38px;padding-bottom:30px}
+.eyebrow{font:600 12px/1 ui-monospace,Consolas,monospace;letter-spacing:.09em;
+  color:var(--coral);text-transform:uppercase}
+h1{font-size:30px;line-height:1.28;margin:14px 0 12px;letter-spacing:-.01em}
+h2{font-size:21px;margin:38px 0 12px;padding-top:16px;border-top:1px solid var(--line)}
+h3{font-size:16.5px;margin:26px 0 8px}
+h4{font-size:14.5px;margin:20px 0 6px;color:var(--ink2)}
+p{margin:0 0 13px;color:var(--ink2)}
+h1+p,.lede{color:var(--ink2);font-size:16px}
+a{color:var(--coral)}
+code{font:13px ui-monospace,Consolas,monospace;background:var(--band);
+  border:1px solid var(--line);border-radius:3px;padding:1px 5px}
+pre{background:var(--band);border:1px solid var(--line);border-radius:4px;
+  padding:13px 15px;overflow-x:auto}
+pre code{background:none;border:0;padding:0}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px;display:block;
+  overflow-x:auto;white-space:nowrap}
+th,td{border:1px solid var(--line);padding:7px 11px;text-align:left}
+th{background:var(--coral-soft);color:var(--ink);font-weight:600}
+td:not(:first-child){font-family:ui-monospace,Consolas,monospace}
+blockquote{border-left:2px solid var(--coral);margin:14px 0;padding:2px 0 2px 15px;color:var(--ink2)}
+hr{border:0;border-top:1px solid var(--line);margin:30px 0}
+ul,ol{color:var(--ink2);padding-left:22px}
+li{margin:4px 0}
+img{max-width:100%;height:auto;border:1px solid var(--line);border-radius:3px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:13px;margin:16px 0}
+.card{display:block;background:var(--card);border:1px solid var(--line);border-radius:4px;
+  padding:14px 15px;text-decoration:none;color:inherit;transition:border-color .12s}
+.card:hover{border-color:var(--coral)}
+.card .k{font:600 14.5px/1.3 ui-monospace,Consolas,monospace;color:var(--ink)}
+.card .d{font-size:12px;color:var(--ink3);margin-top:5px;line-height:1.5}
+.note{border-left:2px solid var(--coral);background:var(--card);padding:12px 16px;
+  margin:18px 0;font-size:13.5px;color:var(--ink2)}
+.note.warn{border-left-color:var(--ochre);background:var(--band)}
+.note b{color:var(--ink)}
+nav.crumb{font-size:12.5px;color:var(--ink3);margin-bottom:6px}
+nav.crumb a{color:var(--ink3)}
+footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--ink3)}
+</style>
+
+<div class="wrap"><nav class="crumb"><a href="../">← 프로젝트 홈</a></nav><h1 id="sks-zwx-10">트리거 토큰 <code>sks</code> → <code>zwx</code> — 10컨셉 평가</h1>
+<p>비교: <code>v2_review/breakdown_v2.csv</code> (sks) vs <code>zwx10_review/breakdown_zwx10.csv</code> (zwx). rank 16 / 256 학습 / 512 생성 /
+best-of-4 동일, 트리거 토큰만 다름. Δ는 프롬프트 단위 짝지은 차이(zwx − sks)이고
+괄호는 상승 프롬프트 수와 양측 부호검정 p.</p>
+<h2 id="lora">LoRA</h2>
+<table>
+<thead>
+<tr>
+<th>그룹</th>
+<th>컨셉</th>
+<th>ΔT2I</th>
+<th>ΔCLIP I2I</th>
+<th>ΔDINO</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>오염 4컨셉</td>
+<td>4</td>
+<td>+0.0059 (26/40, p=0.081)</td>
+<td>+0.0249 (23/40, p=0.430)</td>
+<td>-0.0014 (17/40, p=0.430)</td>
+</tr>
+<tr>
+<td>깨끗한 5컨셉</td>
+<td>5</td>
+<td>+0.0050 (30/50, p=0.203)</td>
+<td>-0.0065 (22/50, p=0.480)</td>
+<td>-0.0207 (20/50, p=0.203)</td>
+</tr>
+<tr>
+<td>transport_tank (별도)</td>
+<td>1</td>
+<td>+0.0009 (6/10, p=0.754)</td>
+<td>-0.0160 (3/10, p=0.344)</td>
+<td>-0.0455 (4/10, p=0.754)</td>
+</tr>
+<tr>
+<td>전체 10컨셉</td>
+<td>10</td>
+<td><strong>+0.0050</strong> (62/100, p=0.021)</td>
+<td>+0.0051 (48/100, p=0.764)</td>
+<td>-0.0155 (41/100, p=0.089)</td>
+</tr>
+</tbody>
+</table>
+<p>컨셉 단위(프롬프트 평균을 컨셉당 1표로 집계). 한 컨셉의 프롬프트 10개는 같은
+가중치에서 나오므로 서로 독립이 아니다 — 위 표의 100개짜리 p는 유의성을
+과대평가하며, 아래가 올바른 검정 단위다:</p>
+<table>
+<thead>
+<tr>
+<th>그룹</th>
+<th>ΔT2I</th>
+<th>ΔCLIP I2I</th>
+<th>ΔDINO</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>오염 4컨셉</td>
+<td>+0.0059 (3/4, p=0.625)</td>
+<td>+0.0249 (3/4, p=0.625)</td>
+<td>-0.0014 (1/4, p=0.625)</td>
+</tr>
+<tr>
+<td>깨끗한 5컨셉</td>
+<td>+0.0050 (3/5, p=1.000)</td>
+<td>-0.0065 (2/5, p=1.000)</td>
+<td>-0.0207 (1/5, p=0.375)</td>
+</tr>
+<tr>
+<td>전체 10컨셉</td>
+<td>+0.0050 (7/10, p=0.344)</td>
+<td>+0.0051 (5/10, p=1.000)</td>
+<td>-0.0155 (2/10, p=0.109)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="dora">DoRA</h2>
+<table>
+<thead>
+<tr>
+<th>그룹</th>
+<th>컨셉</th>
+<th>ΔT2I</th>
+<th>ΔCLIP I2I</th>
+<th>ΔDINO</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>오염 4컨셉</td>
+<td>4</td>
+<td>+0.0034 (23/40, p=0.430)</td>
+<td>+0.0147 (20/40, p=1.000)</td>
+<td>+0.0013 (17/40, p=0.430)</td>
+</tr>
+<tr>
+<td>깨끗한 5컨셉</td>
+<td>5</td>
+<td>-0.0016 (27/50, p=0.672)</td>
+<td>+0.0024 (25/50, p=1.000)</td>
+<td><strong>-0.0323</strong> (17/50, p=0.033)</td>
+</tr>
+<tr>
+<td>transport_tank (별도)</td>
+<td>1</td>
+<td>+0.0124 (7/10, p=0.344)</td>
+<td>-0.0126 (5/10, p=1.000)</td>
+<td><strong>-0.1256</strong> (0/10, p=0.002)</td>
+</tr>
+<tr>
+<td>전체 10컨셉</td>
+<td>10</td>
+<td>+0.0018 (57/100, p=0.193)</td>
+<td>+0.0058 (50/100, p=1.000)</td>
+<td><strong>-0.0282</strong> (34/100, p=0.002)</td>
+</tr>
+</tbody>
+</table>
+<p>컨셉 단위(프롬프트 평균을 컨셉당 1표로 집계). 한 컨셉의 프롬프트 10개는 같은
+가중치에서 나오므로 서로 독립이 아니다 — 위 표의 100개짜리 p는 유의성을
+과대평가하며, 아래가 올바른 검정 단위다:</p>
+<table>
+<thead>
+<tr>
+<th>그룹</th>
+<th>ΔT2I</th>
+<th>ΔCLIP I2I</th>
+<th>ΔDINO</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>오염 4컨셉</td>
+<td>+0.0034 (3/4, p=0.625)</td>
+<td>+0.0147 (3/4, p=0.625)</td>
+<td>+0.0013 (3/4, p=0.625)</td>
+</tr>
+<tr>
+<td>깨끗한 5컨셉</td>
+<td>-0.0016 (2/5, p=1.000)</td>
+<td>+0.0024 (2/5, p=1.000)</td>
+<td>-0.0323 (2/5, p=1.000)</td>
+</tr>
+<tr>
+<td>전체 10컨셉</td>
+<td>+0.0018 (6/10, p=0.754)</td>
+<td>+0.0058 (5/10, p=1.000)</td>
+<td>-0.0282 (5/10, p=1.000)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="lora_1">컨셉별 상세 (LoRA)</h2>
+<table>
+<thead>
+<tr>
+<th>컨셉</th>
+<th>오염</th>
+<th>sks T2I/I2I/DINO</th>
+<th>zwx T2I/I2I/DINO</th>
+<th>ΔI2I</th>
+<th>ΔDINO</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>actionfigure_2</td>
+<td>전투복+소총</td>
+<td>0.3247 / 0.6681 / 0.4308</td>
+<td>0.3232 / 0.7477 / 0.5241</td>
+<td>+0.0796 (8/10, p=0.109)</td>
+<td><strong>+0.0933</strong> (9/10, p=0.021)</td>
+</tr>
+<tr>
+<td>decoritems_woodenpot</td>
+<td>—</td>
+<td>0.3527 / 0.7295 / 0.5171</td>
+<td>0.3607 / 0.7347 / 0.4781</td>
+<td>+0.0052 (6/10, p=0.754)</td>
+<td>-0.0391 (3/10, p=0.344)</td>
+</tr>
+<tr>
+<td>furniture_sofa2</td>
+<td>—</td>
+<td>0.3233 / 0.8326 / 0.6192</td>
+<td>0.3213 / 0.8244 / 0.5744</td>
+<td>-0.0082 (4/10, p=0.754)</td>
+<td>-0.0448 (3/10, p=0.344)</td>
+</tr>
+<tr>
+<td>instrument_music2</td>
+<td>—</td>
+<td>0.3533 / 0.7933 / 0.6459</td>
+<td>0.3700 / 0.7614 / 0.6180</td>
+<td>-0.0319 (2/10, p=0.109)</td>
+<td>-0.0279 (2/10, p=0.109)</td>
+</tr>
+<tr>
+<td>luggage_backpack1</td>
+<td>밀리터리 재킷 (약)</td>
+<td>0.3307 / 0.7984 / 0.5134</td>
+<td>0.3396 / 0.7839 / 0.4701</td>
+<td>-0.0145 (2/10, p=0.109)</td>
+<td><strong>-0.0433</strong> (1/10, p=0.021)</td>
+</tr>
+<tr>
+<td>person_3</td>
+<td>군복+소총</td>
+<td>0.3095 / 0.5327 / 0.2983</td>
+<td>0.3215 / 0.5498 / 0.2688</td>
+<td>+0.0171 (6/10, p=0.754)</td>
+<td><strong>-0.0294</strong> (1/10, p=0.021)</td>
+</tr>
+<tr>
+<td>pet_cat5</td>
+<td>—</td>
+<td>0.3375 / 0.7895 / 0.6578</td>
+<td>0.3371 / 0.8073 / 0.7065</td>
+<td>+0.0178 (8/10, p=0.109)</td>
+<td><strong>+0.0487</strong> (9/10, p=0.021)</td>
+</tr>
+<tr>
+<td>scene_waterfall</td>
+<td>소총 부유</td>
+<td>0.3579 / 0.7708 / 0.5240</td>
+<td>0.3622 / 0.7883 / 0.4976</td>
+<td>+0.0175 (7/10, p=0.344)</td>
+<td>-0.0264 (6/10, p=0.754)</td>
+</tr>
+<tr>
+<td>transport_tank</td>
+<td>class noun 자체가 군사 prior</td>
+<td>0.3341 / 0.6207 / 0.3334</td>
+<td>0.3350 / 0.6047 / 0.2879</td>
+<td>-0.0160 (3/10, p=0.344)</td>
+<td>-0.0455 (4/10, p=0.754)</td>
+</tr>
+<tr>
+<td>wearable_jacket1</td>
+<td>—</td>
+<td>0.3320 / 0.7521 / 0.5173</td>
+<td>0.3347 / 0.7368 / 0.4769</td>
+<td>-0.0153 (2/10, p=0.109)</td>
+<td>-0.0404 (3/10, p=0.344)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="10">방법별 절대값 (10컨셉 평균)</h2>
+<table>
+<thead>
+<tr>
+<th>방법</th>
+<th>T2I</th>
+<th>CLIP I2I</th>
+<th>DINO</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>lora</td>
+<td>0.3356</td>
+<td>0.7288</td>
+<td>0.5057</td>
+</tr>
+<tr>
+<td>dora</td>
+<td>0.3379</td>
+<td>0.7263</td>
+<td>0.5192</td>
+</tr>
+<tr>
+<td>lora_zwx</td>
+<td>0.3405</td>
+<td>0.7339</td>
+<td>0.4902</td>
+</tr>
+<tr>
+<td>dora_zwx</td>
+<td>0.3397</td>
+<td>0.7321</td>
+<td>0.4910</td>
+</tr>
+</tbody>
+</table></div>

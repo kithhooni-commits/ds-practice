@@ -1,0 +1,31 @@
+concept,method,prompt_idx,prompt,t2i,i2i,dino
+actionfigure_2,lora_r512,0,photo of a action figure.,0.2626,0.8353,0.7004
+actionfigure_2,lora_r512,1,"The action figure, surrounded by towering skyscrapers.",0.3023,0.7821,0.6837
+actionfigure_2,lora_r512,2,"The action figure stands atop a snowy mountain peak, overlooking a vast icy landscape.",0.3516,0.5578,0.4789
+actionfigure_2,lora_r512,3,In a lush forest stands action figure.,0.3397,0.7791,0.5753
+actionfigure_2,lora_r512,4,action figure in times square.,0.2897,0.6898,0.4649
+actionfigure_2,lora_r512,5,"action figure on a sandy beach, with waves in the background.",0.3315,0.6782,0.6023
+actionfigure_2,lora_r512,6,action figure riding a motorcycle.,0.3284,0.6748,0.4917
+actionfigure_2,lora_r512,7,action figure riding a flying broom.,0.3119,0.7307,0.5826
+actionfigure_2,lora_r512,8,action figure holding a futuristic energy sword.,0.3022,0.7263,0.5543
+actionfigure_2,lora_r512,9,The action figure rides a majestic dragon.,0.3332,0.7293,0.393
+person_3,lora_r512,0,photo of a person.,0.2659,0.5856,0.401
+person_3,lora_r512,1,person selfie standing under the pink blossoms of a cherry tree.,0.3606,0.6684,0.4405
+person_3,lora_r512,2,"person in a chef's outfit, cooking in a kitchen.",0.327,0.4725,0.2545
+person_3,lora_r512,3,person paddling a canoe on a tranquil lake.,0.327,0.5101,0.0882
+person_3,lora_r512,4,person playing with their pet dog.,0.2853,0.4917,0.1585
+person_3,lora_r512,5,Photo of person taking a shot in basketball.,0.2873,0.3721,0.0689
+person_3,lora_r512,6,person selfie with eiffel tower in the background.,0.3547,0.6387,0.4414
+person_3,lora_r512,7,"person in an astronaut suit, floating in a spaceship.",0.3325,0.5405,0.2139
+person_3,lora_r512,8,"person dressed in a a firefighter's outfit, a raging forest fire in the background.",0.3322,0.5155,0.3412
+person_3,lora_r512,9,"person wearing Victorian-era clothing, reading a book in a classic British library.",0.3696,0.4754,0.3005
+scene_waterfall,lora_r512,0,photo of a waterfall.,0.2463,0.6731,0.6362
+scene_waterfall,lora_r512,1,The waterfall at dusk with the first rays of sunlight creeping in.,0.308,0.8726,0.6956
+scene_waterfall,lora_r512,2,waterfall at night full of stars.,0.3254,0.8441,0.6985
+scene_waterfall,lora_r512,3,A frozen waterfall in the winter season and snow all around.,0.3297,0.7528,0.4377
+scene_waterfall,lora_r512,4,A waterfall in a neon-lit cyberpunk cityscape.,0.3999,0.6187,0.5466
+scene_waterfall,lora_r512,5,A golden retriever in front of the waterfall.,0.4019,0.7732,0.3938
+scene_waterfall,lora_r512,6,A cat sitting in front of the waterfall.,0.3779,0.7146,0.3363
+scene_waterfall,lora_r512,7,waterfall with a vibrant rainbow arching across its mist.,0.3505,0.8149,0.6537
+scene_waterfall,lora_r512,8,A flock of flamingos standing in the shallow waters of the waterfall.,0.3751,0.697,0.2626
+scene_waterfall,lora_r512,9,A painter painting the scene of the waterfall on canvas.,0.3819,0.6034,0.374

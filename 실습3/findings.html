@@ -1,0 +1,957 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FINDINGS — 이미지 생성 모델 개인화 — 파이프라인과 지표 검증</title>
+<style>
+:root{
+  --paper:#FAF9F5; --band:#F5F2EA; --card:#FFFFFF; --ink:#1F1E1D; --ink2:#55524C;
+  --ink3:#8A867E; --line:#E3DED2; --coral:#C15F3C; --coral-soft:#F3E4DC; --ochre:#8A6A2F;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --paper:#171614; --band:#1E1D1A; --card:#211F1C; --ink:#F2EFE8; --ink2:#BDB8AE;
+  --ink3:#8A867E; --line:#33302A; --coral:#E08256; --coral-soft:#3A2620; --ochre:#C9A54F;
+}}
+:root[data-theme="dark"]{
+  --paper:#171614; --band:#1E1D1A; --card:#211F1C; --ink:#F2EFE8; --ink2:#BDB8AE;
+  --ink3:#8A867E; --line:#33302A; --coral:#E08256; --coral-soft:#3A2620; --ochre:#C9A54F;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:15px/1.72 -apple-system,"Segoe UI","Malgun Gothic","맑은 고딕",system-ui,sans-serif;}
+.wrap{max-width:980px;margin:0 auto;padding:0 24px 80px}
+header.top{background:var(--band);border-bottom:1px solid var(--line);margin-bottom:34px}
+header.top .wrap{padding-top:38px;padding-bottom:30px}
+.eyebrow{font:600 12px/1 ui-monospace,Consolas,monospace;letter-spacing:.09em;
+  color:var(--coral);text-transform:uppercase}
+h1{font-size:30px;line-height:1.28;margin:14px 0 12px;letter-spacing:-.01em}
+h2{font-size:21px;margin:38px 0 12px;padding-top:16px;border-top:1px solid var(--line)}
+h3{font-size:16.5px;margin:26px 0 8px}
+h4{font-size:14.5px;margin:20px 0 6px;color:var(--ink2)}
+p{margin:0 0 13px;color:var(--ink2)}
+h1+p,.lede{color:var(--ink2);font-size:16px}
+a{color:var(--coral)}
+code{font:13px ui-monospace,Consolas,monospace;background:var(--band);
+  border:1px solid var(--line);border-radius:3px;padding:1px 5px}
+pre{background:var(--band);border:1px solid var(--line);border-radius:4px;
+  padding:13px 15px;overflow-x:auto}
+pre code{background:none;border:0;padding:0}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px;display:block;
+  overflow-x:auto;white-space:nowrap}
+th,td{border:1px solid var(--line);padding:7px 11px;text-align:left}
+th{background:var(--coral-soft);color:var(--ink);font-weight:600}
+td:not(:first-child){font-family:ui-monospace,Consolas,monospace}
+blockquote{border-left:2px solid var(--coral);margin:14px 0;padding:2px 0 2px 15px;color:var(--ink2)}
+hr{border:0;border-top:1px solid var(--line);margin:30px 0}
+ul,ol{color:var(--ink2);padding-left:22px}
+li{margin:4px 0}
+img{max-width:100%;height:auto;border:1px solid var(--line);border-radius:3px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:13px;margin:16px 0}
+.card{display:block;background:var(--card);border:1px solid var(--line);border-radius:4px;
+  padding:14px 15px;text-decoration:none;color:inherit;transition:border-color .12s}
+.card:hover{border-color:var(--coral)}
+.card .k{font:600 14.5px/1.3 ui-monospace,Consolas,monospace;color:var(--ink)}
+.card .d{font-size:12px;color:var(--ink3);margin-top:5px;line-height:1.5}
+.note{border-left:2px solid var(--coral);background:var(--card);padding:12px 16px;
+  margin:18px 0;font-size:13.5px;color:var(--ink2)}
+.note.warn{border-left-color:var(--ochre);background:var(--band)}
+.note b{color:var(--ink)}
+nav.crumb{font-size:12.5px;color:var(--ink3);margin-bottom:6px}
+nav.crumb a{color:var(--ink3)}
+footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--ink3)}
+</style>
+
+<div class="wrap"><nav class="crumb"><a href="../">← 실습3</a></nav><h1 id="customconcept101">CustomConcept101 개인화 실험 — 결과 및 분석</h1>
+<p>SD3.5-medium, 10개 컨셉, Textual Inversion / DreamBooth-LoRA / DoRA / prior-preservation.
+평가는 CLIP-B/32 Text-to-Image(T2I)·Image-to-Image(I2I), 여기에 DINO ViT-S/16 image-to-image를 추가.</p>
+<p>가장 큰 단일 결함은 하이퍼파라미터가 아니라 <strong>트리거 토큰</strong>이었다 — 관행적으로 쓴 <code>sks</code>가
+SD3.5에서 SKS 소총으로 읽혀 일부 컨셉에 소총과 군복을 집어넣었다. 세 지표 중 어느 것도
+이를 잡아내지 못했을 뿐 아니라, 10컨셉에서 수정판(<code>zwx</code>)의 DINO가 오히려 8/10 컨셉에서
+소폭 낮게 나왔다 — <strong>지표가 결함 수정을 벌준 사례</strong>다(§4.7).</p>
+<h2 id="1">1. 실행 구성</h2>
+<table>
+<thead>
+<tr>
+<th>이름</th>
+<th>rank</th>
+<th>학습 해상도</th>
+<th>생성 해상도</th>
+<th>best-of-N</th>
+<th>prior</th>
+<th>컨셉</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>baseline</code></td>
+<td>4</td>
+<td>256</td>
+<td>256</td>
+<td>1</td>
+<td>—</td>
+<td>9 (pet_cat5 제외)</td>
+</tr>
+<tr>
+<td><code>v2</code></td>
+<td>16</td>
+<td>256</td>
+<td>512</td>
+<td>4</td>
+<td>λ=1.0 변형 포함</td>
+<td>10</td>
+</tr>
+<tr>
+<td><code>_bo1</code></td>
+<td>16</td>
+<td>256</td>
+<td>512</td>
+<td><strong>1</strong></td>
+<td>—</td>
+<td>10</td>
+</tr>
+<tr>
+<td><code>_p03</code></td>
+<td>16</td>
+<td>256</td>
+<td>512</td>
+<td>4</td>
+<td><strong>λ=0.3</strong></td>
+<td>3</td>
+</tr>
+<tr>
+<td><code>_r512</code></td>
+<td>16</td>
+<td><strong>512</strong></td>
+<td>512</td>
+<td>4</td>
+<td>—</td>
+<td>3</td>
+</tr>
+<tr>
+<td><code>_zwx</code></td>
+<td>16</td>
+<td>256</td>
+<td>512</td>
+<td>4</td>
+<td>—</td>
+<td><strong>10</strong> (lora+dora)</td>
+</tr>
+</tbody>
+</table>
+<p><code>_bo1</code>은 v2와 동일 가중치를 재사용한 추론 전용 ablation. 시드가 <code>seed + i*1000 + n</code>이라
+<code>n=0</code>은 best-of-4의 첫 후보와 픽셀 단위로 동일하므로 선택 효과만 분리된다.</p>
+<p><code>baseline</code>·<code>v2</code>·<code>_bo1</code>·<code>_p03</code>·<code>_r512</code>는 모두 트리거 토큰이 <strong><code>sks</code></strong>다(당시 스크립트에
+하드코딩). <code>_zwx</code>만 <code>zwx</code>로 바꾼 단일 변수 ablation이며, 이것이 §4.7에서 보듯 문서 전체의
+정체성 수치를 다시 읽게 만든다.</p>
+<p><code>_zwx</code>는 처음 3컨셉(<code>actionfigure_2</code>·<code>person_3</code>·<code>scene_waterfall</code>, <code>_r512</code>가 쓰던 집합을
+물려받음)만 돌렸다가 이후 10컨셉 × lora/dora로 확장했다. 3컨셉의 가중치는 재사용됐으므로
+확장 런의 해당 이미지는 초기 런과 바이트 단위로 동일하다 — 재현이 아니라 상위집합이다.</p>
+<h2 id="2-v2-10">2. 방법별 결과 (v2, 10컨셉 평균)</h2>
+<table>
+<thead>
+<tr>
+<th>방법</th>
+<th>T2I</th>
+<th>CLIP I2I</th>
+<th><strong>DINO</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ti</td>
+<td>0.3040</td>
+<td>0.5876</td>
+<td><strong>0.2354</strong></td>
+</tr>
+<tr>
+<td>lora</td>
+<td>0.3392</td>
+<td>0.7288</td>
+<td>0.5057</td>
+</tr>
+<tr>
+<td><strong>dora</strong></td>
+<td>0.3411</td>
+<td>0.7263</td>
+<td><strong>0.5192</strong></td>
+</tr>
+<tr>
+<td>lora_prior</td>
+<td>0.3450</td>
+<td>0.6844</td>
+<td>0.4048</td>
+</tr>
+<tr>
+<td>dora_prior</td>
+<td>0.3437</td>
+<td>0.6830</td>
+<td>0.4009</td>
+</tr>
+</tbody>
+</table>
+<p>CLIP I2I는 lora &gt; dora(0.7288 vs 0.7263)로 보고하지만 DINO는 순위를 뒤집는다
+(0.5057 vs 0.5192). 절대 격차가 작아 단정할 수 없다 — §3.4 참조.</p>
+<p><strong>이 표의 모든 행은 트리거 토큰 <code>sks</code>로 학습됐다.</strong> §4.7에서 <code>sks</code>가 일부 컨셉에 소총·
+군복을 집어넣음이 확인되므로 이 값들은 <code>sks</code> 조건에서의 값이다. 다만 다섯 행이 같은
+오염을 공유하므로 <strong>방법 간 순위 비교는 그대로 유효하다.</strong></p>
+<p>주의: <code>zwx</code>로 바꾸면 이 숫자가 올라갈 것 같지만 <strong>그렇지 않다</strong> — 10컨셉 lora 기준
+DINO 0.5057 → 0.4902로 오히려 내려간다(§4.7). 오염 제거는 정성적 개선이지 지표 개선이
+아니다.</p>
+<h2 id="3">3. 평가 지표 검증 (핵심 분석)</h2>
+<h3 id="31-t2i-i2i">3.1 T2I와 I2I는 프롬프트 단위로 음의 상관을 가지며, 그 강도가 개인화 성공을 나타낸다</h3>
+<p>컨셉 내 10개 프롬프트에 걸친 T2I–I2I 피어슨 상관 (baseline, 9컨셉 × 3방법, n=270):</p>
+<table>
+<thead>
+<tr>
+<th>방법</th>
+<th>평균 r</th>
+<th>음수 컨셉</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ti</td>
+<td><strong>+0.187</strong></td>
+<td>3/9</td>
+</tr>
+<tr>
+<td>lora</td>
+<td><strong>−0.415</strong></td>
+<td>8/9</td>
+</tr>
+<tr>
+<td>dora</td>
+<td><strong>−0.514</strong></td>
+<td>8/9</td>
+</tr>
+</tbody>
+</table>
+<p>컨셉별 짝지은 부호검정:</p>
+<table>
+<thead>
+<tr>
+<th>비교</th>
+<th>결과</th>
+<th>p</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>r(lora) &lt; r(ti)</td>
+<td>8/9</td>
+<td><strong>0.039</strong></td>
+</tr>
+<tr>
+<td>r(dora) &lt; r(ti)</td>
+<td><strong>9/9</strong></td>
+<td><strong>0.004</strong></td>
+</tr>
+<tr>
+<td>r(dora) &lt; r(lora)</td>
+<td>6/9</td>
+<td>0.51 (유의하지 않음)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>해석</strong>: 정체성을 학습한 모델만 "레퍼런스처럼 보이기"와 "장면을 바꾸는 프롬프트 따르기"
+사이의 경쟁에 직면한다. 정체성 학습에 실패한 TI는 경쟁할 대상이 없어 두 지표가 무관하게
+움직인다. 따라서 반상관의 존재 자체가 개인화 성공의 지표다.</p>
+<h3 id="32-clip-i2i">3.2 CLIP I2I는 정체성이 아니라 "구도 일치도"를 상당 부분 측정한다</h3>
+<p><code>person_3</code>의 레퍼런스 15장은 전부 셀피(얼굴이 프레임의 30~50%). 프롬프트 10개 중
+1번·6번만 "selfie"를 명시한다. I2I 순위:</p>
+<table>
+<thead>
+<tr>
+<th>순위</th>
+<th>프롬프트</th>
+<th>ti</th>
+<th>lora</th>
+<th>dora</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>1. <strong>selfie</strong> under cherry blossoms</td>
+<td>0.5268</td>
+<td><strong>0.6686</strong></td>
+<td><strong>0.6484</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td>6. <strong>selfie</strong> with eiffel tower</td>
+<td><strong>0.6586</strong></td>
+<td><strong>0.6315</strong></td>
+<td><strong>0.6149</strong></td>
+</tr>
+<tr>
+<td>…</td>
+<td>7. astronaut in spaceship</td>
+<td>0.4829</td>
+<td>0.5189</td>
+<td>0.5371</td>
+</tr>
+<tr>
+<td>최하</td>
+<td>5. taking a shot in basketball</td>
+<td>0.4299</td>
+<td><strong>0.3576</strong></td>
+<td><strong>0.4245</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>세 방법 모두에서 셀피 프롬프트가 정확히 1·2위.</strong> LoRA 기준 셀피 평균 0.6501 vs
+나머지 8개 평균 0.4970 (+31%).</p>
+<p>주목할 점: <code>person_3</code>의 0번 프롬프트("photo of a person")는 I2I 0.5519로 낮다. 다른
+컨셉에서는 0번이 항상 최고였다(소파 0.9049, 나무화분 0.8522, 피규어 0.8246). "photo of
+a person"은 일반 인물 사진을 만들지 셀피를 만들지 않으므로 레퍼런스와 구도가 어긋난다.</p>
+<p>즉 변수는 프롬프트의 <strong>단순함</strong>이 아니라 <strong>프롬프트가 함축하는 구도와 레퍼런스 세트
+구도의 일치도</strong>다.</p>
+<p><strong>따라서 컨셉 간 I2I 절대값 비교는 무효다.</strong> 프롬프트 세트가 요구하는 장면 변화량이
+컨셉마다 다르기 때문이다 — <code>furniture_sofa2</code>는 10개 중 4개가 "소파 + 사물"(장면 변화
+거의 없음)이라 I2I 0.8166이고, <code>actionfigure_2</code>는 9개가 스카이라인·설산·타임스퀘어·용을
+요구해 0.7074다. 소파 LoRA가 더 잘 학습된 것이 아닐 수 있다.</p>
+<h3 id="33-t2i">3.3 T2I는 프롬프트 길이에 교란된다</h3>
+<p>0번 프롬프트("photo of a X.")의 T2I가 9컨셉 중 8컨셉에서 그 컨셉 평균보다 낮다.
+짧고 서술이 적은 캡션은 CLIP 코사인이 구조적으로 낮게 나오며, 이는 이미지 품질과 무관하다.</p>
+<p><strong>결론</strong>: 두 지표 모두 프롬프트별 체계적 교란을 가진다. 유효한 비교는 <strong>같은 프롬프트
+안에서 방법끼리</strong>뿐이다. 과제가 요구하는 비교(TI vs LoRA vs DoRA)가 정확히 그 형태이므로
+평가 자체는 타당하나, 프롬프트 간·컨셉 간 해석에서 과대 추론을 피해야 한다.</p>
+<h3 id="34-dino-dreambooth">3.4 DINO 도입 — DreamBooth 논문의 정체성 지표</h3>
+<p>CLIP은 이미지-텍스트 쌍으로 학습되어 이미지 임베딩이 "무엇이라고 말할지" 기준으로
+조직되므로, 같은 클래스의 서로 다른 개체를 구분하는 민감도가 낮다. DINO
+(self-<strong>DI</strong>stillation with <strong>NO</strong> labels, Caron et al., ICCV 2021)는 라벨·텍스트 없이
+이미지만으로 학습되어 개체 외형 기준으로 조직된다. DreamBooth 논문(Ruiz et al., CVPR
+2023)이 CLIP-I의 이 한계를 이유로 DINO를 함께 보고한다.</p>
+<p>baseline 9컨셉:</p>
+<table>
+<thead>
+<tr>
+<th>컨셉</th>
+<th>ti I2I / DINO</th>
+<th>lora I2I / DINO</th>
+<th>dora I2I / DINO</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>actionfigure_2</td>
+<td>0.4286 / <strong>0.1405</strong></td>
+<td>0.7074 / 0.5507</td>
+<td>0.6688 / 0.4893</td>
+</tr>
+<tr>
+<td>decoritems_woodenpot</td>
+<td>0.4996 / <strong>0.1022</strong></td>
+<td>0.7122 / 0.4082</td>
+<td>0.7364 / 0.4280</td>
+</tr>
+<tr>
+<td>furniture_sofa2</td>
+<td>0.6746 / <strong>0.1983</strong></td>
+<td>0.8166 / 0.5594</td>
+<td>0.8241 / 0.5781</td>
+</tr>
+<tr>
+<td>instrument_music2</td>
+<td>0.6693 / 0.3881</td>
+<td>0.7636 / 0.6503</td>
+<td>0.7545 / 0.6541</td>
+</tr>
+<tr>
+<td>luggage_backpack1</td>
+<td>0.6094 / <strong>0.1043</strong></td>
+<td>0.7994 / 0.4663</td>
+<td>0.7986 / 0.4899</td>
+</tr>
+<tr>
+<td>person_3</td>
+<td>0.4883 / 0.2070</td>
+<td>0.5276 / 0.2848</td>
+<td>0.5351 / 0.2824</td>
+</tr>
+<tr>
+<td>scene_waterfall</td>
+<td>0.5748 / <strong>0.1122</strong></td>
+<td>0.7406 / 0.4946</td>
+<td>0.7502 / 0.4990</td>
+</tr>
+<tr>
+<td>transport_tank</td>
+<td>0.5471 / <strong>0.0952</strong></td>
+<td>0.5942 / 0.2669</td>
+<td>0.5872 / 0.2470</td>
+</tr>
+<tr>
+<td>wearable_jacket1</td>
+<td>0.5972 / <strong>0.0957</strong></td>
+<td>0.7330 / 0.4840</td>
+<td>0.7581 / 0.4982</td>
+</tr>
+<tr>
+<td><strong>평균</strong></td>
+<td>0.5654 / <strong>0.1604</strong></td>
+<td>0.7105 / 0.4628</td>
+<td>0.7126 / 0.4629</td>
+</tr>
+</tbody>
+</table>
+<p><strong>방법 분리도(lora/ti): CLIP-I 1.26배 vs DINO 2.89배.</strong> TI의 DINO는 5개 컨셉에서 0.10
+근처 — DINO 공간에서 이 값은 사실상 무관한 이미지를 뜻한다. "TI가 정체성을 학습하지
+못했다"를 CLIP-I 0.5654로는 애매하게, DINO 0.1604로는 명확하게 말할 수 있다.</p>
+<p>단, DINO도 구도 교란을 제거하지는 못한다. <code>person_3</code>에서 셀피 프롬프트가 DINO에서도
+1·2위(0.4452, 0.4171)이고 농구 슛이 최하(0.0514)다. 다만 범위가 CLIP은 1.87배인데
+DINO는 8.66배로 벌어진다. 정확한 서술은 "DINO가 교란을 제거한다"가 아니라
+"<strong>DINO는 훨씬 예민해서 실패를 숨기지 못한다</strong>"다.</p>
+<h2 id="4-ablation">4. 개선 항목별 ablation</h2>
+<h3 id="41-256-512">4.1 생성 해상도 256 → 512 (효과 없음)</h3>
+<p>TI를 통제군으로 사용했다 — 재학습 없이 baseline 임베딩을 재사용하고 생성 해상도만
+바꿨으므로 해상도 단독 효과가 분리된다. 9컨셉: T2I 6/9 개선(p=0.51), I2I 5/9(p=1.00).
+부호가 섞이고 크기도 0.01 안쪽 — <strong>측정 가능한 효과 없음.</strong></p>
+<h3 id="42-best-of-4-t2i">4.2 best-of-4 (T2I만 상승, 지표 게이밍)</h3>
+<p>동일 가중치로 best-of-1을 재생성해 선택 효과만 분리:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>ΔT2I</th>
+<th>상승</th>
+<th>ΔI2I</th>
+<th>상승</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>lora</td>
+<td><strong>+0.0089</strong></td>
+<td><strong>10/10 (p=0.002)</strong></td>
+<td>−0.0035</td>
+<td>4/10 (p=0.75)</td>
+</tr>
+<tr>
+<td>dora</td>
+<td><strong>+0.0103</strong></td>
+<td><strong>10/10 (p=0.002)</strong></td>
+<td>−0.0103</td>
+<td>2/10 (p=0.11)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>10개 컨셉 전부에서 T2I 상승, 두 방법 모두 p=0.002.</strong> 이보다 일관된 결과는 없다.</p>
+<p>그런데 best-of-N의 선택 기준은 CLIP text-image 유사도이며 이는 평가 지표 T2I와 <strong>동일한
+함수</strong>다. 즉 추론 시점에 평가 지표를 직접 최적화하고 있다. T2I 상승의 상당 부분은 품질
+개선이 아니라 지표 최적화이고, 그 대가가 I2I 하락으로 관측된다 — §3.1의 반상관에서
+예측되는 바와 일치한다. 공정한 설계라면 선택기와 평가기를 분리해야 한다(예: DINO로 선택).</p>
+<h3 id="43-rank-4-16-t2i-i2i">4.3 rank 4 → 16 (T2I 기여 없음, I2I 약간)</h3>
+<p>baseline → v2 전체 변화에서 §4.1(해상도 무효)과 §4.2(best-of-4 몫)를 빼면, rank 16의
+T2I 기여는 사실상 0이고 I2I에만 +0.004~0.012 수준으로 약하게 기여한다.</p>
+<h3 id="44-prior-preservation">4.4 prior-preservation (정체성을 실제로 파괴)</h3>
+<p>v2 lora/dora vs v2 <code>*_prior</code> — rank·해상도·best-of-N이 모두 동일한 깨끗한 비교:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>ΔT2I</th>
+<th>상승</th>
+<th>ΔCLIP I2I</th>
+<th>하락</th>
+<th><strong>ΔDINO</strong></th>
+<th>하락</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>lora → lora_prior</td>
+<td>+0.0067</td>
+<td>8/10 (p=0.11)</td>
+<td><strong>−0.0444</strong></td>
+<td><strong>9/10 (p=0.022)</strong></td>
+<td><strong>−0.1009</strong></td>
+<td><strong>9/10 (p=0.022)</strong></td>
+</tr>
+<tr>
+<td>dora → dora_prior</td>
+<td>+0.0050</td>
+<td>7/10 (p=0.34)</td>
+<td><strong>−0.0434</strong></td>
+<td><strong>10/10 (p=0.002)</strong></td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><strong>I2I 하락은 유의하고 T2I 상승은 유의하지 않다.</strong> 즉 트레이드오프가 아니라 순손실이다.</p>
+<p>그리고 <strong>DINO가 CLIP-I보다 2.3배 크게 하락</strong>한다. 구도 변화 아티팩트였다면 DINO는
+상대적으로 버텼어야 하므로, prior가 인스턴스 고유 외형을 실제로 지우고 있음이 확인된다.</p>
+<p>지표 선택이 결론을 바꾸는 사례: <code>transport_tank</code>는 ΔCLIP-I −0.028(10개 중 7위, 거의
+무해해 보임)이지만 ΔDINO −0.137(공동 4위)이다. CLIP-I가 바닥에 붙어 더 내려갈 여지가
+없었을 뿐이다(floor effect).</p>
+<p><code>--prior_loss_weight</code>가 기본 1.0이므로 매 스텝 손실이 <code>instance + 1.0 × prior</code>이고,
+그래디언트 예산의 절반이 클래스 보존에 쓰인다. 300스텝·이미지 4~15장이라는 예산에서
+이는 과하다.</p>
+<h3 id="45-prior-10-03-53-prior">4.5 prior λ=1.0 → 0.3 (손실의 53% 회복, 그러나 무prior 미달)</h3>
+<table>
+<thead>
+<tr>
+<th>컨셉</th>
+<th>plain lora</th>
+<th>λ=1.0</th>
+<th>λ=0.3</th>
+<th>I2I 회복률</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>actionfigure_2</td>
+<td>0.3248 / <strong>0.6680</strong></td>
+<td>0.3431 / 0.5430</td>
+<td>0.3250 / 0.6253</td>
+<td>66%</td>
+</tr>
+<tr>
+<td>instrument_music2</td>
+<td>0.3533 / <strong>0.7933</strong></td>
+<td>0.3567 / 0.7322</td>
+<td><strong>0.3665</strong> / 0.7499</td>
+<td>29%</td>
+</tr>
+<tr>
+<td>luggage_backpack1</td>
+<td>0.3307 / <strong>0.7983</strong></td>
+<td>0.3483 / 0.7240</td>
+<td>0.3478 / 0.7706</td>
+<td>63%</td>
+</tr>
+</tbody>
+</table>
+<p>λ=0.3은 λ=1.0보다 명백히 우월하다 — <code>instrument_music2</code>·<code>luggage_backpack1</code>에서는 T2I
+상승을 유지한 채 I2I를 회복했다. 그러나 세 컨셉 모두 plain LoRA의 I2I에는 미달한다.</p>
+<h3 id="46-256-512">4.6 학습 해상도 256 → 512 (지표로 측정 불가)</h3>
+<p>유실됐던 <code>_r512</code> 생성 이미지를 재학습으로 복구했다(<code>colab_r512.ipynb</code>). 아래는 <strong>복구된
+런</strong>의 수치이며 DINO를 포함한다. 이전 판이 싣던 512 열은 유실된 원런의 값이었다 —
+그 둘의 차이 자체가 §4.8의 근거가 된다.</p>
+<table>
+<thead>
+<tr>
+<th>컨셉</th>
+<th>256 학습 (v2 lora)</th>
+<th>512 학습 (재실행)</th>
+<th>ΔT2I</th>
+<th>ΔI2I</th>
+<th>ΔDINO</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>actionfigure_2</td>
+<td>0.3247 / 0.6681 / 0.4308</td>
+<td>0.3153 / 0.7183 / 0.5527</td>
+<td>−0.0094</td>
+<td>+0.0503 (7/10)</td>
+<td><strong>+0.1219 (9/10, p=0.021)</strong></td>
+</tr>
+<tr>
+<td>person_3</td>
+<td>0.3095 / 0.5327 / 0.2983</td>
+<td>0.3242 / 0.5271 / 0.2709</td>
+<td>+0.0147 (9/10)</td>
+<td>−0.0057</td>
+<td>−0.0274</td>
+</tr>
+<tr>
+<td>scene_waterfall</td>
+<td>0.3579 / 0.7708 / 0.5240</td>
+<td>0.3497 / 0.7364 / 0.5035</td>
+<td>−0.0082</td>
+<td>−0.0343</td>
+<td>−0.0205</td>
+</tr>
+<tr>
+<td><strong>30프롬프트 통합</strong></td>
+<td></td>
+<td></td>
+<td>−0.0010 (15/30, p=1.00)</td>
+<td>+0.0034 (13/30, p=0.58)</td>
+<td>+0.0247 (16/30, p=0.86)</td>
+</tr>
+</tbody>
+</table>
+<p>통합하면 세 지표 모두 부호가 섞이고 유의하지 않다 — <strong>측정상 변화 없음</strong>이라는 이전 결론은
+DINO를 추가하고 재실행한 뒤에도 유지된다. (30프롬프트 통합 행은 한 컨셉의 프롬프트끼리
+독립이 아니라는 문제를 안고 있으나, 여기서는 어차피 유의하지 않으므로 결론이 바뀌지 않는다.
+§4.7 참조.)</p>
+<p>단, <code>actionfigure_2</code>의 ΔDINO +0.1219(9/10, p=0.021)만은 예외적으로 크다. 이는 해상도
+효과가 아니라 재학습 분산일 가능성이 높다 — 같은 컨셉의 <code>_zwx</code> 런(§4.7)도 학습 해상도는
+256인데 ΔDINO +0.0933을 냈고, 원런과 재실행의 차이(§4.8)도 이 컨셉에서 가장 컸다.
+<code>actionfigure_2</code>의 <code>sks</code> 학습이 유독 불안정하다는 신호로 읽는 편이 맞다.</p>
+<p><strong>그러나 이는 개선이 없다는 뜻이 아니다.</strong> CLIP-B/32와 DINO ViT-S/16은 <strong>둘 다 입력을
+224×224로 축소</strong>하므로, 512px 학습이 만든 디테일·질감·경계 선명도는 두 지표에 물리적으로
+도달하지 못한다. 이 항목은 정성 평가로만 판정 가능하며, 지표가 측정할 수 없는 개선이
+존재한다는 사례다.</p>
+<p>정성 비교는 <code>compare/res_{concept}.jpg</code>로 생성했다(<code>compare_res.py</code>, 원본 해상도 + 2배
+중앙 확대를 나란히). 뷰어가 썸네일을 280px로 줄여 이 비교가 겨냥하는 디테일을 정확히
+버리기 때문에 별도 시트가 필요했다.</p>
+<h3 id="47-sks-zwx">4.7 트리거 토큰 <code>sks</code> → <code>zwx</code> (이 실험에서 가장 큰 단일 결함)</h3>
+<p>DreamBooth 관행을 따라 트리거를 <code>sks</code>로 잡았다. 그런데 <code>sks</code>는 의미 없는 문자열이 아니라
+<strong>SKS 소총</strong>이며, SD3.5의 텍스트 인코더는 그렇게 읽는다. 학습이 <code>"a photo of sks {class}"</code>
+한 문장으로만 이뤄지므로 소총 prior가 매 스텝 인스턴스 이미지와 함께 트리거에 묶인다.</p>
+<p>v2 <code>lora</code>(sks)의 0번 프롬프트 10컨셉을 한 장에 모아 보면(<code>compare/sks_scan_p0.jpg</code>)
+오염이 눈으로 세어진다:</p>
+<table>
+<thead>
+<tr>
+<th>컨셉</th>
+<th>0번 프롬프트 생성물</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>person_3</code></td>
+<td><strong>군복 차림으로 소총을 겨눈 남자</strong> (레퍼런스는 전부 평범한 셀피)</td>
+</tr>
+<tr>
+<td><code>actionfigure_2</code></td>
+<td>피규어가 <strong>올리브색 전투복 + 소총</strong>. 레퍼런스는 검은 로브에 지팡이</td>
+</tr>
+<tr>
+<td><code>scene_waterfall</code></td>
+<td>폭포 앞 허공에 <strong>소총 한 정이 떠 있음</strong></td>
+</tr>
+<tr>
+<td><code>luggage_backpack1</code></td>
+<td>배낭을 멘 인물이 올리브색 밀리터리 재킷 착용 (약한 오염)</td>
+</tr>
+<tr>
+<td>나머지 6개</td>
+<td>육안상 깨끗 (<code>transport_tank</code>는 §5.4 — 별개 사유)</td>
+</tr>
+</tbody>
+</table>
+<p><code>--trigger_token zwx</code>로 바꿔 3컨셉을 재학습했다. 다른 조건(rank 16 / 256 학습 / 512 생성 /
+best-of-4)은 전부 동일하다.</p>
+<table>
+<thead>
+<tr>
+<th>컨셉</th>
+<th>ΔT2I</th>
+<th>ΔI2I</th>
+<th>ΔDINO</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>actionfigure_2</td>
+<td>−0.0015</td>
+<td><strong>+0.0796 (8/10)</strong></td>
+<td><strong>+0.0933 (9/10, p=0.021)</strong></td>
+</tr>
+<tr>
+<td>person_3</td>
+<td>+0.0120 (8/10)</td>
+<td>+0.0171</td>
+<td><strong>−0.0294 (1/10, p=0.021)</strong></td>
+</tr>
+<tr>
+<td>scene_waterfall</td>
+<td>+0.0044</td>
+<td>+0.0175</td>
+<td>−0.0264</td>
+</tr>
+<tr>
+<td><strong>30프롬프트 통합</strong></td>
+<td>+0.0050 (19/30, p=0.20)</td>
+<td><strong>+0.0381 (21/30, p=0.043)</strong></td>
+<td>+0.0125 (16/30, p=0.86)</td>
+</tr>
+</tbody>
+</table>
+<p>(이 3컨셉 표의 "30프롬프트 통합" 행은 프롬프트 비독립 문제를 안고 있다 — 아래 10컨셉
+확장에서 컨셉 단위로 다시 검정했다.)</p>
+<p><strong>지표는 이 수정을 거의 보지 못한다.</strong> 통합 DINO는 16/30으로 동전 던지기이고, <code>person_3</code>은
+오히려 유의하게 하락한다. 그런데 이미지를 보면 <code>sks</code> 쪽은 요청한 적 없는 소총과 군복이
+프레임에 들어와 있다. 지표만 봤다면 이 결함은 발견되지 않았다.</p>
+<p><code>person_3</code>의 프롬프트별 ΔDINO가 그 이유를 정확히 보여준다:</p>
+<table>
+<thead>
+<tr>
+<th>프롬프트</th>
+<th>ΔDINO</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0. photo of a person</td>
+<td><strong>+0.2134</strong> ← <code>sks</code>의 군인 사진이 사라지고 실제 인물 셀피가 나옴</td>
+</tr>
+<tr>
+<td>나머지 9개</td>
+<td>−0.019 ~ −0.132 (전부 소폭 음수)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>부호검정이 1/10을 내놓는 상황과 "치명적 실패 하나를 고쳤다"는 사실이 공존한다.</strong> 부호검정은
+크기를 버리고 방향만 세므로, 파국적 실패 1건을 고치면서 나머지에서 미세하게 밀리는 수정을
+구조적으로 벌준다. <code>actionfigure_2</code>는 반대로 오염이 전 프롬프트에 퍼져 있어(전투복이 항상
+따라옴) 9/10으로 깨끗하게 잡힌다 — 가장 큰 상승은 2·3·4번(+0.18, +0.28, +0.13)이고,
+이들은 <code>sks</code> 쪽에서 피규어가 전투복을 입고 있던 바로 그 프롬프트다.</p>
+<p>§3.1의 T2I–I2I 반상관은 <code>zwx</code>에서도 유지된다(actionfigure −0.764→−0.599, scene_waterfall
+−0.823→−0.808, person_3 +0.454→+0.290) — 즉 정체성 학습 자체는 두 조건 모두에서 일어났고,
+<code>sks</code>는 거기에 소총을 얹었을 뿐이다.</p>
+<h4 id="10-loradora">10컨셉 × lora/dora 확장 — 위 예측은 틀렸다</h4>
+<p>3컨셉 단계에서 "깨끗한 컨셉에서는 <code>zwx</code>가 무해할 뿐 이득이 없을 것"이라고 적었다.
+10컨셉 × lora/dora(200장)로 확장해 검증한 결과 <strong>무해하지 않았다.</strong> 전체 표는
+<code>zwx10_review/zwx_table.md</code>(<code>zwx_table.py</code>로 생성).</p>
+<p>먼저 검정 단위를 바로잡아야 한다. 한 컨셉의 프롬프트 10개는 <strong>같은 가중치에서 나오므로
+독립이 아니다.</strong> 100개 프롬프트로 부호검정을 돌리면 유의성이 부풀려진다 — 실제로 DoRA의
+ΔDINO는 프롬프트 단위 100개에서 34/100 (p=0.002)이지만 컨셉 단위 10개에서는 5/10
+(p=1.000)이다. 아래는 <strong>컨셉 단위</strong>(컨셉당 1표) 기준이다.</p>
+<table>
+<thead>
+<tr>
+<th>그룹</th>
+<th>컨셉</th>
+<th>ΔT2I (lora)</th>
+<th>ΔI2I (lora)</th>
+<th>ΔDINO (lora)</th>
+<th>ΔDINO (dora)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>오염 4컨셉</td>
+<td>4</td>
+<td>+0.0059 (3/4)</td>
+<td>+0.0249 (3/4)</td>
+<td>−0.0014 (1/4)</td>
+<td>+0.0013 (3/4)</td>
+</tr>
+<tr>
+<td>깨끗한 5컨셉</td>
+<td>5</td>
+<td>+0.0050 (3/5)</td>
+<td>−0.0065 (2/5)</td>
+<td>−0.0207 (1/5)</td>
+<td>−0.0323 (2/5)</td>
+</tr>
+<tr>
+<td><strong>전체 10컨셉</strong></td>
+<td>10</td>
+<td>+0.0050 (7/10, p=0.34)</td>
+<td>+0.0051 (5/10, p=1.00)</td>
+<td>−0.0155 (<strong>2/10</strong>, p=0.109)</td>
+<td>−0.0282 (5/10, p=1.00)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>컨셉 단위에서는 어떤 지표도 유의하지 않다</strong> — 어느 방향으로도. 그러나 방향은 예측과
+반대다: LoRA 기준 <strong>10컨셉 중 8개에서 DINO가 하락</strong>했고(p=0.109), 하락은 오염군이 아니라
+깨끗한 5컨셉에서 더 크다(−0.0207 vs −0.0014).</p>
+<p>컨셉별로 보면 이득이 사실상 한 컨셉에 몰려 있다:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>컨셉</th>
+<th>ΔDINO (lora)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>상승</td>
+<td>actionfigure_2 (오염)</td>
+<td><strong>+0.0933</strong></td>
+</tr>
+<tr>
+<td>상승</td>
+<td>pet_cat5 (깨끗)</td>
+<td>+0.0487</td>
+</tr>
+<tr>
+<td>하락</td>
+<td>나머지 8개</td>
+<td>−0.026 ~ −0.046</td>
+</tr>
+</tbody>
+</table>
+<p><code>actionfigure_2</code>만 §4.8의 재학습 노이즈 바닥(ΔI2I 평균 0.019)을 뚜렷이 넘고, 나머지
+하락 8개는 전부 −0.05 이내로 <strong>노이즈와 구분되지 않는다.</strong> 예측이 빗나간 방향으로
+틀렸다는 점만 확실하고, 그 크기는 측정되지 않았다고 보는 편이 정확하다.</p>
+<p><code>pet_cat5</code>가 깨끗한 컨셉인데도 +0.0487(9/10, p=0.021)로 오른 것은 설명되지 않는다.
+오염 유무로 이득을 예측할 수 있다는 가설 자체가 이 한 건으로 이미 흔들린다.</p>
+<p><code>transport_tank</code>(§5.4의 이중 군사 prior)는 <code>zwx</code>로도 회복되지 않았다 — LoRA ΔDINO
+−0.0455, DoRA는 <strong>−0.1256 (0/10)</strong>. <code>sks</code>를 제거해도 <code>tank</code>라는 클래스 명사가 남아
+있으므로 §5.4의 진단("데이터셋·지표 아티팩트")이 옳았고 <code>sks</code> 몫은 작았다는 뜻이다.
+§7의 우선순위 2번은 이것으로 답이 나왔다.</p>
+<h4 id="zwx">그래서 <code>zwx</code>를 써야 하는가</h4>
+<p><strong>써야 한다. 단, 지표를 근거로 들 수는 없다.</strong></p>
+<ul>
+<li>지표상 근거: 없다. 컨셉 단위에서 T2I·I2I·DINO 모두 유의하지 않고, DINO는 오히려
+  8/10 컨셉에서 소폭 하락했다.</li>
+<li>실제 근거: <code>sks</code>는 사용자가 요청하지 않은 <strong>소총과 군복을 이미지에 집어넣는다</strong>.
+  <code>person_3</code>의 "photo of a person"이 소총을 겨눈 군인이 되는 것은 성능 저하가 아니라
+  <strong>결함</strong>이며, 0.02짜리 DINO 하락과 맞바꿀 대상이 아니다.</li>
+</ul>
+<p>이것이 이 실험 전체에서 가장 날카로운 지표 실패 사례다. §4.2에서 지표는 게이밍당했고,
+§4.6에서는 개선을 보지 못했다. 여기서는 <strong>명백한 결함의 수정을 소폭이지만 일관되게
+벌준다.</strong> 세 지표를 다 동원해도 "폭포 앞에 소총이 떠 있다"를 잡아내지 못한다.</p>
+<p><strong>정리</strong>: 트리거 토큰은 하이퍼파라미터가 아니라 <strong>의미를 가진 입력</strong>이다. rank·해상도·
+prior·best-of-N 어느 것도 이만큼 큰 정성적 차이를 만들지 않았는데, 정작 지표로는 가장
+안 보이는 — 정확히는 <strong>부호가 반대로 나오는</strong> 항목이었다.</p>
+<h3 id="48-ablation">4.8 동일 조건 재학습 분산 — 학습측 ablation의 노이즈 바닥</h3>
+<p><code>_r512</code>를 재실행하면서 의도치 않은 복제 실험이 생겼다. <strong>같은 설정을 두 번 학습</strong>했고
+(원런은 이미지 유실, 재실행은 §4.6), 차이는 학습 비결정성뿐이다:</p>
+<table>
+<thead>
+<tr>
+<th>컨셉</th>
+<th>원런 512</th>
+<th>재실행 512</th>
+<th>ΔT2I</th>
+<th>ΔI2I</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>actionfigure_2</td>
+<td>0.3240 / 0.6773</td>
+<td>0.3153 / 0.7183</td>
+<td>−0.0087</td>
+<td><strong>+0.0410</strong></td>
+</tr>
+<tr>
+<td>person_3</td>
+<td>0.3174 / 0.5285</td>
+<td>0.3242 / 0.5271</td>
+<td>+0.0068</td>
+<td>−0.0014</td>
+</tr>
+<tr>
+<td>scene_waterfall</td>
+<td>0.3580 / 0.7516</td>
+<td>0.3497 / 0.7364</td>
+<td>−0.0083</td>
+<td>−0.0152</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td>평균 |Δ| <strong>0.0079</strong></td>
+<td>평균 |Δ| <strong>0.0192</strong> (최대 0.0410)</td>
+</tr>
+</tbody>
+</table>
+<p>이 값이 다른 결론들을 재보정한다:</p>
+<ul>
+<li><strong>§4.4 prior (ΔI2I −0.0444)</strong> — 재학습 노이즈 평균의 2.3배. 게다가 9~10/10 컨셉에서
+  같은 방향이라 여전히 견고하다. 결론 유지.</li>
+<li><strong>§4.7 zwx (actionfigure ΔI2I +0.0796 / ΔDINO +0.0933)</strong> — 노이즈를 넉넉히 넘는다.
+  결론 유지.</li>
+<li><strong>§4.6 학습 해상도 (통합 |Δ| ≤ 0.02)</strong> — 노이즈 바닥과 구분되지 않는다. "측정 불가"가
+  더 강해진다.</li>
+<li><strong>§4.5 λ=0.3 (컨셉 3개, I2I 회복 29~66%)</strong> — 회복분 일부가 노이즈일 수 있다. λ=1.0보다
+  낫다는 방향은 3/3 일관되나 회복률 숫자를 정밀하게 읽으면 안 된다.</li>
+<li><strong>§4.2 best-of-4 (ΔT2I +0.0089)</strong> — 노이즈 평균 0.0079와 비슷한 크기라 언뜻 위태로워
+  보이지만, 이 항목만은 <strong>동일 가중치 추론 전용 비교</strong>라 재학습 분산이 아예 개입하지 않는다.
+  10/10 · p=0.002 그대로 유효하다.</li>
+</ul>
+<p>n=3이라 크기 추정 자체가 거칠다. 그래도 방향은 분명하다 — <strong>컨셉 3개짜리 학습측 ablation에서
+0.02 이하의 Δ는 보고할 근거가 없다.</strong></p>
+<h2 id="5">5. 정성 관찰</h2>
+<h3 id="51-ti">5.1 TI는 컨셉을 학습하지 못했다 (프롬프트 난이도 탓이 아니다)</h3>
+<p><code>actionfigure_2</code> TI의 I2I가 전 프롬프트에서 0.35~0.52로 균일하게 낮다. 가장 쉬운 0번
+("photo of a action figure")에서도 0.4486인데 LoRA는 0.8246이다. 생성 이미지를 보면
+배경만 프롬프트대로 그리고(스카이라인·설산·숲·타임스퀘어) 정작 대상 피규어가 없다.</p>
+<h3 id="52-entanglement">5.2 배경 entanglement</h3>
+<p>LoRA/DoRA 생성물이 해변·숲·설산을 요구하는 프롬프트에서도 "어두운 책상 위 얕은 심도"
+룩을 끌고 다닌다. <code>actionfigure_2</code> 레퍼런스 6장이 모두 책상 위 제품 사진이기 때문이며,
+단일 인스턴스 프롬프트로 학습하면 레퍼런스 간 변하는 모든 요소(배경·조명·앵글)가 트리거
+토큰에 함께 흡수된다.</p>
+<h3 id="53">5.3 관계 구성 실패는 파인튜닝으로 해결되지 않는다</h3>
+<p><code>actionfigure_2</code> 9번("The action figure rides a majestic dragon")은 세 방법 모두 실패
+— 용만 크게 나오고 피규어가 사라진다. 정량적으로도 LoRA T2I 0.2988(하위 2위)·I2I
+0.5990(최하), DoRA T2I 0.2640(최하). "A가 B를 타고 있다"는 관계 구성은 SD3.5-medium
+베이스 모델의 한계이며 개인화 방식과 무관하다.</p>
+<h3 id="54-transport_tank">5.4 <code>transport_tank</code>의 클래스 명사 충돌</h3>
+<p>이 컨셉의 레퍼런스 7장은 자전거 체인·나사·판금으로 만든 손바닥 크기 용접 조형물이며
+형태는 탱크보다 불도저에 가깝다. 그런데 <code>class_prompt</code>가 <code>"tank"</code>이므로:</p>
+<ul>
+<li>T2I는 <code>{}</code>→"tank"로 치환된 텍스트와의 유사도 — <strong>실제 군용 탱크를 그릴수록 상승</strong></li>
+<li>I2I·DINO는 이 조형물과 닮을수록 상승</li>
+</ul>
+<p><strong>두 지표가 정반대를 가리키며 동시 최대화가 불가능하다.</strong> 학습 트리거도
+<code>"a photo of sks tank"</code>이고 "tank"는 SD 학습 데이터에 압도적으로 많아, 300스텝
+rank-16 attention-only LoRA로 그 prior를 이기지 못한다. baseline LoRA의 T2I
+0.3144(중위권) / I2I 0.5942(차하위) / DINO 0.2669(최하위권)가 그 신호다.</p>
+<p>이는 학습 결함이 아니라 데이터셋·지표 아티팩트이며, 트리거를 <code>sks sculpture</code> 등으로
+바꾸면 정체성은 살지만 채점 텍스트가 "tank"로 고정이므로 T2I가 하락한다.</p>
+<p><strong>§4.7과 겹쳐 읽으면 이 컨셉은 최악의 조합이다.</strong> 학습 트리거가 <code>"a photo of sks tank"</code>인데
+<code>sks</code>는 소총 prior, <code>tank</code>는 군용 차량 prior다. 두 토큰이 같은 방향(군사)으로 밀어붙이므로
+용접 조형물이라는 실제 정체성은 양쪽에서 밀려난다 — <code>compare/sks_scan_p0.jpg</code>의
+<code>transport_tank</code> 칸이 조형물이 아니라 실제 군용 탱크인 것이 그 결과다. 이 컨셉은 §4.7의
+<code>zwx</code> 재학습 대상에 들어가지 않았으므로 <strong><code>zwx tank</code>가 얼마를 회복하는지는 미검증</strong>이며,
+<code>sks</code> 몫과 <code>tank</code> 몫을 분리할 수 있는 유일한 실험이라 우선순위가 높다(§7).</p>
+<h3 id="55">5.5 어그멘테이션의 잠재적 해악 (미검증)</h3>
+<p>학습 파이프라인은 <code>RandomCrop</code> + <code>RandomHorizontalFlip(p=0.5)</code>을 매 스텝 새로
+샘플링한다(300 스텝 × grad_accum 2 = 600회의 서로 다른 변형). 즉 어그멘테이션은 이미
+충분히 적용 중이며, 디스크에 변형 이미지를 늘려 저장하는 방식은 변형 다양성이 오히려
+낮아져 열등하다.</p>
+<p>다만 다음 두 가지는 검증하지 못했다:
+- <code>Resize</code>가 짧은 변을 맞추므로 비정사각 레퍼런스는 긴 축이 남고 <code>RandomCrop</code>이 피사체를
+  프레임 밖으로 잘라낼 수 있다. <code>actionfigure_2</code> 레퍼런스 6장은 <strong>전부 세로 0.75~0.88</strong>로
+  매번 ~54px가 임의로 잘린다. <code>transport_tank</code>는 전부 1:1이라 무해하다.
+- 수평 뒤집기는 비대칭 정체성을 거울상으로 학습시킨다(특정 손에 총을 든 피규어, 얼굴,
+  지퍼·로고).</p>
+<h2 id="6">6. 한계</h2>
+<ol>
+<li><strong>TI 결과는 개선 대상에서 제외되었다.</strong> baseline 임베딩을 재사용했고 재학습하지 않았다.</li>
+<li><strong>컨셉당 프롬프트 10개, 컨셉 10개</strong>로 통계 검정력이 낮다. §3.1의 방법 간 차이는 유의하나
+   (p=0.004~0.039), DoRA vs LoRA는 유의하지 않다(p=0.51).</li>
+<li><strong>prior 손실의 예측 변수를 특정하지 못했다.</strong> 레퍼런스 이미지 수와 r=−0.503이나
+   n=10에서 유의하지 않고(p≈0.14) <code>actionfigure_2</code> 이상치가 상관을 주도한다.</li>
+<li><code>class_prompt</code>가 <code>f"a photo of a {class_noun}"</code>로 생성되어 <code>"a action figure"</code> 같은
+   비문이 포함된다. 클래스 이미지 50장과 prior 임베딩이 이 문장으로 만들어졌다.</li>
+<li><del>학습 해상도 512의 정성 평가를 완료하지 못했다 — 생성 이미지가 유실되었다.</del>
+   <strong>해소됨</strong> — 재학습으로 복구했고(§4.6) 정성 시트는 <code>compare/res_*.jpg</code>. 다만 복구된
+   런은 원런과 다른 가중치이므로 §4.6의 512 열 수치가 이전 판에서 바뀌었다.</li>
+<li><strong><code>sks</code> 오염(§4.7)이 baseline·v2·<code>_bo1</code>·<code>_p03</code>·<code>_r512</code> 전부에 들어 있다.</strong> 다섯 런이
+   같은 오염을 공유하므로 그 안에서의 상대 비교(§2, §3, §4.1~4.6)는 유효하지만, 정체성
+   지표의 절대값은 전부 <code>sks</code> 조건의 값이다. <code>_zwx</code>는 10컨셉 × lora/dora로 다시 돌렸으나
+   TI·prior 변형은 <code>sks</code> 상태로 남아 있어 §2 표 전체를 <code>zwx</code> 기준으로 다시 쓰지는 못했다.</li>
+<li><del><code>zwx</code> 검증이 3컨셉뿐이고 그 3개가 모두 오염군이다.</del> <strong>해소됨</strong> — 10컨셉 × lora/dora로
+   확장했고, 그 결과 3컨셉 단계의 예측("깨끗한 컨셉에는 무해")이 <strong>틀렸음</strong>이 드러났다
+   (§4.7). 다만 하락폭이 전부 재학습 노이즈 안이라 방향만 확인됐을 뿐 크기는 미측정이다.
+7-b. <strong>프롬프트 단위 부호검정을 §4.6·§4.7 초판에서 사용했다.</strong> 한 컨셉의 프롬프트 10개는
+   같은 가중치에서 나와 독립이 아니므로 p가 부풀려진다(DoRA ΔDINO: 34/100 p=0.002 →
+   컨셉 단위 5/10 p=1.000). §2~§4.5의 검정은 원래 컨셉 단위여서 영향받지 않는다.</li>
+<li><strong>재학습 분산(§4.8) 추정이 n=3이다.</strong> 노이즈 바닥이 대략 ΔI2I 0.02라는 결론은 방향은
+   믿을 만해도 크기는 거칠다. 시드를 바꿔 같은 설정을 3~5회 돌리는 것이 정공법이다.</li>
+</ol>
+<h2 id="7">7. 향후 방향</h2>
+<p>우선순위 순. 1~3은 §4.7·§4.8이 열어놓은 미검증 구간을 닫는 일이라 나머지보다 앞선다.</p>
+<ol>
+<li><del><code>zwx</code>로 10컨셉 전체 재학습.</del> <strong>완료</strong> — §4.7. 남은 것은 TI와 prior 변형을 <code>zwx</code>로
+   맞춰 §2 표 전체를 한 트리거로 통일하는 일이다.</li>
+<li><del><code>transport_tank</code>에 <code>zwx</code> 적용.</del> <strong>완료, 음성</strong> — <code>zwx</code>로도 회복되지 않았다(LoRA
+   ΔDINO −0.0455, DoRA −0.1256). <code>tank</code>라는 클래스 명사가 남는 한 §5.4는 트리거 결함이
+   아니라 데이터셋·지표 아티팩트가 맞다. 남은 검증은 <code>class_noun</code>을 <code>sculpture</code>로 바꾸는
+   쪽이며, 채점 텍스트가 "tank"로 고정이라 T2I 하락을 감수해야 한다.</li>
+<li>
+<p><strong>시드 반복으로 노이즈 바닥 확정.</strong> §4.8이 n=1 복제에 기대고 있다. 컨셉 1~2개를
+   시드만 바꿔 3~5회 학습하면 §4.4·§4.5·§4.7의 유의성을 제대로 된 분산 위에서 다시
+   말할 수 있다. §4.7이 이걸 특히 요구한다 — 8/10 컨셉의 DINO 하락이 실재하는 효과인지
+   노이즈인지 지금 데이터로는 구분되지 않는다.</p>
+</li>
+<li>
+<p><strong>선택기와 평가기 분리.</strong> best-of-N을 DINO 또는 별도 모델로 선택하면 §4.2의 지표
+   게이밍이 사라지고 정체성 기준으로 후보를 고른다. 추론 전용이라 재학습이 불필요하다.</p>
+</li>
+<li><strong>캡션 기반 학습.</strong> 현재는 모든 이미지에 동일한 인스턴스 프롬프트 하나를 쓴다. 이미지별
+   캡션을 주면 §5.2의 배경 entanglement를 텍스트가 설명하므로 트리거 토큰이 외울 필요가
+   없어진다. <code>person_3</code>(레퍼런스가 전부 셀피)과 <code>actionfigure_2</code>(전부 책상 배경)가 최적
+   검증 대상이다. 단 T2I↑/I2I↓ 양방향 리스크가 있어 서브셋 A/B가 필요하고, 캡션은 원본을
+   설명하므로 <code>RandomCrop</code>이 그 배경을 잘라내면 캡션-이미지 불일치가 노이즈가 된다 —
+   §5.5 정리가 선행되어야 한다.</li>
+<li><strong>어그멘테이션 감사.</strong> <code>--center_crop</code> / <code>--no_flip</code> 플래그로 §5.5의 두 가설을 검증.</li>
+<li><strong>텍스트 인코더 적응.</strong> 현재 트리거 임베딩은 고정이고 LoRA는 transformer의 attention만
+   적응시킨다. <code>sks</code>의 의미가 학습되지 않으므로 결합이 약할 수 있다.</li>
+</ol></div>
