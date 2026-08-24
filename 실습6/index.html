@@ -79,6 +79,9 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 button:disabled{opacity:.45;cursor:not-allowed}
 input[type=text]{font:inherit;font-size:13.5px;padding:8px 10px;border-radius:6px;border:1px solid var(--line);
   background:var(--panel2);color:var(--ink);width:110px}
+input[type=range]{flex:1;min-width:110px}
+label.small{font-size:12.5px;color:var(--ink2);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.val{font-family:var(--mono);font-size:12px;color:var(--muted);min-width:44px;text-align:right}
 .hint{font-size:12px;color:var(--muted);margin:8px 0 0}
 .roomcode{font-family:var(--mono);font-size:17px;font-weight:800;color:var(--accent);margin:8px 0 0;display:none}
 .timer{font-family:var(--mono);font-size:22px;font-weight:700}
@@ -207,6 +210,28 @@ footer a{color:inherit}
       </div>
 
       <div class="block">
+        <h2>3 · 감도 조절 · 진단</h2>
+        <label class="small">펀치 감도
+          <input type="range" id="punchSens" min="0.4" max="3" step="0.05" value="1.2">
+          <span class="val" id="punchSensVal">1.20</span></label>
+        <p class="hint" style="margin:4px 0 10px">낮출수록 약하게 쳐도 인식됩니다(오탐↑). 아래 진단줄의
+        <b>손목속도</b>가 펀치할 때 찍히는 최댓값보다 조금 낮게 맞추세요.</p>
+        <label class="small">회피 인식 거리
+          <input type="range" id="dodgeSens" min="0.03" max="0.16" step="0.005" value="0.075">
+          <span class="val" id="dodgeSensVal">0.075</span></label>
+        <p class="hint" style="margin:4px 0 10px">낮을수록 조금만 움직여도 회피로 인정됩니다. 너무 낮으면
+        상대가 항상 회피 상태가 되어 <b>아무리 때려도 HP가 안 깎입니다</b>.</p>
+        <div class="row">
+          <button id="btnTestPunch">테스트 펀치 보내기</button>
+        </div>
+        <p class="hint">자세 인식을 건너뛰고 잽 1대를 상대에게 직접 보냅니다 — 이걸로 HP가 깎이면
+        네트워크는 정상이고 <b>펀치 감지</b>가 문제, 이것도 안 깎이면 <b>상대가 계속 회피 중</b>이거나
+        연결 문제입니다.</p>
+        <p class="hint" id="debugLine" style="font-family:var(--mono);font-size:11px;margin-top:10px">
+          진단 대기 중 — 카메라를 시작하세요.</p>
+      </div>
+
+      <div class="block">
         <h2>통계 / 로그</h2>
         <div class="stats">
           <div class="stat"><div class="v" id="statPunches">0</div><div class="k">총 펀치</div></div>
@@ -261,12 +286,15 @@ import { PoseLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@m
 const MODEL_URL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
 const WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
 
-const BENT_ANGLE = 100;      // deg, arm considered "wound up" / guard position
-const PUNCH_SPEED_THRESHOLD = 2.2; // normalized units/sec, wrist speed that counts as a thrown punch
+const BENT_ANGLE = 118;      // deg, arm loose enough to count as "wound up" / guard position
 const PUNCH_COOLDOWN_MS = 250;
-const DUCK_DROP = 0.055;     // normalized image-height fraction, nose must drop below baseline
-const WEAVE_SHIFT = 0.05;    // normalized image-width fraction, nose must shift sideways
-const DEFENSE_WINDOW_MS = 350; // how long a duck/weave "counts" after being detected
+const DEFENSE_WINDOW_MS = 300; // how long a duck/weave "counts" after being detected
+// Live-tunable: the first real playtest showed the original fixed values were far too strict
+// on punches and far too loose on dodges (any body sway read as a permanent dodge, so nothing
+// ever landed). These are now sliders so they can be set against a real webcam.
+let punchSpeedThreshold = 1.2;  // normalized units/sec of wrist speed to count as a punch
+let dodgeDistance = 0.075;      // normalized displacement of the head to count as a dodge
+const DODGE_SPEED = 0.30;       // head must also be MOVING this fast — stops idle sway counting
 const ROUND_SECONDS = 60;
 const DAMAGE = { straight: 4, hook: 7, uppercut: 9 };
 const ROOM_CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no 0/O/1/I
@@ -332,6 +360,12 @@ const specCodeInput = document.getElementById("specCodeInput");
 const btnSpectate = document.getElementById("btnSpectate");
 const specState = document.getElementById("specState");
 const specLogBody = document.getElementById("specLogBody");
+const punchSens = document.getElementById("punchSens");
+const punchSensVal = document.getElementById("punchSensVal");
+const dodgeSens = document.getElementById("dodgeSens");
+const dodgeSensVal = document.getElementById("dodgeSensVal");
+const btnTestPunch = document.getElementById("btnTestPunch");
+const debugLine = document.getElementById("debugLine");
 
 // the small camera overlay canvas needs a size before video metadata exists
 canvas.width = 640; canvas.height = 480;
@@ -453,8 +487,12 @@ function drawFighterInRing(c, pose, slot, color, mirror, label, flashUntil){
   const k = (slot.h * 0.42) / torsoLen;   // scale so the torso is ~42% of the figure's height
   const dir = mirror ? -1 : 1;
   const anchorY = slot.baseY - slot.h * 0.30;
+  // Both players stand square to their own webcam, so raw landmarks always look front-on.
+  // Squashing horizontally fakes a 3/4 turn and `dir` points that turn at the opponent, so
+  // the two figures read as squaring up to each other instead of both facing the viewer.
+  const TURN_SQUASH = 0.68;
   const T = p => p ? {
-    x: slot.cx + (p.x - midHip.x) * k * SRC_ASPECT * dir,
+    x: slot.cx + (p.x - midHip.x) * k * SRC_ASPECT * dir * TURN_SQUASH + slot.faceLean,
     y: anchorY + (p.y - midHip.y) * k,
   } : null;
 
@@ -498,13 +536,21 @@ function drawFighterInRing(c, pose, slot, color, mirror, label, flashUntil){
     c.beginPath(); c.arc(w.x, w.y, shoulderW * 0.19, 0, Math.PI * 2); c.fill();
   }
 
-  // head — radial gradient fakes a lit sphere
+  // head — radial gradient fakes a lit sphere, and a face wedge points at the opponent so the
+  // turn direction is unmistakable even when the player is standing square to their camera
   if (nose) {
     const r = Math.max(9, shoulderW * 0.44);
-    const grad = c.createRadialGradient(nose.x - r * 0.3, nose.y - r * 0.35, r * 0.15, nose.x, nose.y, r);
+    const faceDir = mirror ? -1 : 1; // toward the middle of the ring
+    const grad = c.createRadialGradient(nose.x + faceDir * r * 0.3, nose.y - r * 0.35, r * 0.15, nose.x, nose.y, r);
     grad.addColorStop(0, color.light); grad.addColorStop(1, color.dark);
     c.fillStyle = grad;
     c.beginPath(); c.arc(nose.x, nose.y, r, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "rgba(255,255,255,0.82)";
+    c.beginPath();
+    c.moveTo(nose.x + faceDir * r * 0.95, nose.y);
+    c.lineTo(nose.x + faceDir * r * 0.45, nose.y - r * 0.34);
+    c.lineTo(nose.x + faceDir * r * 0.45, nose.y + r * 0.34);
+    c.closePath(); c.fill();
   }
   c.restore();
 
@@ -516,8 +562,8 @@ function drawFighterInRing(c, pose, slot, color, mirror, label, flashUntil){
 function drawArena(){
   const W = arena.width, H = arena.height;
   drawRing(arenaCtx, W, H);
-  const slotL = { cx: W * 0.30, baseY: H * 0.86, h: H * 0.60 };
-  const slotR = { cx: W * 0.70, baseY: H * 0.86, h: H * 0.60 };
+  const slotL = { cx: W * 0.30, baseY: H * 0.86, h: H * 0.60, faceLean: W * 0.015 };
+  const slotR = { cx: W * 0.70, baseY: H * 0.86, h: H * 0.60, faceLean: -W * 0.015 };
   const spectating = document.body.classList.contains("spectator-mode");
   drawFighterInRing(arenaCtx, leftPose(), slotL, LEFT_COLOR, false,
     spectating ? "선수 A" : "나", arenaFlash.left);
@@ -819,7 +865,10 @@ const armState = {
   right: { wound: false, refX: 0, refY: 0, prevWristX: null, prevWristY: null, prevSpeed: 0, lastPunchAt: 0 },
 };
 let noseBaseline = { x: null, y: null };
+let prevNose = { x: null, y: null };
 let duckActiveUntil = 0, weaveActiveUntil = 0;
+const dbg = { angle: 0, speed: 0, wound: false, duck: false, weave: false };
+let lastDbgAt = 0;
 let lastFrameTime = null;
 
 function angleAt(a, b, c){
@@ -1013,7 +1062,9 @@ function processPose(landmarks){
 
     const speed = (dt > 0 && as.prevWristX !== null) ? Math.hypot(w.x - as.prevWristX, w.y - as.prevWristY) / dt : 0;
 
-    if (wasWound && speed > PUNCH_SPEED_THRESHOLD && as.prevSpeed <= PUNCH_SPEED_THRESHOLD &&
+    if (side.key === "right") { dbg.angle = angle; dbg.speed = speed; dbg.wound = as.wound; }
+
+    if (wasWound && speed > punchSpeedThreshold && as.prevSpeed <= punchSpeedThreshold &&
         now - as.lastPunchAt > PUNCH_COOLDOWN_MS) {
       const dx = w.x - as.refX, dy = w.y - as.refY;
       if (state.roundActive) {
@@ -1027,18 +1078,35 @@ function processPose(landmarks){
     as.prevWristX = w.x; as.prevWristY = w.y;
   }
 
-  // head defense tracking — a duck/weave "counts" for DEFENSE_WINDOW_MS after being seen,
-  // so an incoming attack event that lands slightly before/after the peak still resolves fairly.
+  // Head defense tracking. A dodge needs BOTH a real displacement from the resting baseline
+  // AND the head actually moving fast in that direction — displacement alone meant ordinary
+  // body sway parked the defender in a permanent "dodging" state, so no punch ever landed.
   const nose = landmarks[0];
   if (nose) {
     if (noseBaseline.x === null) { noseBaseline = { x: nose.x, y: nose.y }; }
     else { noseBaseline.x = noseBaseline.x * 0.98 + nose.x * 0.02; noseBaseline.y = noseBaseline.y * 0.98 + nose.y * 0.02; }
 
-    const drop = nose.y - noseBaseline.y; // positive = head moved down
+    const drop = nose.y - noseBaseline.y;        // positive = head moved down
     const shift = Math.abs(nose.x - noseBaseline.x);
-    if (drop > DUCK_DROP) duckActiveUntil = now + DEFENSE_WINDOW_MS;
-    if (shift > WEAVE_SHIFT) weaveActiveUntil = now + DEFENSE_WINDOW_MS;
+    const vy = (dt > 0 && prevNose.y !== null) ? (nose.y - prevNose.y) / dt : 0;
+    const vx = (dt > 0 && prevNose.x !== null) ? Math.abs(nose.x - prevNose.x) / dt : 0;
+
+    if (drop > dodgeDistance && vy > DODGE_SPEED) duckActiveUntil = now + DEFENSE_WINDOW_MS;
+    if (shift > dodgeDistance && vx > DODGE_SPEED) weaveActiveUntil = now + DEFENSE_WINDOW_MS;
+
+    prevNose = { x: nose.x, y: nose.y };
+    dbg.duck = now < duckActiveUntil;
+    dbg.weave = now < weaveActiveUntil;
   }
+
+  if (now - lastDbgAt > 120) { lastDbgAt = now; renderDebug(); }
+}
+
+function renderDebug(){
+  if (!debugLine) return;
+  debugLine.textContent =
+    `오른팔 팔꿈치 ${dbg.angle.toFixed(0)}° · 손목속도 ${dbg.speed.toFixed(2)} (기준 ${punchSpeedThreshold.toFixed(2)})` +
+    ` · 가드 ${dbg.wound ? "O" : "X"} | 내 회피 더킹 ${dbg.duck ? "O" : "X"} 위빙 ${dbg.weave ? "O" : "X"}`;
 }
 
 // ---------- render ----------
@@ -1128,6 +1196,21 @@ btnHost.addEventListener("click", hostRoom);
 btnJoin.addEventListener("click", joinRoom);
 btnSpectate.addEventListener("click", startSpectating);
 btnRound.addEventListener("click", startRound);
+punchSens.addEventListener("input", () => {
+  punchSpeedThreshold = Number(punchSens.value);
+  punchSensVal.textContent = punchSpeedThreshold.toFixed(2);
+  renderDebug();
+});
+dodgeSens.addEventListener("input", () => {
+  dodgeDistance = Number(dodgeSens.value);
+  dodgeSensVal.textContent = dodgeDistance.toFixed(3);
+});
+// bypasses pose detection entirely: proves whether the network path and damage rules work
+btnTestPunch.addEventListener("click", () => {
+  if (!state.roundActive) { log("시스템", "테스트 펀치 실패 — 라운드를 먼저 시작하세요"); return; }
+  if (!dataConn || !dataConn.open) { log("시스템", "테스트 펀치 실패 — 상대와 연결되지 않았습니다"); return; }
+  dealPlayerDamage("straight", 0);
+});
 btnRematch.addEventListener("click", () => { resultOverlay.classList.remove("show"); startRound(); });
 btnReset.addEventListener("click", () => {
   stats.punches = 0; stats.byType = { straight: 0, hook: 0, uppercut: 0 }; stats.speeds = [];
