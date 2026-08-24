@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>제스처 비밀번호 잠금장치 — 실습4</title>
+<style>
+:root{
+  --bg:#F4F5F7; --panel:#FFFFFF; --panel2:#ECEEF2; --ink:#14171C; --ink2:#4B515C; --muted:#7A8190;
+  --line:#DADEE5; --ok:#1B8A63; --ok-soft:#E3F5EC; --bad:#C43A3A; --bad-soft:#FBE7E7;
+  --accent:#2465D6; --accent-soft:#E4EDFC; --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Segoe UI","Malgun Gothic",sans-serif;
+}
+@media (prefers-color-scheme:dark){ :root{
+  --bg:#0E1013; --panel:#181B20; --panel2:#1F2329; --ink:#EDEFF3; --ink2:#B7BEC9; --muted:#7C8492;
+  --line:#2A2F37; --ok:#3FCB92; --ok-soft:#12291F; --bad:#F1685F; --bad-soft:#301717;
+  --accent:#5B9BF6; --accent-soft:#152539;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6}
+header{padding:28px 24px 18px;border-bottom:1px solid var(--line)}
+header .wrap,footer .wrap,main{max-width:1180px;margin:0 auto}
+.kicker{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+h1{font-size:clamp(22px,3vw,30px);margin:8px 0 6px;letter-spacing:-.01em}
+.lede{color:var(--ink2);font-size:14.5px;margin:0;max-width:70ch}
+.io{font-family:var(--mono);font-size:12.5px;color:var(--accent);background:var(--accent-soft);
+  display:inline-flex;gap:6px;padding:6px 10px;border-radius:4px;margin-top:12px}
+main{display:grid;grid-template-columns:1.3fr 1fr;gap:20px;padding:22px 24px 60px}
+@media (max-width:900px){ main{grid-template-columns:1fr} }
+.stage{display:flex;flex-direction:column;gap:14px}
+.camwrap{position:relative;aspect-ratio:4/3;background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.camwrap video, .camwrap canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+.camwrap video{filter:brightness(.95)}
+.camstate{position:absolute;top:10px;left:10px;font-family:var(--mono);font-size:11.5px;color:#fff;
+  background:rgba(0,0,0,.55);padding:5px 9px;border-radius:4px;z-index:2}
+.gesturebadge{display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--line);
+  border-radius:8px;padding:14px 16px}
+.gesturebadge .emoji{font-size:34px;line-height:1;width:44px;text-align:center}
+.gesturebadge .info{flex:1;min-width:0}
+.gesturebadge .name{font-weight:700;font-size:15px}
+.gesturebadge .sub{font-size:12px;color:var(--muted);font-family:var(--mono)}
+.stability{height:5px;background:var(--panel2);border-radius:3px;overflow:hidden;margin-top:6px}
+.stability i{display:block;height:100%;background:var(--accent);width:0%;transition:width .05s linear}
+.legend{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;list-style:none;margin:0;padding:0}
+.legend li{display:flex;align-items:center;gap:8px;font-size:12.5px;background:var(--panel2);
+  border-radius:6px;padding:8px 9px;color:var(--ink2)}
+.legend li b{font-size:18px}
+.panel{display:flex;flex-direction:column;gap:14px}
+.block{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 17px}
+.block h2{font-size:13px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;
+  color:var(--muted);margin:0 0 11px;font-weight:700}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+button{font:inherit;font-weight:600;font-size:13.5px;padding:9px 14px;border-radius:6px;
+  border:1px solid var(--line);background:var(--panel2);color:var(--ink);cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button:disabled{opacity:.45;cursor:not-allowed}
+select{font:inherit;font-size:13.5px;padding:7px 9px;border-radius:6px;border:1px solid var(--line);
+  background:var(--panel2);color:var(--ink)}
+.hint{font-size:12px;color:var(--muted);margin:8px 0 0}
+.dots{display:flex;gap:7px;margin:12px 0 0}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);background:transparent}
+.dot.filled{background:var(--accent);border-color:var(--accent)}
+.msg{font-size:13px;margin:10px 0 0;padding:8px 10px;border-radius:6px;display:none}
+.msg.ok{display:block;background:var(--ok-soft);color:var(--ok)}
+.msg.bad{display:block;background:var(--bad-soft);color:var(--bad)}
+.msg.info{display:block;background:var(--accent-soft);color:var(--accent)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat{background:var(--panel2);border-radius:6px;padding:8px 10px}
+.stat .v{font-family:var(--mono);font-size:17px;font-weight:700}
+.stat .k{font-size:11px;color:var(--muted)}
+.logwrap{max-height:190px;overflow-y:auto;border:1px solid var(--line);border-radius:6px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+th{position:sticky;top:0;background:var(--panel2);font-family:var(--mono);font-size:10px;
+  text-transform:uppercase;color:var(--muted)}
+td.ko{font-weight:600}
+.resetbtn{align-self:flex-start;background:transparent;color:var(--bad);border-color:var(--bad-soft)}
+footer{border-top:1px solid var(--line);padding:20px 24px;color:var(--muted);font-size:12px}
+footer a{color:inherit}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="kicker">실습4 · Samsung DS Computer Vision Practicum</div>
+  <h1>제스처 비밀번호 잠금장치</h1>
+  <p class="lede">MediaPipe Hand Landmarker(브라우저 실행)로 손 랜드마크만 뽑고, 제스처 판별과 시퀀스 매칭은
+  전부 직접 짠 규칙 기반 로직입니다. 새로운 모델 학습 없이 기존 도구를 조합했습니다.</p>
+  <div class="io">IN 웹캠 손 프레임 시퀀스 → OUT 등록된 제스처 순서 일치 여부(성공/실패) + 신뢰도</div>
+</div></header>
+
+<main>
+  <section class="stage">
+    <div class="camwrap">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="overlay"></canvas>
+      <div class="camstate" id="camState">카메라 꺼짐</div>
+    </div>
+    <div class="gesturebadge">
+      <div class="emoji" id="badgeEmoji">✋</div>
+      <div class="info">
+        <div class="name" id="badgeName">손 인식 대기 중</div>
+        <div class="sub" id="badgeSub">신뢰도 —</div>
+        <div class="stability"><i id="stabilityBar"></i></div>
+      </div>
+    </div>
+    <div class="block">
+      <h2>제스처 6종</h2>
+      <ul class="legend">
+        <li><b>✊</b> 주먹</li>
+        <li><b>🖐️</b> 보자기</li>
+        <li><b>👆</b> 검지</li>
+        <li><b>✌️</b> 브이</li>
+        <li><b>👍</b> 따봉</li>
+        <li><b>🤟</b> 락</li>
+      </ul>
+      <p class="hint">💡 같은 제스처를 연속으로 쓰려면 손을 화면 밖으로 뺐다가 다시 보여주세요 (안정 프레임
+      카운터가 재사용 여부를 판단합니다).</p>
+    </div>
+  </section>
+
+  <aside class="panel">
+    <div class="block">
+      <h2>1 · 카메라 · 모델 시작</h2>
+      <div class="row">
+        <button class="primary" id="btnStart">카메라 + 모델 시작</button>
+      </div>
+      <p class="hint" id="loadState">대기 중 — 시작을 누르면 카메라 권한을 요청합니다.</p>
+    </div>
+
+    <div class="block">
+      <h2>2 · 비밀번호 등록</h2>
+      <div class="row">
+        <select id="lenSelect">
+          <option value="3">3개</option>
+          <option value="4" selected>4개</option>
+          <option value="5">5개</option>
+          <option value="6">6개</option>
+        </select>
+        <button id="btnRegister" disabled>등록 시작</button>
+      </div>
+      <div class="dots" id="dotsRegister"></div>
+      <p class="msg" id="registerMsg"></p>
+    </div>
+
+    <div class="block">
+      <h2>3 · 잠금 해제</h2>
+      <div class="row">
+        <button id="btnUnlock" disabled>해제 시도</button>
+      </div>
+      <div class="dots" id="dotsUnlock"></div>
+      <p class="msg" id="unlockMsg"></p>
+    </div>
+
+    <div class="block">
+      <h2>통계 / 로그</h2>
+      <div class="stats">
+        <div class="stat"><div class="v" id="statAttempts">0</div><div class="k">해제 시도</div></div>
+        <div class="stat"><div class="v" id="statRate">—</div><div class="k">성공률</div></div>
+        <div class="stat"><div class="v" id="statTime">—</div><div class="k">평균 해제 시간</div></div>
+        <div class="stat"><div class="v" id="statConf">—</div><div class="k">평균 신뢰도</div></div>
+      </div>
+      <div class="logwrap">
+        <table>
+          <thead><tr><th>시간</th><th>모드</th><th>제스처</th><th>신뢰도</th><th>결과</th></tr></thead>
+          <tbody id="logBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <button class="resetbtn" id="btnReset">비밀번호 · 통계 전체 초기화</button>
+  </aside>
+</main>
+
+<footer><div class="wrap">
+  <a href="../">← ds-practice</a> · 실습4 · 검증 로그는 README.md 참고 · 카메라 영상은 기기 밖으로 전송되지 않습니다(전부 브라우저 내 처리)
+</div></footer>
+
+<script type="module">
+import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+const MODEL_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+const WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
+const PASS_KEY = "gesture_lock_password_v1";
+const STABLE_FRAMES = 10;
+
+const GESTURES = {
+  "00000": { ko: "주먹",   emoji: "✊" },
+  "11111": { ko: "보자기", emoji: "🖐️" },
+  "01000": { ko: "검지",   emoji: "👆" },
+  "01100": { ko: "브이",   emoji: "✌️" },
+  "10000": { ko: "따봉",   emoji: "👍" },
+  "01001": { ko: "락",     emoji: "🤟" },
+};
+
+const HAND_CONNECTIONS = [
+  [0,1],[1,2],[2,3],[3,4],
+  [0,5],[5,6],[6,7],[7,8],
+  [5,9],[9,10],[10,11],[11,12],
+  [9,13],[13,14],[14,15],[15,16],
+  [13,17],[17,18],[18,19],[19,20],
+  [0,17]
+];
+
+const video = document.getElementById("video");
+const canvas = document.getElementById("overlay");
+const ctx = canvas.getContext("2d");
+const camState = document.getElementById("camState");
+const loadState = document.getElementById("loadState");
+const btnStart = document.getElementById("btnStart");
+const btnRegister = document.getElementById("btnRegister");
+const btnUnlock = document.getElementById("btnUnlock");
+const btnReset = document.getElementById("btnReset");
+const lenSelect = document.getElementById("lenSelect");
+const dotsRegisterEl = document.getElementById("dotsRegister");
+const dotsUnlockEl = document.getElementById("dotsUnlock");
+const registerMsg = document.getElementById("registerMsg");
+const unlockMsg = document.getElementById("unlockMsg");
+const badgeEmoji = document.getElementById("badgeEmoji");
+const badgeName = document.getElementById("badgeName");
+const badgeSub = document.getElementById("badgeSub");
+const stabilityBar = document.getElementById("stabilityBar");
+const logBody = document.getElementById("logBody");
+const statAttempts = document.getElementById("statAttempts");
+const statRate = document.getElementById("statRate");
+const statTime = document.getElementById("statTime");
+const statConf = document.getElementById("statConf");
+
+let handLandmarker = null;
+let lastVideoTime = -1;
+let appState = "idle"; // idle | ready | registering | unlocking
+let password = loadPassword();
+let currentAttempt = [];
+let unlockStartTime = 0;
+let stableKey = null, stableCount = 0, lastCapturedKey = null;
+const stats = { attempts: 0, successes: 0, times: [], confidences: [] };
+
+function loadPassword(){
+  try { return JSON.parse(localStorage.getItem(PASS_KEY) || "null"); }
+  catch { return null; }
+}
+
+function dist(a, b){ return Math.hypot(a.x - b.x, a.y - b.y); }
+
+function classifyGesture(lm){
+  const thumb  = dist(lm[4], lm[17]) > dist(lm[3], lm[17]) * 1.15 ? 1 : 0;
+  const index  = lm[8].y  < lm[6].y  ? 1 : 0;
+  const middle = lm[12].y < lm[10].y ? 1 : 0;
+  const ring   = lm[16].y < lm[14].y ? 1 : 0;
+  const pinky  = lm[20].y < lm[18].y ? 1 : 0;
+  const key = `${thumb}${index}${middle}${ring}${pinky}`;
+  return GESTURES[key] ? key : null;
+}
+
+function setMsg(el, text, kind){
+  el.textContent = text;
+  el.className = "msg" + (kind ? " " + kind : "");
+}
+
+function renderDots(el, filled, total){
+  el.innerHTML = "";
+  for (let i = 0; i < total; i++){
+    const d = document.createElement("span");
+    d.className = "dot" + (i < filled ? " filled" : "");
+    el.appendChild(d);
+  }
+}
+
+function logRow(mode, key, confidence, result){
+  const g = GESTURES[key];
+  const tr = document.createElement("tr");
+  const time = new Date().toLocaleTimeString("ko-KR", { hour12: false });
+  tr.innerHTML = `<td>${time}</td><td>${mode}</td><td class="ko">${g ? g.emoji + " " + g.ko : "-"}</td>
+    <td>${(confidence * 100).toFixed(0)}%</td><td>${result}</td>`;
+  logBody.prepend(tr);
+  while (logBody.children.length > 40) logBody.removeChild(logBody.lastChild);
+}
+
+function updateStats(){
+  statAttempts.textContent = stats.attempts;
+  statRate.textContent = stats.attempts ? Math.round(100 * stats.successes / stats.attempts) + "%" : "—";
+  statTime.textContent = stats.times.length
+    ? (stats.times.reduce((a,b)=>a+b,0) / stats.times.length).toFixed(1) + "s" : "—";
+  statConf.textContent = stats.confidences.length
+    ? Math.round(100 * stats.confidences.reduce((a,b)=>a+b,0) / stats.confidences.length) + "%" : "—";
+}
+
+function updateButtons(){
+  const modelReady = appState !== "idle";
+  btnRegister.disabled = !modelReady || appState === "registering" || appState === "unlocking";
+  btnUnlock.disabled = !modelReady || !password || appState === "registering" || appState === "unlocking";
+  lenSelect.disabled = appState === "registering" || appState === "unlocking";
+}
+
+btnStart.addEventListener("click", startAll);
+btnRegister.addEventListener("click", startRegister);
+btnUnlock.addEventListener("click", startUnlock);
+btnReset.addEventListener("click", resetAll);
+
+function startRegister(){
+  currentAttempt = [];
+  lastCapturedKey = null;
+  appState = "registering";
+  renderDots(dotsRegisterEl, 0, Number(lenSelect.value));
+  setMsg(registerMsg, "제스처를 순서대로 보여주세요 (0 / " + lenSelect.value + ")", "info");
+  updateButtons();
+}
+
+function startUnlock(){
+  currentAttempt = [];
+  lastCapturedKey = null;
+  appState = "unlocking";
+  unlockStartTime = Date.now();
+  renderDots(dotsUnlockEl, 0, password.seq.length);
+  setMsg(unlockMsg, "등록한 순서대로 제스처를 보여주세요 (0 / " + password.seq.length + ")", "info");
+  updateButtons();
+}
+
+function resetAll(){
+  localStorage.removeItem(PASS_KEY);
+  password = null;
+  currentAttempt = [];
+  appState = handLandmarker ? "ready" : "idle";
+  stats.attempts = 0; stats.successes = 0; stats.times = []; stats.confidences = [];
+  logBody.innerHTML = "";
+  renderDots(dotsRegisterEl, 0, 0);
+  renderDots(dotsUnlockEl, 0, 0);
+  setMsg(registerMsg, "", null);
+  setMsg(unlockMsg, "", null);
+  updateStats();
+  updateButtons();
+}
+
+function onCapture(key, confidence){
+  currentAttempt.push({ key, confidence });
+
+  if (appState === "registering"){
+    logRow("등록", key, confidence, "캡처됨");
+    renderDots(dotsRegisterEl, currentAttempt.length, Number(lenSelect.value));
+    setMsg(registerMsg, `제스처 캡처됨 (${currentAttempt.length} / ${lenSelect.value})`, "info");
+    if (currentAttempt.length >= Number(lenSelect.value)) finishRegister();
+    return;
+  }
+
+  if (appState === "unlocking"){
+    const idx = currentAttempt.length - 1;
+    const expected = password.seq[idx];
+    if (expected !== key){
+      logRow("해제", key, confidence, "❌ 불일치");
+      stats.attempts++;
+      updateStats();
+      setMsg(unlockMsg, `❌ ${idx + 1}번째 제스처가 일치하지 않습니다. 처음부터 다시 시도하세요.`, "bad");
+      appState = "ready";
+      currentAttempt = [];
+      renderDots(dotsUnlockEl, 0, password.seq.length);
+      updateButtons();
+      return;
+    }
+    logRow("해제", key, confidence, "일치");
+    renderDots(dotsUnlockEl, currentAttempt.length, password.seq.length);
+    setMsg(unlockMsg, `진행 중 (${currentAttempt.length} / ${password.seq.length})`, "info");
+    if (currentAttempt.length >= password.seq.length){
+      stats.attempts++;
+      stats.successes++;
+      const elapsed = (Date.now() - unlockStartTime) / 1000;
+      stats.times.push(elapsed);
+      const avgConf = currentAttempt.reduce((a,c)=>a+c.confidence,0) / currentAttempt.length;
+      stats.confidences.push(avgConf);
+      updateStats();
+      setMsg(unlockMsg, `✅ 잠금 해제 성공! (${elapsed.toFixed(1)}초, 평균 신뢰도 ${Math.round(avgConf*100)}%)`, "ok");
+      appState = "ready";
+      currentAttempt = [];
+      updateButtons();
+    }
+  }
+}
+
+function finishRegister(){
+  const seq = currentAttempt.map(a => a.key);
+  password = { seq, createdAt: Date.now() };
+  localStorage.setItem(PASS_KEY, JSON.stringify(password));
+  appState = "ready";
+  currentAttempt = [];
+  setMsg(registerMsg, `등록 완료 (${seq.length}개) — 오른쪽 "해제 시도"로 테스트해보세요.`, "ok");
+  updateButtons();
+}
+
+function updateBadge(key, hasHand, confidence){
+  if (!hasHand){
+    badgeEmoji.textContent = "✋";
+    badgeName.textContent = "손 인식 대기 중";
+    badgeSub.textContent = "신뢰도 —";
+    stabilityBar.style.width = "0%";
+    return;
+  }
+  const g = key ? GESTURES[key] : null;
+  badgeEmoji.textContent = g ? g.emoji : "❔";
+  badgeName.textContent = g ? g.ko : "인식 불가 (정의된 6종 아님)";
+  badgeSub.textContent = `신뢰도 ${Math.round(confidence * 100)}%`;
+  stabilityBar.style.width = Math.min(100, (stableCount / STABLE_FRAMES) * 100) + "%";
+}
+
+function process(result){
+  const hasHand = !!(result.landmarks && result.landmarks.length > 0);
+  let key = null, confidence = 0;
+
+  if (hasHand){
+    key = classifyGesture(result.landmarks[0]);
+    confidence = result.handednesses?.[0]?.[0]?.score ?? 0;
+  }
+
+  if (key === stableKey) stableCount++; else { stableKey = key; stableCount = 1; }
+  updateBadge(key, hasHand, confidence);
+
+  if (!hasHand){ lastCapturedKey = null; return; }
+
+  const capturing = appState === "registering" || appState === "unlocking";
+  if (key && capturing && stableCount === STABLE_FRAMES && key !== lastCapturedKey){
+    lastCapturedKey = key;
+    onCapture(key, confidence);
+  }
+}
+
+function render(result){
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!result.landmarks || result.landmarks.length === 0) return;
+  const lm = result.landmarks[0];
+  ctx.strokeStyle = "rgba(91,155,246,0.9)";
+  ctx.lineWidth = Math.max(2, canvas.width / 220);
+  ctx.beginPath();
+  for (const [a, b] of HAND_CONNECTIONS){
+    ctx.moveTo(lm[a].x * canvas.width, lm[a].y * canvas.height);
+    ctx.lineTo(lm[b].x * canvas.width, lm[b].y * canvas.height);
+  }
+  ctx.stroke();
+  ctx.fillStyle = "#fff";
+  const r = Math.max(2.5, canvas.width / 200);
+  for (const p of lm){
+    ctx.beginPath();
+    ctx.arc(p.x * canvas.width, p.y * canvas.height, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function loop(){
+  requestAnimationFrame(loop);
+  if (!handLandmarker || video.readyState < 2) return;
+  if (video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  const result = handLandmarker.detectForVideo(video, performance.now());
+  render(result);
+  process(result);
+}
+
+async function startAll(){
+  btnStart.disabled = true;
+  try {
+    loadState.textContent = "카메라 권한 요청 중...";
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
+    video.srcObject = stream;
+    await new Promise(res => { video.onloadedmetadata = res; });
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    camState.textContent = "카메라 켜짐";
+
+    loadState.textContent = "모델 다운로드 중 (최초 1회, 네트워크 필요)...";
+    const vision = await FilesetResolver.forVisionTasks(WASM_URL);
+    try {
+      handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: MODEL_URL, delegate: "GPU" },
+        runningMode: "VIDEO",
+        numHands: 1,
+      });
+    } catch (gpuErr) {
+      handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: MODEL_URL, delegate: "CPU" },
+        runningMode: "VIDEO",
+        numHands: 1,
+      });
+    }
+
+    loadState.textContent = "준비 완료 — 등록 또는 해제를 시작하세요.";
+    appState = "ready";
+    renderDots(dotsRegisterEl, 0, Number(lenSelect.value));
+    if (password) renderDots(dotsUnlockEl, 0, password.seq.length);
+    updateButtons();
+    updateStats();
+    loop();
+  } catch (err) {
+    console.error(err);
+    loadState.textContent = "실패: " + (err && err.message ? err.message : String(err)) +
+      " — 카메라 권한과 네트워크 연결(모델·라이브러리 CDN)을 확인하세요.";
+    btnStart.disabled = false;
+  }
+}
+
+updateButtons();
+updateStats();
+</script>
+</body>
+</html>
