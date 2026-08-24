@@ -35,6 +35,7 @@ main{display:grid;grid-template-columns:1.35fr 1fr;gap:20px;padding:22px 24px 60
 .camwrap{position:relative;flex:1;min-width:0;aspect-ratio:4/3;background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
 .camwrap video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .camwrap.mine video{transform:scaleX(-1);filter:brightness(.95)}
+body.spectator-mode .camwrap.mine video{transform:none;filter:none}
 .camwrap canvas{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1)}
 .camstate{position:absolute;top:10px;left:10px;max-width:calc(100% - 110px);overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono);font-size:10.5px;color:#fff;
@@ -56,6 +57,7 @@ main{display:grid;grid-template-columns:1.35fr 1fr;gap:20px;padding:22px 24px 60
 .block{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 17px}
 .block h2{font-size:13px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;
   color:var(--muted);margin:0 0 11px;font-weight:700}
+.block h2 small{font-weight:500;text-transform:none;letter-spacing:0;font-size:11px}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 button{font:inherit;font-weight:600;font-size:13.5px;padding:9px 14px;border-radius:6px;
   border:1px solid var(--line);background:var(--panel2);color:var(--ink);cursor:pointer}
@@ -87,14 +89,16 @@ footer a{color:inherit}
 <body>
 <header><div class="wrap">
   <div class="kicker">실습6 · Samsung DS Computer Vision Practicum</div>
-  <h1>비전 복싱 (실시간 2인 대전)</h1>
+  <h1>비전 복싱 (실시간 2인 대전 + 관전)</h1>
   <p class="lede">MediaPipe Pose Landmarker로 양팔·머리 관절을 추적해 잽·훅·어퍼컷과 더킹·위빙을
   규칙 기반으로 판정한다. 상대는 예고 없이 실제로 접속한 사람이고, 서로의 실제 카메라 영상을 보면서
-  반응해야 한다 — 판정은 각자 자기 화면에서 로컬로 계산하고, 결과만 P2P로 주고받는다.</p>
-  <div class="io">IN 웹캠 팔·머리 관절 시퀀스 (양쪽) → OUT 기술 판정 + 실시간 P2P 동기화 HP + 승패</div>
+  반응해야 한다. 제3자는 방 코드만 알면 카메라 없이 두 선수를 동시에 볼 수 있는 관전 모드로 들어갈
+  수 있다 — 판정은 각자 자기 화면에서 로컬로 계산하고, 결과만 P2P로 주고받는다.</p>
+  <div class="io">IN 웹캠 팔·머리 관절 시퀀스 (양쪽) → OUT 기술 판정 + 실시간 P2P 동기화 HP/로그 + 승패</div>
   <p class="scopenote">범위 메모: 서버 없이 브라우저끼리 직접 연결하는 WebRTC(PeerJS)를 썼다 — 영상
   통화용 무료 공개 시그널링 서버를 빌려 쓰는 구조라, 네트워크 환경에 따라(특히 엄격한 NAT/방화벽)
-  연결이 안 될 수 있다. 얼굴 3D 아바타 학습은 여전히 범위 밖 — 이유는 README 참고.</p>
+  연결이 안 될 수 있다. 관전자는 호스트(선수 A)에게 상태를 구독하고, 두 선수의 영상은 각각 직접
+  연결해서 받는다. 얼굴 3D 아바타 학습은 여전히 범위 밖 — 이유는 README 참고.</p>
 </div></header>
 
 <main>
@@ -104,17 +108,17 @@ footer a{color:inherit}
         <video id="video" autoplay playsinline muted></video>
         <canvas id="overlay"></canvas>
         <div class="camstate" id="camState">카메라 꺼짐</div>
-        <div class="hpbar-wrap"><div class="hpbar">나 HP <span id="playerHpText">100</span>
+        <div class="hpbar-wrap"><div class="hpbar"><span id="hpLabelMine">나</span> HP <span id="playerHpText">100</span>
           <div class="bar"><div class="fill" id="playerHpFill" style="background:var(--ok)"></div></div></div></div>
         <div class="techflash" id="techFlash"></div>
-        <div class="camlabel">나</div>
+        <div class="camlabel" id="mineLabel">나</div>
       </div>
       <div class="camwrap theirs">
         <video id="oppVideo" autoplay playsinline></video>
         <div class="camstate" id="oppState">연결 안 됨</div>
-        <div class="hpbar-wrap"><div class="hpbar">상대 HP <span id="oppHpText">100</span>
+        <div class="hpbar-wrap"><div class="hpbar"><span id="hpLabelTheirs">상대</span> HP <span id="oppHpText">100</span>
           <div class="bar"><div class="fill" id="oppHpFill" style="background:var(--bad)"></div></div></div></div>
-        <div class="camlabel">상대</div>
+        <div class="camlabel" id="theirsLabel">상대</div>
       </div>
       <div class="result" id="resultOverlay">
         <h3 id="resultTitle"></h3>
@@ -122,7 +126,7 @@ footer a{color:inherit}
         <button class="primary" id="btnRematch">다시 시작</button>
       </div>
     </div>
-    <div class="block">
+    <div class="block" id="legendBlock">
       <h2>기술 · 방어</h2>
       <ul class="legend">
         <li><b>👊 잽 / 스트레이트</b>팔을 곧게 앞으로 뻗기</li>
@@ -138,49 +142,82 @@ footer a{color:inherit}
 
   <aside class="panel">
     <div class="block">
-      <h2>1 · 카메라 · 모델 시작</h2>
+      <h2>모드</h2>
       <div class="row">
-        <button class="primary" id="btnStart">카메라 + 모델 시작</button>
+        <button class="primary" id="modeFighterBtn">선수로 참가</button>
+        <button id="modeSpectatorBtn">관전하기</button>
       </div>
-      <p class="hint" id="loadState">대기 중 — 시작을 누르면 카메라 권한을 요청합니다.</p>
+      <p class="hint">선수는 카메라로 직접 대전한다. 관전자는 카메라 없이 방 코드만으로 두 선수의
+      영상과 HP를 동시에 볼 수 있다(중계 화면).</p>
     </div>
 
-    <div class="block">
-      <h2>2 · 상대와 연결</h2>
-      <div class="row">
-        <button id="btnHost" disabled>방 만들기</button>
-        <span class="hint" style="margin:0">또는</span>
-        <input type="text" id="joinCodeInput" placeholder="방 코드" maxlength="6">
-        <button id="btnJoin" disabled>참가</button>
+    <div id="fighterPanel">
+      <div class="block">
+        <h2>1 · 카메라 · 모델 시작</h2>
+        <div class="row">
+          <button class="primary" id="btnStart">카메라 + 모델 시작</button>
+        </div>
+        <p class="hint" id="loadState">대기 중 — 시작을 누르면 카메라 권한을 요청합니다.</p>
       </div>
-      <p class="roomcode" id="roomCodeDisplay"></p>
-      <p class="hint" id="connState">먼저 카메라를 시작하세요.</p>
-      <div class="row" style="margin-top:10px">
-        <button class="primary" id="btnRound" disabled>라운드 시작</button>
-        <div class="timer"><span id="roundTimer">60</span><span style="font-size:11px;color:var(--muted);font-weight:500"> 초</span></div>
+
+      <div class="block">
+        <h2>2 · 상대와 연결</h2>
+        <div class="row">
+          <button id="btnHost" disabled>방 만들기</button>
+          <span class="hint" style="margin:0">또는</span>
+          <input type="text" id="joinCodeInput" placeholder="방 코드" maxlength="6">
+          <button id="btnJoin" disabled>참가</button>
+        </div>
+        <p class="roomcode" id="roomCodeDisplay"></p>
+        <p class="hint" id="connState">먼저 카메라를 시작하세요.</p>
+        <p class="hint" id="specCountHint" style="display:none"></p>
+        <div class="row" style="margin-top:10px">
+          <button class="primary" id="btnRound" disabled>라운드 시작</button>
+          <div class="timer"><span id="roundTimer">60</span><span style="font-size:11px;color:var(--muted);font-weight:500"> 초</span></div>
+        </div>
       </div>
+
+      <div class="block">
+        <h2>통계 / 로그</h2>
+        <div class="stats">
+          <div class="stat"><div class="v" id="statPunches">0</div><div class="k">총 펀치</div></div>
+          <div class="stat"><div class="v" id="statHitRate">—</div><div class="k">명중률</div></div>
+          <div class="stat"><div class="v" id="statDefRate">—</div><div class="k">방어 성공률</div></div>
+          <div class="stat"><div class="v" id="statAvgSpeed">—</div><div class="k">평균 펀치 속도</div></div>
+          <div class="stat"><div class="v" id="statJab">0</div><div class="k">잽</div></div>
+          <div class="stat"><div class="v" id="statHook">0</div><div class="k">훅</div></div>
+          <div class="stat"><div class="v" id="statUpper">0</div><div class="k">어퍼컷</div></div>
+        </div>
+        <div class="logwrap">
+          <table>
+            <thead><tr><th>시간</th><th>주체</th><th>내용</th></tr></thead>
+            <tbody id="logBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <button class="resetbtn" id="btnReset">통계 · 로그 초기화</button>
     </div>
 
-    <div class="block">
-      <h2>통계 / 로그</h2>
-      <div class="stats">
-        <div class="stat"><div class="v" id="statPunches">0</div><div class="k">총 펀치</div></div>
-        <div class="stat"><div class="v" id="statHitRate">—</div><div class="k">명중률</div></div>
-        <div class="stat"><div class="v" id="statDefRate">—</div><div class="k">방어 성공률</div></div>
-        <div class="stat"><div class="v" id="statAvgSpeed">—</div><div class="k">평균 펀치 속도</div></div>
-        <div class="stat"><div class="v" id="statJab">0</div><div class="k">잽</div></div>
-        <div class="stat"><div class="v" id="statHook">0</div><div class="k">훅</div></div>
-        <div class="stat"><div class="v" id="statUpper">0</div><div class="k">어퍼컷</div></div>
+    <div id="spectatorPanel" style="display:none">
+      <div class="block">
+        <h2>경기 코드로 관전</h2>
+        <div class="row">
+          <input type="text" id="specCodeInput" placeholder="방 코드" maxlength="6">
+          <button class="primary" id="btnSpectate">관전 시작</button>
+        </div>
+        <p class="hint" id="specState">호스트(선수 A)의 방 코드를 입력하세요. 두 선수 영상 + 실시간 HP를 받습니다.</p>
       </div>
-      <div class="logwrap">
-        <table>
-          <thead><tr><th>시간</th><th>주체</th><th>내용</th></tr></thead>
-          <tbody id="logBody"></tbody>
-        </table>
+      <div class="block">
+        <h2>중계 로그 <small>(호스트 시점 기준)</small></h2>
+        <div class="logwrap">
+          <table>
+            <thead><tr><th>시간</th><th>주체</th><th>내용</th></tr></thead>
+            <tbody id="specLogBody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
-
-    <button class="resetbtn" id="btnReset">통계 · 로그 초기화</button>
   </aside>
 </main>
 
@@ -224,6 +261,7 @@ const btnJoin = document.getElementById("btnJoin");
 const joinCodeInput = document.getElementById("joinCodeInput");
 const roomCodeDisplay = document.getElementById("roomCodeDisplay");
 const connState = document.getElementById("connState");
+const specCountHint = document.getElementById("specCountHint");
 const oppVideo = document.getElementById("oppVideo");
 const oppState = document.getElementById("oppState");
 const btnRound = document.getElementById("btnRound");
@@ -246,6 +284,20 @@ const statJab = document.getElementById("statJab");
 const statHook = document.getElementById("statHook");
 const statUpper = document.getElementById("statUpper");
 const statAvgSpeed = document.getElementById("statAvgSpeed");
+
+const modeFighterBtn = document.getElementById("modeFighterBtn");
+const modeSpectatorBtn = document.getElementById("modeSpectatorBtn");
+const fighterPanel = document.getElementById("fighterPanel");
+const spectatorPanel = document.getElementById("spectatorPanel");
+const legendBlock = document.getElementById("legendBlock");
+const mineLabel = document.getElementById("mineLabel");
+const theirsLabel = document.getElementById("theirsLabel");
+const hpLabelMine = document.getElementById("hpLabelMine");
+const hpLabelTheirs = document.getElementById("hpLabelTheirs");
+const specCodeInput = document.getElementById("specCodeInput");
+const btnSpectate = document.getElementById("btnSpectate");
+const specState = document.getElementById("specState");
+const specLogBody = document.getElementById("specLogBody");
 
 // ---------- audio (synthesized) ----------
 let actx = null;
@@ -285,9 +337,35 @@ function playBell(){
   osc.start(t); osc.stop(t + 0.5);
 }
 
+// ---------- mode toggle ----------
+function enterFighterMode(){
+  document.body.classList.remove("spectator-mode");
+  fighterPanel.style.display = "";
+  legendBlock.style.display = "";
+  spectatorPanel.style.display = "none";
+  modeFighterBtn.classList.add("primary");
+  modeSpectatorBtn.classList.remove("primary");
+}
+function enterSpectatorMode(){
+  document.body.classList.add("spectator-mode");
+  fighterPanel.style.display = "none";
+  legendBlock.style.display = "none";
+  spectatorPanel.style.display = "";
+  modeFighterBtn.classList.remove("primary");
+  modeSpectatorBtn.classList.add("primary");
+  mineLabel.textContent = "선수 A (호스트)";
+  theirsLabel.textContent = "선수 B";
+  hpLabelMine.textContent = "A";
+  hpLabelTheirs.textContent = "B";
+}
+modeFighterBtn.addEventListener("click", enterFighterMode);
+modeSpectatorBtn.addEventListener("click", enterSpectatorMode);
+enterFighterMode();
+
 // ---------- networking (PeerJS / WebRTC) ----------
 let peer = null;
-let dataConn = null;
+let dataConn = null;       // the OPPONENT fighter's data connection (attack/defense protocol)
+let spectatorConns = [];   // host-only: data connections from spectators (one-way state feed)
 let localStream = null;
 
 function genRoomCode(len){
@@ -319,9 +397,24 @@ function wireMediaConnection(call){
   call.on("close", () => { oppState.textContent = "상대 연결 끊김"; oppVideo.srcObject = null; });
 }
 
+function updateSpecCountHint(){
+  specCountHint.style.display = spectatorConns.length ? "block" : "none";
+  specCountHint.textContent = `관전자 ${spectatorConns.length}명 접속 중`;
+}
+
+function addSpectatorConn(conn){
+  spectatorConns.push(conn);
+  updateSpecCountHint();
+  conn.on("close", () => {
+    spectatorConns = spectatorConns.filter(c => c !== conn);
+    updateSpecCountHint();
+  });
+}
+
 function hostRoom(){
   if (!localStream) return;
   btnHost.disabled = true; btnJoin.disabled = true;
+  modeFighterBtn.disabled = true; modeSpectatorBtn.disabled = true;
   const code = genRoomCode(5);
   peer = new Peer(code);
   peer.on("open", id => {
@@ -329,8 +422,15 @@ function hostRoom(){
     roomCodeDisplay.textContent = "방 코드: " + id;
     connState.textContent = "대기 중 — 상대에게 이 코드를 알려주세요.";
   });
-  peer.on("call", call => { call.answer(localStream); wireMediaConnection(call); });
-  peer.on("connection", conn => wireDataConnection(conn));
+  peer.on("call", call => {
+    call.answer(localStream);
+    if (call.metadata && call.metadata.role === "spectator") return; // just serving video, nothing to wire
+    wireMediaConnection(call);
+  });
+  peer.on("connection", conn => {
+    if (conn.metadata && conn.metadata.role === "spectator") addSpectatorConn(conn);
+    else wireDataConnection(conn);
+  });
   peer.on("error", err => { connState.textContent = "연결 오류: " + err.type; });
 }
 
@@ -339,17 +439,41 @@ function joinRoom(){
   const code = joinCodeInput.value.trim().toUpperCase();
   if (!code) return;
   btnHost.disabled = true; btnJoin.disabled = true;
-  peer = new Peer();
+  modeFighterBtn.disabled = true; modeSpectatorBtn.disabled = true;
+  peer = new Peer(code + "-b"); // deterministic id so spectators can call this fighter directly
   peer.on("open", () => {
     connState.textContent = "연결 시도 중...";
     wireMediaConnection(peer.call(code, localStream));
     wireDataConnection(peer.connect(code));
+  });
+  peer.on("call", call => {
+    // a spectator calling this fighter directly for its video feed
+    if (call.metadata && call.metadata.role === "spectator") call.answer(localStream);
   });
   peer.on("error", err => { connState.textContent = "연결 오류: " + err.type; });
 }
 
 function sendMsg(obj){
   if (dataConn && dataConn.open) dataConn.send(obj);
+}
+
+// host-only: push a state snapshot to every connected spectator. "나"/"상대" are relabeled
+// to the neutral "선수 A"/"선수 B" since a spectator has no "me".
+function broadcastState(lastLog){
+  if (!spectatorConns.length) return;
+  let sendLog = null;
+  if (lastLog) {
+    const who = lastLog.who === "나" ? "선수 A" : lastLog.who === "상대" ? "선수 B" : lastLog.who;
+    sendLog = { who, text: lastLog.text };
+  }
+  const payload = {
+    type: "state",
+    hp: { a: state.hp.player, b: state.hp.opp },
+    timeLeft: state.timeLeft,
+    roundActive: state.roundActive,
+    lastLog: sendLog,
+  };
+  for (const c of spectatorConns) { if (c.open) c.send(payload); }
 }
 
 function handleNetMessage(msg){
@@ -359,16 +483,75 @@ function handleNetMessage(msg){
     resolveIncomingAttack(msg.punchType, msg.damage);
   } else if (msg.type === "attackResult") {
     setHp("opp", msg.hp);
+    let who, text;
     if (msg.dodged) {
       stats.evadedByOpp++;
-      log("상대", (msg.punchType === "hook" ? "위빙" : "더킹") + "으로 회피");
+      who = "상대";
+      text = (msg.punchType === "hook" ? "위빙" : "더킹") + "으로 회피";
     } else {
       stats.landed++;
+      who = "나";
+      text = `${KO_LABEL[msg.punchType]} 적중 (상대 HP -${DAMAGE[msg.punchType]})`;
     }
+    log(who, text);
+    broadcastState({ who, text });
     updateStatsUI();
   } else if (msg.type === "roundEnd") {
     if (state.roundActive) { setHp("opp", msg.hp); endRoundLocal(msg.reason, false); }
   }
+}
+
+// ---------- spectator mode ----------
+let specWasActive = false;
+
+function startSpectating(){
+  const code = specCodeInput.value.trim().toUpperCase();
+  if (!code) return;
+  btnSpectate.disabled = true;
+  modeFighterBtn.disabled = true; modeSpectatorBtn.disabled = true;
+  peer = new Peer();
+  peer.on("open", () => {
+    specState.textContent = "연결 시도 중...";
+    const empty = new MediaStream(); // spectator sends no video, only receives
+
+    const callA = peer.call(code, empty, { metadata: { role: "spectator" } });
+    callA.on("stream", remoteStream => { video.srcObject = remoteStream; camState.textContent = "선수 A 영상 연결됨"; });
+
+    const callB = peer.call(code + "-b", empty, { metadata: { role: "spectator" } });
+    callB.on("stream", remoteStream => { oppVideo.srcObject = remoteStream; oppState.textContent = "선수 B 영상 연결됨"; });
+
+    const dataToHost = peer.connect(code, { metadata: { role: "spectator" } });
+    dataToHost.on("open", () => { specState.textContent = "관전 연결됨 — 상태 수신 중"; });
+    dataToHost.on("data", applySpectatorState);
+  });
+  peer.on("error", err => { specState.textContent = "연결 오류: " + err.type; });
+}
+
+function applySpectatorState(msg){
+  if (msg.type !== "state") return;
+  playerHpText.textContent = msg.hp.a;
+  playerHpFill.style.width = msg.hp.a + "%";
+  playerHpFill.style.background = msg.hp.a > 30 ? "var(--ok)" : "var(--bad)";
+  oppHpText.textContent = msg.hp.b;
+  oppHpFill.style.width = msg.hp.b + "%";
+  roundTimerEl.textContent = msg.timeLeft;
+  if (msg.lastLog) log(msg.lastLog.who, msg.lastLog.text, specLogBody);
+
+  if (msg.roundActive) {
+    resultOverlay.classList.remove("show");
+  } else if (specWasActive) {
+    let title;
+    if (msg.hp.a <= 0 && msg.hp.b <= 0) title = "무승부 (동시 KO)";
+    else if (msg.hp.a <= 0) title = "선수 B 승리 (KO)";
+    else if (msg.hp.b <= 0) title = "선수 A 승리 (KO)";
+    else if (msg.hp.a > msg.hp.b) title = "선수 A 승리 (판정)";
+    else if (msg.hp.a < msg.hp.b) title = "선수 B 승리 (판정)";
+    else title = "무승부 (판정)";
+    resultTitle.textContent = title;
+    resultSub.textContent = `HP ${msg.hp.a} : ${msg.hp.b}`;
+    resultOverlay.classList.add("show");
+  }
+  specWasActive = msg.roundActive;
 }
 
 // ---------- state ----------
@@ -408,12 +591,13 @@ function classifyPunch(dx, dy){
   return "straight";
 }
 
-function log(who, text){
+function log(who, text, targetBody){
+  const body = targetBody || logBody;
   const tr = document.createElement("tr");
   const time = new Date().toLocaleTimeString("ko-KR", { hour12: false });
   tr.innerHTML = `<td>${time}</td><td>${who}</td><td>${text}</td>`;
-  logBody.prepend(tr);
-  while (logBody.children.length > 60) logBody.removeChild(logBody.lastChild);
+  body.prepend(tr);
+  while (body.children.length > 60) body.removeChild(body.lastChild);
 }
 
 function updateStatsUI(){
@@ -458,7 +642,9 @@ function dealPlayerDamage(type, speed){
   updateStatsUI();
   playThud(type === "uppercut" ? 140 : type === "hook" ? 180 : 220);
   flashTech(KO_LABEL[type] + "!");
-  log("나", `${KO_LABEL[type]} 시도`);
+  const text = `${KO_LABEL[type]} 시도`;
+  log("나", text);
+  broadcastState({ who: "나", text });
   sendMsg({ type: "attack", punchType: type, damage: dmg });
 }
 
@@ -469,16 +655,21 @@ function resolveIncomingAttack(punchType, damage){
   const requiresDuck = punchType === "straight" || punchType === "uppercut";
   const dodged = requiresDuck ? now < duckActiveUntil : now < weaveActiveUntil;
   stats.defenseAttempts++;
+  let text;
   if (dodged) {
     stats.defenses++;
     playWhoosh();
     flashTech(requiresDuck ? "더킹 성공!" : "위빙 성공!");
-    log("나", (requiresDuck ? "더킹" : "위빙") + " 성공 — 무피해");
+    text = (requiresDuck ? "더킹" : "위빙") + " 성공 — 무피해";
+    log("나", text);
+    broadcastState({ who: "나", text });
   } else {
     setHp("player", state.hp.player - damage);
     playThud(90);
     flashTech("맞았다!");
-    log("상대", `${KO_LABEL[punchType]} 적중 (-${damage} 내 HP)`);
+    text = `${KO_LABEL[punchType]} 적중 (-${damage} 내 HP)`;
+    log("상대", text);
+    broadcastState({ who: "상대", text });
   }
   updateStatsUI();
   sendMsg({ type: "attackResult", punchType, dodged, hp: state.hp.player });
@@ -505,9 +696,11 @@ function beginRoundLocal(){
   state.timerHandle = setInterval(() => {
     state.timeLeft--;
     roundTimerEl.textContent = state.timeLeft;
+    broadcastState();
     if (state.timeLeft <= 0) endRoundLocal("time", true);
   }, 1000);
   log("시스템", "라운드 시작");
+  broadcastState({ who: "시스템", text: "라운드 시작" });
 }
 
 function endRoundLocal(reason, shouldBroadcast){
@@ -528,7 +721,9 @@ function endRoundLocal(reason, shouldBroadcast){
   resultSub.textContent = sub;
   resultOverlay.classList.add("show");
   btnRound.disabled = false;
-  log("시스템", `라운드 종료 (${reason === "ko" ? "KO" : "시간 종료"}) — ${title}`);
+  const logText = `라운드 종료 (${reason === "ko" ? "KO" : "시간 종료"}) — ${title}`;
+  log("시스템", logText);
+  broadcastState({ who: "시스템", text: logText });
   if (shouldBroadcast) sendMsg({ type: "roundEnd", reason, hp: state.hp.player });
 }
 
@@ -674,6 +869,7 @@ async function startAll(){
 btnStart.addEventListener("click", startAll);
 btnHost.addEventListener("click", hostRoom);
 btnJoin.addEventListener("click", joinRoom);
+btnSpectate.addEventListener("click", startSpectating);
 btnRound.addEventListener("click", startRound);
 btnRematch.addEventListener("click", () => { resultOverlay.classList.remove("show"); startRound(); });
 btnReset.addEventListener("click", () => {
