@@ -167,8 +167,10 @@ footer a{color:inherit}
         <li><b>↔️ 위빙</b>고개·상체를 좌우로 피하기 — 상대 훅 방어</li>
         <li><b>⬇️ 더킹</b>고개를 아래로 숙이기 — 상대 잽·어퍼컷 방어</li>
       </ul>
-      <p class="hint">💡 팔을 한 번 굽혔다가(팔꿈치 각도 좁게) 빠르게 펴야 한 번의 기술로 인식됩니다.
-      예고 없이 실시간으로 날아오니, 상대 화면을 보고 직접 반응해야 합니다.</p>
+      <p class="hint">💡 손을 평소 위치에서 <b>바깥으로 빠르게 뻗으면</b> 기술로 인식됩니다(되돌아오는
+      동작은 인식 안 됨). <b>카메라에서 한두 걸음 물러나 상반신과 양손이 다 보이게</b> 서야 손목이
+      잡힙니다 — 책상에 앉아 얼굴만 나오면 인식이 안 됩니다. 예고 없이 실시간으로 날아오니, 상대
+      화면을 보고 직접 반응해야 합니다.</p>
     </div>
   </section>
 
@@ -212,8 +214,8 @@ footer a{color:inherit}
       <div class="block">
         <h2>3 · 감도 조절 · 진단</h2>
         <label class="small">펀치 감도
-          <input type="range" id="punchSens" min="0.4" max="3" step="0.05" value="1.2">
-          <span class="val" id="punchSensVal">1.20</span></label>
+          <input type="range" id="punchSens" min="0.15" max="3" step="0.05" value="0.8">
+          <span class="val" id="punchSensVal">0.80</span></label>
         <p class="hint" style="margin:4px 0 10px">낮출수록 약하게 쳐도 인식됩니다(오탐↑). 아래 진단줄의
         <b>손목속도</b>가 펀치할 때 찍히는 최댓값보다 조금 낮게 맞추세요.</p>
         <label class="small">회피 인식 거리
@@ -222,8 +224,11 @@ footer a{color:inherit}
         <p class="hint" style="margin:4px 0 10px">낮을수록 조금만 움직여도 회피로 인정됩니다. 너무 낮으면
         상대가 항상 회피 상태가 되어 <b>아무리 때려도 HP가 안 깎입니다</b>.</p>
         <div class="row">
+          <button class="primary" id="btnCalibrate">자동 보정 (5초)</button>
           <button id="btnTestPunch">테스트 펀치 보내기</button>
         </div>
+        <p class="hint">자동 보정: 누른 뒤 5초 동안 <b>평소 세기로 펀치를 3~4번</b> 날리세요. 그동안
+        측정된 최고 손목 속도의 60%로 펀치 감도를 자동 설정합니다.</p>
         <p class="hint">자세 인식을 건너뛰고 잽 1대를 상대에게 직접 보냅니다 — 이걸로 HP가 깎이면
         네트워크는 정상이고 <b>펀치 감지</b>가 문제, 이것도 안 깎이면 <b>상대가 계속 회피 중</b>이거나
         연결 문제입니다.</p>
@@ -286,13 +291,14 @@ import { PoseLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@m
 const MODEL_URL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
 const WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
 
-const BENT_ANGLE = 118;      // deg, arm loose enough to count as "wound up" / guard position
 const PUNCH_COOLDOWN_MS = 250;
+const PUNCH_WINDOW_MS = 260;   // look-back window used to measure outward travel
+const MIN_EXTEND_RATIO = 0.35; // hand must travel out this fraction of a shoulder-width
 const DEFENSE_WINDOW_MS = 300; // how long a duck/weave "counts" after being detected
 // Live-tunable: the first real playtest showed the original fixed values were far too strict
 // on punches and far too loose on dodges (any body sway read as a permanent dodge, so nothing
 // ever landed). These are now sliders so they can be set against a real webcam.
-let punchSpeedThreshold = 1.2;  // normalized units/sec of wrist speed to count as a punch
+let punchSpeedThreshold = 0.8;  // normalized units/sec of wrist speed to count as a punch
 let dodgeDistance = 0.075;      // normalized displacement of the head to count as a dodge
 const DODGE_SPEED = 0.30;       // head must also be MOVING this fast — stops idle sway counting
 const ROUND_SECONDS = 60;
@@ -365,6 +371,7 @@ const punchSensVal = document.getElementById("punchSensVal");
 const dodgeSens = document.getElementById("dodgeSens");
 const dodgeSensVal = document.getElementById("dodgeSensVal");
 const btnTestPunch = document.getElementById("btnTestPunch");
+const btnCalibrate = document.getElementById("btnCalibrate");
 const debugLine = document.getElementById("debugLine");
 
 // the small camera overlay canvas needs a size before video metadata exists
@@ -860,26 +867,18 @@ const stats = {
   defenses: 0, defenseAttempts: 0, landed: 0, evadedByOpp: 0,
 };
 
-const armState = {
-  left: { wound: false, refX: 0, refY: 0, prevWristX: null, prevWristY: null, prevSpeed: 0, lastPunchAt: 0 },
-  right: { wound: false, refX: 0, refY: 0, prevWristX: null, prevWristY: null, prevSpeed: 0, lastPunchAt: 0 },
-};
+function newArmState(){
+  return { hist: [], rest: { x: null, y: null }, prevWristX: null, prevWristY: null,
+           prevSpeed: 0, lastPunchAt: 0, visible: false, peak: 0, extend: 0 };
+}
+const armState = { left: newArmState(), right: newArmState() };
+let calibrating = false, calibPeak = 0;
 let noseBaseline = { x: null, y: null };
 let prevNose = { x: null, y: null };
 let duckActiveUntil = 0, weaveActiveUntil = 0;
-const dbg = { angle: 0, speed: 0, wound: false, duck: false, weave: false };
+const dbg = { duck: false, weave: false };
 let lastDbgAt = 0;
 let lastFrameTime = null;
-
-function angleAt(a, b, c){
-  const v1x = a.x - b.x, v1y = a.y - b.y;
-  const v2x = c.x - b.x, v2y = c.y - b.y;
-  const m1 = Math.hypot(v1x, v1y), m2 = Math.hypot(v2x, v2y);
-  if (m1 === 0 || m2 === 0) return 0;
-  let cos = (v1x * v2x + v1y * v2y) / (m1 * m2);
-  cos = Math.max(-1, Math.min(1, cos));
-  return (Math.acos(cos) * 180) / Math.PI;
-}
 
 function classifyPunch(dx, dy){
   const adx = Math.abs(dx), ady = Math.abs(dy);
@@ -1038,41 +1037,52 @@ function processPose(landmarks){
     relayPoseToSpectators("a", packed);
   }
 
-  // punches — elbow angle only decides "guard/wound" state; the actual trigger is
-  // wrist speed crossing the threshold (a hook stays bent throughout, so requiring
-  // full elbow extension would miss it — see README known limitations).
-  for (const side of SIDES) {
-    const s = landmarks[side.shoulder], e = landmarks[side.elbow], w = landmarks[side.wrist];
-    if (!s || !e || !w) continue;
-    const angle = angleAt(s, e, w);
-    const as = armState[side.key];
-    const wasWound = as.wound; // require guard to have been held BEFORE this frame, so the
-                                // fast snap-back into guard can't itself register as a punch
+  // Punch detection. There is deliberately NO elbow-angle gate: requiring a tight guard
+  // (elbow < ~118°) meant a player whose arms read as nearly straight — which is what a
+  // seated player at a desk produces — could never fire a single punch. Instead a punch is
+  // "the hand accelerating AWAY from where it normally rests". Retraction moves back TOWARD
+  // that rest position, so it fails the outward test and no longer needs a guard state to
+  // suppress it.
+  const lsA = landmarks[11], rsA = landmarks[12];
+  const shoulderSpan = (lsA && rsA) ? Math.max(0.05, Math.hypot(rsA.x - lsA.x, rsA.y - lsA.y)) : 0.2;
 
-    if (angle < BENT_ANGLE && now - as.lastPunchAt > PUNCH_COOLDOWN_MS) {
-      // only anchor the reference point on the transition INTO guard, not every bent frame —
-      // a hook keeps the elbow bent all the way through the swing, so continuously resetting
-      // the reference would erase the very displacement we need to classify it. The cooldown
-      // gate also stops a punch that LANDS in a still-bent pose (common for hooks) from
-      // silently re-arming with the landing spot as the new reference before the arm has
-      // actually returned to guard.
-      if (!as.wound) { as.refX = w.x; as.refY = w.y; }
-      as.wound = true;
-    }
+  for (const side of SIDES) {
+    const w = landmarks[side.wrist];
+    const as = armState[side.key];
+    if (!w) { as.visible = false; continue; }
+
+    // MediaPipe still emits a guessed position for joints it cannot see; acting on those
+    // produces phantom punches, so drop the arm until the wrist is genuinely visible.
+    const vis = (w.visibility === undefined) ? 1 : w.visibility;
+    as.visible = vis >= 0.35;
+    if (!as.visible) { as.hist.length = 0; as.prevWristX = null; as.prevSpeed = 0; continue; }
+
+    if (as.rest.x === null) as.rest = { x: w.x, y: w.y };
 
     const speed = (dt > 0 && as.prevWristX !== null) ? Math.hypot(w.x - as.prevWristX, w.y - as.prevWristY) / dt : 0;
+    as.peak = Math.max(as.peak * 0.985, speed); // slowly-decaying peak, shown for calibration
+    if (calibrating) calibPeak = Math.max(calibPeak, speed);
 
-    if (side.key === "right") { dbg.angle = angle; dbg.speed = speed; dbg.wound = as.wound; }
+    as.hist.push({ t: now, x: w.x, y: w.y });
+    while (as.hist.length && now - as.hist[0].t > 600) as.hist.shift();
+    let ref = as.hist[0];
+    for (const h of as.hist) { if (now - h.t <= PUNCH_WINDOW_MS) { ref = h; break; } }
 
-    if (wasWound && speed > punchSpeedThreshold && as.prevSpeed <= punchSpeedThreshold &&
-        now - as.lastPunchAt > PUNCH_COOLDOWN_MS) {
-      const dx = w.x - as.refX, dy = w.y - as.refY;
-      if (state.roundActive) {
-        const type = classifyPunch(dx, dy);
-        dealPlayerDamage(type, speed);
-      }
-      as.wound = false;
+    // outward travel over the look-back window, measured against the resting hand position
+    const extend = Math.hypot(w.x - as.rest.x, w.y - as.rest.y) - Math.hypot(ref.x - as.rest.x, ref.y - as.rest.y);
+    as.extend = extend;
+
+    if (speed > punchSpeedThreshold && as.prevSpeed <= punchSpeedThreshold &&
+        extend > MIN_EXTEND_RATIO * shoulderSpan && now - as.lastPunchAt > PUNCH_COOLDOWN_MS) {
+      if (state.roundActive) dealPlayerDamage(classifyPunch(w.x - ref.x, w.y - ref.y), speed);
       as.lastPunchAt = now;
+    }
+
+    // the rest position only tracks the hand while it is calm, so a held-out punch does not
+    // slowly become the new "resting" spot and blind the next punch
+    if (speed < punchSpeedThreshold * 0.4) {
+      as.rest.x = as.rest.x * 0.97 + w.x * 0.03;
+      as.rest.y = as.rest.y * 0.97 + w.y * 0.03;
     }
     as.prevSpeed = speed;
     as.prevWristX = w.x; as.prevWristY = w.y;
@@ -1104,9 +1114,16 @@ function processPose(landmarks){
 
 function renderDebug(){
   if (!debugLine) return;
+  const L = armState.left, R = armState.right;
+  const arm = (label, a) => a.visible
+    ? `${label} 속도 ${a.prevSpeed.toFixed(2)} 최고 ${a.peak.toFixed(2)}`
+    : `${label} 손목 안보임`;
+  const warn = (!L.visible && !R.visible)
+    ? " ⚠ 손목이 안 잡힙니다 — 뒤로 물러나 상반신과 양손이 화면에 들어오게 하세요"
+    : "";
   debugLine.textContent =
-    `오른팔 팔꿈치 ${dbg.angle.toFixed(0)}° · 손목속도 ${dbg.speed.toFixed(2)} (기준 ${punchSpeedThreshold.toFixed(2)})` +
-    ` · 가드 ${dbg.wound ? "O" : "X"} | 내 회피 더킹 ${dbg.duck ? "O" : "X"} 위빙 ${dbg.weave ? "O" : "X"}`;
+    `${arm("왼손", L)} | ${arm("오른손", R)} | 기준 ${punchSpeedThreshold.toFixed(2)}` +
+    ` | 내 회피 더킹 ${dbg.duck ? "O" : "X"} 위빙 ${dbg.weave ? "O" : "X"}` + warn;
 }
 
 // ---------- render ----------
@@ -1204,6 +1221,30 @@ punchSens.addEventListener("input", () => {
 dodgeSens.addEventListener("input", () => {
   dodgeDistance = Number(dodgeSens.value);
   dodgeSensVal.textContent = dodgeDistance.toFixed(3);
+});
+btnCalibrate.addEventListener("click", () => {
+  if (!poseLandmarker) { log("시스템", "자동 보정 실패 — 카메라를 먼저 시작하세요"); return; }
+  calibrating = true; calibPeak = 0;
+  btnCalibrate.disabled = true;
+  let left = 5;
+  btnCalibrate.textContent = `측정 중... ${left}`;
+  const tick = setInterval(() => {
+    left--;
+    if (left > 0) { btnCalibrate.textContent = `측정 중... ${left}`; return; }
+    clearInterval(tick);
+    calibrating = false;
+    btnCalibrate.disabled = false;
+    btnCalibrate.textContent = "자동 보정 (5초)";
+    if (calibPeak < 0.15) {
+      log("시스템", `자동 보정 실패 — 움직임이 거의 감지되지 않았습니다 (최고 ${calibPeak.toFixed(2)}). 손이 화면에 보이는지 확인하세요.`);
+      return;
+    }
+    punchSpeedThreshold = Math.min(3, Math.max(0.2, calibPeak * 0.6));
+    punchSens.value = String(punchSpeedThreshold);
+    punchSensVal.textContent = punchSpeedThreshold.toFixed(2);
+    log("시스템", `자동 보정 완료 — 최고 속도 ${calibPeak.toFixed(2)}, 펀치 감도 ${punchSpeedThreshold.toFixed(2)}로 설정`);
+    renderDebug();
+  }, 1000);
 });
 // bypasses pose detection entirely: proves whether the network path and damage rules work
 btnTestPunch.addEventListener("click", () => {
