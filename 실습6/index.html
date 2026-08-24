@@ -32,6 +32,16 @@ main{display:grid;grid-template-columns:1.35fr 1fr;gap:20px;padding:22px 24px 60
 .stage{display:flex;flex-direction:column;gap:14px}
 #stageMain{display:flex;flex-direction:column;gap:14px}
 #stageMain:fullscreen{background:#000;justify-content:center;padding:24px}
+.arena-wrap{position:relative;background:#0a0c10;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.arena-wrap canvas{display:block;width:100%;height:auto}
+.arena-hud{position:absolute;top:10px;left:10px;right:10px;z-index:2;display:flex;gap:10px;align-items:flex-start}
+.arena-hud .side{flex:1;min-width:0}
+.arena-hud .side.right{text-align:right}
+.arena-clock{font-family:var(--mono);font-size:20px;font-weight:800;color:#fff;
+  background:rgba(0,0,0,.55);padding:2px 10px;border-radius:5px;flex:none;align-self:center}
+.hpbar{background:rgba(0,0,0,.5);border-radius:5px;padding:5px 8px;color:#fff;font-family:var(--mono);font-size:10.5px;white-space:nowrap}
+.hpbar .bar{height:8px;background:rgba(255,255,255,.2);border-radius:4px;overflow:hidden;margin-top:3px}
+.hpbar .fill{height:100%;background:var(--ok);width:100%;transition:width .2s ease}
 .duel{position:relative;display:flex;gap:12px}
 @media (max-width:640px){ .duel{flex-direction:column} }
 .camwrap{position:relative;flex:1;min-width:0;aspect-ratio:4/3;background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
@@ -41,17 +51,15 @@ body.spectator-mode .camwrap.mine video{transform:none;filter:none}
 .camwrap canvas{position:absolute;inset:0;width:100%;height:100%}
 .camwrap.mine canvas{transform:scaleX(-1)}
 body.spectator-mode .camwrap.mine canvas{transform:none}
-body.avatar-mode .camwrap video{opacity:0}
+/* cams-large view swaps which block dominates: ring shrinks to a strip, cameras grow */
+body.cams-large .arena-wrap{max-width:420px}
+body.cams-large .duel{gap:12px}
 .toolbar-row{display:flex;gap:10px;flex-wrap:wrap}
 .camstate{position:absolute;top:10px;left:10px;max-width:calc(100% - 110px);overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono);font-size:10.5px;color:#fff;
   background:rgba(0,0,0,.55);padding:4px 8px;border-radius:4px;z-index:2}
 .camlabel{position:absolute;bottom:10px;left:10px;font-size:11px;font-weight:700;color:#fff;
   background:rgba(0,0,0,.55);padding:3px 8px;border-radius:4px;z-index:2}
-.hpbar-wrap{position:absolute;top:10px;right:10px;z-index:2}
-.hpbar{width:auto;min-width:88px;max-width:62%;background:rgba(0,0,0,.5);border-radius:5px;padding:5px 8px;color:#fff;font-family:var(--mono);font-size:10.5px;white-space:nowrap}
-.hpbar .bar{height:8px;background:rgba(255,255,255,.2);border-radius:4px;overflow:hidden;margin-top:3px}
-.hpbar .fill{height:100%;background:var(--ok);width:100%;transition:width .2s ease}
 .techflash{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%) scale(0.6);z-index:3;
   font-size:30px;font-weight:800;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.6);opacity:0;
   transition:opacity .15s ease, transform .15s ease;pointer-events:none}
@@ -95,48 +103,56 @@ footer a{color:inherit}
 <body>
 <header><div class="wrap">
   <div class="kicker">실습6 · Samsung DS Computer Vision Practicum</div>
-  <h1>비전 복싱 (실시간 2인 대전 + 관전)</h1>
+  <h1>비전 복싱 (실시간 2인 대전 + 공용 링 뷰)</h1>
   <p class="lede">MediaPipe Pose Landmarker로 양팔·머리 관절을 추적해 잽·훅·어퍼컷과 더킹·위빙을
   규칙 기반으로 판정한다. 상대는 예고 없이 실제로 접속한 사람이고, 서로의 실제 카메라 영상을 보면서
   반응해야 한다. 제3자는 방 코드만 알면 카메라 없이 두 선수를 동시에 볼 수 있는 관전 모드로 들어갈
-  수 있다 — 판정은 각자 자기 화면에서 로컬로 계산하고, 결과만 P2P로 주고받는다.</p>
+  수 있다 — 판정은 각자 자기 화면에서 로컬로 계산하고, 결과만 P2P로 주고받는다. 선수와 관전자 모두
+  같은 <b>링 뷰</b>(두 선수가 인형으로 마주 선 공용 화면)를 보고, 실제 카메라 영상은 그 아래에
+  썸네일로 함께 보인다.</p>
   <div class="io">IN 웹캠 팔·머리 관절 시퀀스 (양쪽) → OUT 기술 판정 + 실시간 P2P 동기화 HP/로그 + 승패</div>
   <p class="scopenote">범위 메모: 서버 없이 브라우저끼리 직접 연결하는 WebRTC(PeerJS)를 썼다 — 영상
   통화용 무료 공개 시그널링 서버를 빌려 쓰는 구조라, 네트워크 환경에 따라(특히 엄격한 NAT/방화벽)
   연결이 안 될 수 있다. 관전자는 호스트(선수 A)에게 상태를 구독하고, 두 선수의 영상은 각각 직접
-  연결해서 받는다. 얼굴 3D 아바타 학습은 여전히 범위 밖 — 이유는 README 참고.</p>
+  연결해서 받는다. 링 뷰의 인형은 추적된 관절로 그린 스타일화된 형태이며, 실사 3D 얼굴 재구성은
+  여전히 범위 밖 — 이유는 README 참고.</p>
 </div></header>
 
 <main>
   <section class="stage">
     <div id="stageMain">
-    <div class="duel">
-      <div class="camwrap mine">
-        <video id="video" autoplay playsinline muted></video>
-        <canvas id="overlay"></canvas>
-        <div class="camstate" id="camState">카메라 꺼짐</div>
-        <div class="hpbar-wrap"><div class="hpbar"><span id="hpLabelMine">나</span> HP <span id="playerHpText">100</span>
+    <div class="arena-wrap">
+      <canvas id="arena" width="960" height="540"></canvas>
+      <div class="arena-hud">
+        <div class="side"><div class="hpbar"><span id="hpLabelMine">나</span> HP <span id="playerHpText">100</span>
           <div class="bar"><div class="fill" id="playerHpFill" style="background:var(--ok)"></div></div></div></div>
-        <div class="techflash" id="techFlash"></div>
-        <div class="camlabel" id="mineLabel">나</div>
-      </div>
-      <div class="camwrap theirs">
-        <video id="oppVideo" autoplay playsinline></video>
-        <canvas id="oppOverlay"></canvas>
-        <div class="camstate" id="oppState">연결 안 됨</div>
-        <div class="hpbar-wrap"><div class="hpbar"><span id="hpLabelTheirs">상대</span> HP <span id="oppHpText">100</span>
+        <div class="arena-clock"><span id="roundTimer">60</span></div>
+        <div class="side right"><div class="hpbar"><span id="hpLabelTheirs">상대</span> HP <span id="oppHpText">100</span>
           <div class="bar"><div class="fill" id="oppHpFill" style="background:var(--bad)"></div></div></div></div>
-        <div class="camlabel" id="theirsLabel">상대</div>
       </div>
+      <div class="techflash" id="techFlash"></div>
       <div class="result" id="resultOverlay">
         <h3 id="resultTitle"></h3>
         <p id="resultSub" style="color:#ddd;font-size:13px"></p>
         <button class="primary" id="btnRematch">다시 시작</button>
       </div>
     </div>
+    <div class="duel">
+      <div class="camwrap mine">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="overlay"></canvas>
+        <div class="camstate" id="camState">카메라 꺼짐</div>
+        <div class="camlabel" id="mineLabel">나 (실제 영상)</div>
+      </div>
+      <div class="camwrap theirs">
+        <video id="oppVideo" autoplay playsinline></video>
+        <div class="camstate" id="oppState">연결 안 됨</div>
+        <div class="camlabel" id="theirsLabel">상대 (실제 영상)</div>
+      </div>
+    </div>
     <div class="toolbar-row">
       <button id="btnFullscreen">전체화면으로 보기</button>
-      <button id="btnAvatarToggle">아바타로 보기</button>
+      <button id="btnViewToggle">카메라 크게 보기</button>
     </div>
     </div>
     <div class="block" id="legendBlock">
@@ -276,11 +292,11 @@ const roomCodeDisplay = document.getElementById("roomCodeDisplay");
 const connState = document.getElementById("connState");
 const specCountHint = document.getElementById("specCountHint");
 const oppVideo = document.getElementById("oppVideo");
-const oppOverlay = document.getElementById("oppOverlay");
-const oppCtx = oppOverlay.getContext("2d");
 const oppState = document.getElementById("oppState");
+const arena = document.getElementById("arena");
+const arenaCtx = arena.getContext("2d");
 const btnFullscreen = document.getElementById("btnFullscreen");
-const btnAvatarToggle = document.getElementById("btnAvatarToggle");
+const btnViewToggle = document.getElementById("btnViewToggle");
 const stageMainEl = document.getElementById("stageMain");
 const btnRound = document.getElementById("btnRound");
 const btnRematch = document.getElementById("btnRematch");
@@ -317,12 +333,10 @@ const btnSpectate = document.getElementById("btnSpectate");
 const specState = document.getElementById("specState");
 const specLogBody = document.getElementById("specLogBody");
 
-// canvases need a size before any video metadata exists — matters especially for spectator
-// mode, which never runs getUserMedia at all, so canvas.width/height would otherwise stay 0.
+// the small camera overlay canvas needs a size before video metadata exists
 canvas.width = 640; canvas.height = 480;
-oppOverlay.width = 640; oppOverlay.height = 480;
 
-// ---------- fullscreen / avatar view toggles ----------
+// ---------- fullscreen / layout toggle ----------
 btnFullscreen.addEventListener("click", () => {
   if (!document.fullscreenElement) stageMainEl.requestFullscreen().catch(() => {});
   else document.exitFullscreen().catch(() => {});
@@ -331,80 +345,18 @@ document.addEventListener("fullscreenchange", () => {
   btnFullscreen.textContent = document.fullscreenElement ? "전체화면 종료" : "전체화면으로 보기";
 });
 
-let avatarMode = false;
-const MINE_COLOR = { light: "#9fc4ff", mid: "#3f6fd6", dark: "#1c3a80" };
-const OPP_COLOR = { light: "#ffb2a0", mid: "#d6543f", dark: "#7a2418" };
-
-btnAvatarToggle.addEventListener("click", () => {
-  avatarMode = !avatarMode;
-  document.body.classList.toggle("avatar-mode", avatarMode);
-  btnAvatarToggle.textContent = avatarMode ? "실제 영상으로 보기" : "아바타로 보기";
-  if (!avatarMode) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    oppCtx.clearRect(0, 0, oppOverlay.width, oppOverlay.height);
-  } else {
-    drawAvatar(oppCtx, oppOverlay, idx => (remotePose ? remotePose[idx] : (poseB ? poseB[idx] : null)), OPP_COLOR);
-    drawAvatarFromPoseA();
-  }
+btnViewToggle.addEventListener("click", () => {
+  const camsLarge = document.body.classList.toggle("cams-large");
+  btnViewToggle.textContent = camsLarge ? "링 크게 보기" : "카메라 크게 보기";
 });
 
-// draws fighter A's avatar into the "mine" slot from whichever data source applies to the
-// current role: a fighter uses its own live landmarks (handled in the render loop instead),
-// a spectator uses the relayed poseA snapshot.
-function drawAvatarFromPoseA(){
-  if (document.body.classList.contains("spectator-mode")) {
-    drawAvatar(ctx, canvas, idx => (poseA ? poseA[idx] : null), MINE_COLOR);
-  }
-}
-
-// pseudo-3D stylized puppet — NOT a trained/realistic face reconstruction, just the same
-// tracked joints (shoulders/elbows/wrists/hips/nose) drawn with perspective-ish shading so a
-// fighter or spectator can watch the actual motion instead of (or alongside) raw video.
-function drawAvatar(targetCtx, targetCanvas, getPoint, color){
-  const W = targetCanvas.width, H = targetCanvas.height;
-  targetCtx.clearRect(0, 0, W, H);
-  const P = idx => { const p = getPoint(idx); return p ? { x: p.x * W, y: p.y * H } : null; };
-  const nose = P(0), ls = P(11), rs = P(12), le = P(13), re = P(14), lw = P(15), rw = P(16), lh = P(23), rh = P(24);
-  if (!ls || !rs) return;
-
-  const shoulderW = Math.max(1, Math.hypot(rs.x - ls.x, rs.y - ls.y));
-  const midShoulder = { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2 };
-  const midHip = (lh && rh) ? { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2 } : { x: midShoulder.x, y: midShoulder.y + shoulderW * 1.6 };
-
-  targetCtx.lineCap = "round";
-  targetCtx.lineJoin = "round";
-
-  // torso
-  const torsoGrad = targetCtx.createLinearGradient(midShoulder.x - shoulderW / 2, 0, midShoulder.x + shoulderW / 2, 0);
-  torsoGrad.addColorStop(0, color.dark); torsoGrad.addColorStop(0.5, color.mid); torsoGrad.addColorStop(1, color.dark);
-  targetCtx.strokeStyle = torsoGrad;
-  targetCtx.lineWidth = shoulderW * 0.62;
-  targetCtx.beginPath(); targetCtx.moveTo(midShoulder.x, midShoulder.y); targetCtx.lineTo(midHip.x, midHip.y); targetCtx.stroke();
-
-  // arms
-  targetCtx.strokeStyle = color.mid;
-  targetCtx.lineWidth = Math.max(6, shoulderW * 0.22);
-  for (const [a, b, c] of [[ls, le, lw], [rs, re, rw]]) {
-    if (!a || !b || !c) continue;
-    targetCtx.beginPath(); targetCtx.moveTo(a.x, a.y); targetCtx.lineTo(b.x, b.y); targetCtx.lineTo(c.x, c.y); targetCtx.stroke();
-  }
-
-  // head — radial gradient fakes a lit 3D sphere
-  if (nose) {
-    const r = Math.max(10, shoulderW * 0.42);
-    const grad = targetCtx.createRadialGradient(nose.x - r * 0.3, nose.y - r * 0.35, r * 0.15, nose.x, nose.y, r);
-    grad.addColorStop(0, color.light); grad.addColorStop(1, color.dark);
-    targetCtx.fillStyle = grad;
-    targetCtx.beginPath(); targetCtx.arc(nose.x, nose.y, r, 0, Math.PI * 2); targetCtx.fill();
-  }
-}
-
-// ---------- pose streaming (drives the opponent's avatar) ----------
+// ---------- pose streaming (feeds the shared ring view) ----------
 const POSE_STREAM_KEYS = [0, 11, 12, 13, 14, 15, 16, 23, 24];
 const POSE_SEND_INTERVAL_MS = 120;
 let lastPoseSendAt = 0;
-let remotePose = null; // fighter mode: opponent's latest landmarks, keyed by index -> {x,y}
-let poseA = null, poseB = null; // spectator mode: relayed landmarks for each fighter
+let myPose = null;              // fighter: my own latest landmarks
+let remotePose = null;          // fighter: opponent's latest landmarks
+let poseA = null, poseB = null; // spectator: relayed landmarks for each fighter
 
 function packPose(landmarks){
   const o = {};
@@ -421,12 +373,163 @@ function unpackPose(lm){
 }
 
 // host-only no-op elsewhere: mirrors broadcastState's fan-out, but for continuous pose data
-// instead of discrete events, so spectators can render both avatars too.
+// instead of discrete events, so spectators can render both fighters in the ring too.
 function relayPoseToSpectators(who, lm){
   if (!spectatorConns.length) return;
   const payload = { type: "poseRelay", who, lm };
   for (const c of spectatorConns) { if (c.open) c.send(payload); }
 }
+
+// ---------- shared ring view ----------
+// One arena rendered identically for BOTH fighters and spectators: the two players are drawn
+// as stylized puppets facing each other inside a perspective ring, driven by the same tracked
+// joints the game already streams. Fighters get it in addition to (not instead of) the raw
+// camera thumbnails, so they can read the opponent's whole body while still seeing real video.
+const LEFT_COLOR = { light: "#9fc4ff", mid: "#3f6fd6", dark: "#1c3a80" };
+const RIGHT_COLOR = { light: "#ffb2a0", mid: "#d6543f", dark: "#7a2418" };
+const SRC_ASPECT = 4 / 3; // camera frames are 4:3; normalized x/y use different pixel scales
+const arenaFlash = { left: 0, right: 0 };
+
+function flashArena(side){ arenaFlash[side] = performance.now() + 260; }
+
+// which pose feeds each side depends on the role: a fighter always sees themselves on the
+// left, a spectator sees the host (A) on the left.
+function leftPose(){ return document.body.classList.contains("spectator-mode") ? poseA : myPose; }
+function rightPose(){ return document.body.classList.contains("spectator-mode") ? poseB : remotePose; }
+
+function drawRing(c, W, H){
+  const sky = c.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, "#141922"); sky.addColorStop(1, "#0a0c10");
+  c.fillStyle = sky; c.fillRect(0, 0, W, H);
+
+  // canvas floor drawn as a trapezoid so the ring reads as receding away from the viewer
+  const farY = H * 0.42, nearY = H * 0.95;
+  const farInset = W * 0.26, nearInset = W * 0.04;
+  const floor = c.createLinearGradient(0, farY, 0, nearY);
+  floor.addColorStop(0, "#2a3550"); floor.addColorStop(1, "#161d2c");
+  c.fillStyle = floor;
+  c.beginPath();
+  c.moveTo(farInset, farY); c.lineTo(W - farInset, farY);
+  c.lineTo(W - nearInset, nearY); c.lineTo(nearInset, nearY);
+  c.closePath(); c.fill();
+
+  c.strokeStyle = "rgba(255,255,255,0.14)";
+  c.lineWidth = 2;
+  c.stroke();
+
+  // ropes across the back of the ring
+  for (let i = 0; i < 3; i++) {
+    const t = 0.30 + i * 0.045;
+    c.strokeStyle = i === 1 ? "rgba(226,90,90,0.55)" : "rgba(255,255,255,0.22)";
+    c.lineWidth = 3;
+    c.beginPath();
+    c.moveTo(farInset * 0.72, H * t); c.lineTo(W - farInset * 0.72, H * t);
+    c.stroke();
+  }
+  // corner posts
+  c.fillStyle = "rgba(255,255,255,0.18)";
+  c.fillRect(farInset * 0.72 - 5, H * 0.27, 10, H * 0.17);
+  c.fillRect(W - farInset * 0.72 - 5, H * 0.27, 10, H * 0.17);
+}
+
+// Maps one fighter's normalized landmarks into a fixed slot in the ring, anchored at the hips
+// so the puppet stays put in its corner while its limbs move — otherwise a player stepping
+// sideways in front of their webcam would slide across the whole arena.
+function drawFighterInRing(c, pose, slot, color, mirror, label, flashUntil){
+  if (!pose) {
+    c.fillStyle = "rgba(255,255,255,0.28)";
+    c.font = "600 15px sans-serif"; c.textAlign = "center";
+    c.fillText(label + " 대기 중", slot.cx, slot.baseY - slot.h * 0.45);
+    return;
+  }
+  const g = i => pose[i] || null;
+  const ls = g(11), rs = g(12);
+  if (!ls || !rs) return;
+  const lh = g(23), rh = g(24);
+  const midShoulder = { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2 };
+  const midHip = (lh && rh) ? { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2 }
+                            : { x: midShoulder.x, y: midShoulder.y + 0.25 };
+  const torsoLen = Math.max(0.06, Math.abs(midHip.y - midShoulder.y));
+  const k = (slot.h * 0.42) / torsoLen;   // scale so the torso is ~42% of the figure's height
+  const dir = mirror ? -1 : 1;
+  const anchorY = slot.baseY - slot.h * 0.30;
+  const T = p => p ? {
+    x: slot.cx + (p.x - midHip.x) * k * SRC_ASPECT * dir,
+    y: anchorY + (p.y - midHip.y) * k,
+  } : null;
+
+  const nose = T(g(0)), Ls = T(ls), Rs = T(rs), Le = T(g(13)), Re = T(g(14)),
+        Lw = T(g(15)), Rw = T(g(16)), Hip = T(midHip), Sh = T(midShoulder);
+  const shoulderW = Math.max(8, Math.hypot(Rs.x - Ls.x, Rs.y - Ls.y));
+
+  // ground shadow grounds the figure in the ring instead of floating
+  c.fillStyle = "rgba(0,0,0,0.4)";
+  c.beginPath();
+  c.ellipse(slot.cx, slot.baseY, shoulderW * 0.85, shoulderW * 0.22, 0, 0, Math.PI * 2);
+  c.fill();
+
+  const hit = performance.now() < flashUntil;
+  c.save();
+  if (hit) { c.shadowColor = "#ff5a4a"; c.shadowBlur = 26; }
+  c.lineCap = "round"; c.lineJoin = "round";
+
+  // legs — not tracked below the hips, so they're implied as a stable stance
+  c.strokeStyle = color.dark;
+  c.lineWidth = Math.max(6, shoulderW * 0.26);
+  c.beginPath();
+  c.moveTo(Hip.x, Hip.y); c.lineTo(slot.cx - shoulderW * 0.34, slot.baseY);
+  c.moveTo(Hip.x, Hip.y); c.lineTo(slot.cx + shoulderW * 0.34, slot.baseY);
+  c.stroke();
+
+  // torso
+  const torso = c.createLinearGradient(Sh.x - shoulderW / 2, 0, Sh.x + shoulderW / 2, 0);
+  torso.addColorStop(0, color.dark); torso.addColorStop(0.5, hit ? "#ff8a72" : color.mid); torso.addColorStop(1, color.dark);
+  c.strokeStyle = torso;
+  c.lineWidth = shoulderW * 0.66;
+  c.beginPath(); c.moveTo(Sh.x, Sh.y); c.lineTo(Hip.x, Hip.y); c.stroke();
+
+  // arms + gloves
+  c.strokeStyle = hit ? "#ff8a72" : color.mid;
+  c.lineWidth = Math.max(5, shoulderW * 0.24);
+  for (const [a, b, w] of [[Ls, Le, Lw], [Rs, Re, Rw]]) {
+    if (!a || !b || !w) continue;
+    c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.lineTo(w.x, w.y); c.stroke();
+    c.fillStyle = "#c8352b";
+    c.beginPath(); c.arc(w.x, w.y, shoulderW * 0.19, 0, Math.PI * 2); c.fill();
+  }
+
+  // head — radial gradient fakes a lit sphere
+  if (nose) {
+    const r = Math.max(9, shoulderW * 0.44);
+    const grad = c.createRadialGradient(nose.x - r * 0.3, nose.y - r * 0.35, r * 0.15, nose.x, nose.y, r);
+    grad.addColorStop(0, color.light); grad.addColorStop(1, color.dark);
+    c.fillStyle = grad;
+    c.beginPath(); c.arc(nose.x, nose.y, r, 0, Math.PI * 2); c.fill();
+  }
+  c.restore();
+
+  c.fillStyle = "rgba(255,255,255,0.75)";
+  c.font = "700 13px sans-serif"; c.textAlign = "center";
+  c.fillText(label, slot.cx, slot.baseY + 22);
+}
+
+function drawArena(){
+  const W = arena.width, H = arena.height;
+  drawRing(arenaCtx, W, H);
+  const slotL = { cx: W * 0.30, baseY: H * 0.86, h: H * 0.60 };
+  const slotR = { cx: W * 0.70, baseY: H * 0.86, h: H * 0.60 };
+  const spectating = document.body.classList.contains("spectator-mode");
+  drawFighterInRing(arenaCtx, leftPose(), slotL, LEFT_COLOR, false,
+    spectating ? "선수 A" : "나", arenaFlash.left);
+  drawFighterInRing(arenaCtx, rightPose(), slotR, RIGHT_COLOR, true,
+    spectating ? "선수 B" : "상대", arenaFlash.right);
+}
+
+function arenaLoop(){
+  requestAnimationFrame(arenaLoop);
+  drawArena();
+}
+arenaLoop();
 
 // ---------- audio (synthesized) ----------
 let actx = null;
@@ -621,6 +724,7 @@ function handleNetMessage(msg){
       stats.landed++;
       who = "나";
       text = `${KO_LABEL[msg.punchType]} 적중 (상대 HP -${DAMAGE[msg.punchType]})`;
+      flashArena("right");
     }
     log(who, text);
     broadcastState({ who, text });
@@ -630,7 +734,6 @@ function handleNetMessage(msg){
   } else if (msg.type === "pose") {
     remotePose = unpackPose(msg.lm);
     relayPoseToSpectators("b", msg.lm);
-    if (avatarMode) drawAvatar(oppCtx, oppOverlay, idx => remotePose[idx], OPP_COLOR);
   }
 }
 
@@ -665,6 +768,9 @@ function startSpectating(){
 
 function applySpectatorState(msg){
   if (msg.type !== "state") return;
+  // a spectator never runs the damage code paths, so derive the ring hit-flash from HP drops
+  if (msg.hp.a < Number(playerHpText.textContent)) flashArena("left");
+  if (msg.hp.b < Number(oppHpText.textContent)) flashArena("right");
   playerHpText.textContent = msg.hp.a;
   playerHpFill.style.width = msg.hp.a + "%";
   playerHpFill.style.background = msg.hp.a > 30 ? "var(--ok)" : "var(--bad)";
@@ -693,9 +799,7 @@ function applySpectatorState(msg){
 function applySpectatorPose(msg){
   const unpacked = unpackPose(msg.lm);
   if (msg.who === "a") poseA = unpacked; else poseB = unpacked;
-  if (!avatarMode) return;
-  if (msg.who === "a") drawAvatar(ctx, canvas, idx => poseA[idx], MINE_COLOR);
-  else drawAvatar(oppCtx, oppOverlay, idx => poseB[idx], OPP_COLOR);
+  // the arena render loop picks these up on its next frame
 }
 
 // ---------- state ----------
@@ -811,6 +915,7 @@ function resolveIncomingAttack(punchType, damage){
     setHp("player", state.hp.player - damage);
     playThud(90);
     flashTech("맞았다!");
+    flashArena("left");
     text = `${KO_LABEL[punchType]} 적중 (-${damage} 내 HP)`;
     log("상대", text);
     broadcastState({ who: "상대", text });
@@ -971,12 +1076,8 @@ function loop(){
   lastVideoTime = video.currentTime;
   const result = poseLandmarker.detectForVideo(video, performance.now());
   const landmarks = result.landmarks && result.landmarks[0] ? result.landmarks[0] : null;
-  if (avatarMode) {
-    if (landmarks) drawAvatar(ctx, canvas, idx => landmarks[idx], MINE_COLOR);
-    else ctx.clearRect(0, 0, canvas.width, canvas.height);
-  } else {
-    render(landmarks);
-  }
+  render(landmarks);
+  myPose = landmarks;
   if (landmarks) processPose(landmarks);
 }
 
