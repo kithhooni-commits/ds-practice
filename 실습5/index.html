@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>비전 드럼 연습기 — 실습5</title>
+<style>
+:root{
+  --bg:#F4F5F7; --panel:#FFFFFF; --panel2:#ECEEF2; --ink:#14171C; --ink2:#4B515C; --muted:#7A8190;
+  --line:#DADEE5; --ok:#1B8A63; --ok-soft:#E3F5EC; --bad:#C43A3A; --bad-soft:#FBE7E7;
+  --accent:#B8752E; --accent-soft:#F5E9DA; --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Segoe UI","Malgun Gothic",sans-serif;
+}
+@media (prefers-color-scheme:dark){ :root{
+  --bg:#0E1013; --panel:#181B20; --panel2:#1F2329; --ink:#EDEFF3; --ink2:#B7BEC9; --muted:#7C8492;
+  --line:#2A2F37; --ok:#3FCB92; --ok-soft:#12291F; --bad:#F1685F; --bad-soft:#301717;
+  --accent:#E0A24E; --accent-soft:#2C2013;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6}
+header{padding:28px 24px 18px;border-bottom:1px solid var(--line)}
+header .wrap,footer .wrap,main{max-width:1220px;margin:0 auto}
+.kicker{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+h1{font-size:clamp(22px,3vw,30px);margin:8px 0 6px;letter-spacing:-.01em}
+.lede{color:var(--ink2);font-size:14.5px;margin:0;max-width:74ch}
+.io{font-family:var(--mono);font-size:12.5px;color:var(--accent);background:var(--accent-soft);
+  display:inline-flex;gap:6px;padding:6px 10px;border-radius:4px;margin-top:12px}
+main{display:grid;grid-template-columns:1.35fr 1fr;gap:20px;padding:22px 24px 60px}
+@media (max-width:920px){ main{grid-template-columns:1fr} }
+.stage{display:flex;flex-direction:column;gap:14px}
+.camwrap{position:relative;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.camwrap video, .camwrap canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+.camwrap video{filter:brightness(.95)}
+.camstate{position:absolute;top:10px;left:10px;font-family:var(--mono);font-size:11.5px;color:#fff;
+  background:rgba(0,0,0,.55);padding:5px 9px;border-radius:4px;z-index:2}
+.beatdot{position:absolute;top:10px;right:10px;width:14px;height:14px;border-radius:50%;
+  background:rgba(255,255,255,.25);z-index:2;transition:background .05s, transform .05s}
+.beatdot.on{background:var(--accent);transform:scale(1.3)}
+.legend{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;list-style:none;margin:0;padding:0}
+.legend li{display:flex;align-items:center;gap:8px;font-size:12.5px;background:var(--panel2);
+  border-radius:6px;padding:8px 9px;color:var(--ink2)}
+.legend li i{width:11px;height:11px;border-radius:3px;flex:none}
+.panel{display:flex;flex-direction:column;gap:14px}
+.block{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 17px}
+.block h2{font-size:13px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;
+  color:var(--muted);margin:0 0 11px;font-weight:700}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button{font:inherit;font-weight:600;font-size:13.5px;padding:9px 14px;border-radius:6px;
+  border:1px solid var(--line);background:var(--panel2);color:var(--ink);cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button:disabled{opacity:.45;cursor:not-allowed}
+input[type=range]{flex:1;min-width:110px}
+input[type=number]{width:64px;font:inherit;padding:6px 8px;border-radius:6px;border:1px solid var(--line);
+  background:var(--panel2);color:var(--ink)}
+.hint{font-size:12px;color:var(--muted);margin:8px 0 0}
+label.small{font-size:12.5px;color:var(--ink2);display:flex;align-items:center;gap:8px;flex:1;min-width:170px}
+.val{font-family:var(--mono);font-size:12px;color:var(--muted);min-width:38px;text-align:right}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat{background:var(--panel2);border-radius:6px;padding:8px 10px}
+.stat .v{font-family:var(--mono);font-size:17px;font-weight:700}
+.stat .k{font-size:11px;color:var(--muted)}
+.padcounts{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+.padcount{background:var(--panel2);border-radius:6px;padding:7px 8px;font-size:11.5px}
+.padcount .n{font-family:var(--mono);font-weight:700;font-size:14px}
+.logwrap{max-height:190px;overflow-y:auto;border:1px solid var(--line);border-radius:6px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+th{position:sticky;top:0;background:var(--panel2);font-family:var(--mono);font-size:10px;
+  text-transform:uppercase;color:var(--muted)}
+.resetbtn{align-self:flex-start;background:transparent;color:var(--bad);border-color:var(--bad-soft)}
+footer{border-top:1px solid var(--line);padding:20px 24px;color:var(--muted);font-size:12px}
+footer a{color:inherit}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="kicker">실습5 · Samsung DS Computer Vision Practicum</div>
+  <h1>비전 드럼 연습기</h1>
+  <p class="lede">집에 드럼 세트를 두면 시끄럽고, 비싸고, 자리도 많이 차지한다. 그래서 실제 드럼 대신
+  웹캠으로 양손 움직임만 추적해 가상 패드를 때리는 무음(스피커 볼륨만 줄이면) · 무료 · 무공간 연습기를
+  만들었다. 소리는 샘플 파일 없이 Web Audio API로 그 자리에서 합성한다.</p>
+  <div class="io">IN 웹캠 양손 위치·속도 시퀀스 → OUT 패드 히트(합성 드럼음) + 메트로놈 대비 박자 오차(ms)</div>
+</div></header>
+
+<main>
+  <section class="stage">
+    <div class="camwrap">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="overlay"></canvas>
+      <div class="camstate" id="camState">카메라 꺼짐</div>
+      <div class="beatdot" id="beatDot"></div>
+    </div>
+    <div class="block">
+      <h2>패드 배치</h2>
+      <ul class="legend">
+        <li><i style="background:#3FA796"></i> 하이햇 (좌상)</li>
+        <li><i style="background:#4C6EF5"></i> 톰1 (중상)</li>
+        <li><i style="background:#D6488B"></i> 크래시 (우상)</li>
+        <li><i style="background:#D64545"></i> 킥 (좌하)</li>
+        <li><i style="background:#E0A72E"></i> 스네어 (중하)</li>
+        <li><i style="background:#8452D5"></i> 톰2 (우하)</li>
+      </ul>
+      <p class="hint">💡 손을 빠르게 아래로 내리치듯 패드 영역에 넣어야 히트로 인식됩니다. 화면 중앙
+      가로띠(패드 사이 빈 공간)는 스틱을 되돌리는 중립 구간이라 여기선 히트가 안 납니다.</p>
+    </div>
+  </section>
+
+  <aside class="panel">
+    <div class="block">
+      <h2>1 · 카메라 · 모델 시작</h2>
+      <div class="row">
+        <button class="primary" id="btnStart">카메라 + 모델 시작 (양손)</button>
+      </div>
+      <p class="hint" id="loadState">대기 중 — 시작을 누르면 카메라 권한을 요청합니다.</p>
+    </div>
+
+    <div class="block">
+      <h2>2 · 메트로놈</h2>
+      <div class="row">
+        <label class="small">BPM <input type="number" id="bpmInput" min="40" max="220" value="90"></label>
+        <button id="btnMetronome">시작</button>
+      </div>
+      <p class="hint">박자를 켜면 히트마다 가장 가까운 박과의 오차(ms)를 로그에 기록합니다.</p>
+    </div>
+
+    <div class="block">
+      <h2>3 · 감도 · 볼륨</h2>
+      <label class="small">타격 감도 <input type="range" id="sensSlider" min="0.5" max="4" step="0.1" value="1.8">
+        <span class="val" id="sensVal">1.8</span></label>
+      <p class="hint" style="margin:6px 0 10px">값이 낮을수록 살짝만 움직여도 히트로 인식됩니다(오탐 위험↑).
+      값이 높을수록 세게 내리쳐야 인식됩니다(누락 위험↑). 실제 웹캠 앞에서 조정하세요.</p>
+      <label class="small">마스터 볼륨 <input type="range" id="volSlider" min="0" max="100" step="1" value="70">
+        <span class="val" id="volVal">70</span></label>
+    </div>
+
+    <div class="block">
+      <h2>통계 / 로그</h2>
+      <div class="stats">
+        <div class="stat"><div class="v" id="statTotal">0</div><div class="k">총 히트</div></div>
+        <div class="stat"><div class="v" id="statOnbeat">—</div><div class="k">온비트율 (±100ms)</div></div>
+      </div>
+      <div class="padcounts" id="padCounts"></div>
+      <div class="logwrap">
+        <table>
+          <thead><tr><th>시간</th><th>손</th><th>패드</th><th>오차</th></tr></thead>
+          <tbody id="logBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <button class="resetbtn" id="btnReset">통계 · 로그 초기화</button>
+  </aside>
+</main>
+
+<footer><div class="wrap">
+  <a href="../">← ds-practice</a> · 실습5 · 검증 로그는 README.md 참고 · 카메라 영상은 기기 밖으로 전송되지 않습니다(전부 브라우저 내 처리)
+</div></footer>
+
+<script type="module">
+import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+const MODEL_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+const WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
+const HIT_COOLDOWN_MS = 150;
+const GONE_RESET_MS = 200;
+const LOOKAHEAD = 0.1;
+
+const PADS = [
+  { id: "hihat", label: "하이햇", color: "#3FA796", rect: { x0: 0.03, x1: 0.32, y0: 0.05, y1: 0.42 } },
+  { id: "tom1",  label: "톰1",   color: "#4C6EF5", rect: { x0: 0.36, x1: 0.64, y0: 0.05, y1: 0.42 } },
+  { id: "crash", label: "크래시", color: "#D6488B", rect: { x0: 0.68, x1: 0.97, y0: 0.05, y1: 0.42 } },
+  { id: "kick",  label: "킥",    color: "#D64545", rect: { x0: 0.03, x1: 0.32, y0: 0.58, y1: 0.95 } },
+  { id: "snare", label: "스네어", color: "#E0A72E", rect: { x0: 0.36, x1: 0.64, y0: 0.58, y1: 0.95 } },
+  { id: "tom2",  label: "톰2",   color: "#8452D5", rect: { x0: 0.68, x1: 0.97, y0: 0.58, y1: 0.95 } },
+];
+
+const HAND_CONNECTIONS = [
+  [0,1],[1,2],[2,3],[3,4],
+  [0,5],[5,6],[6,7],[7,8],
+  [5,9],[9,10],[10,11],[11,12],
+  [9,13],[13,14],[14,15],[15,16],
+  [13,17],[17,18],[18,19],[19,20],
+  [0,17]
+];
+
+// ---------- DOM ----------
+const video = document.getElementById("video");
+const canvas = document.getElementById("overlay");
+const ctx = canvas.getContext("2d");
+const camState = document.getElementById("camState");
+const beatDot = document.getElementById("beatDot");
+const loadState = document.getElementById("loadState");
+const btnStart = document.getElementById("btnStart");
+const btnMetronome = document.getElementById("btnMetronome");
+const bpmInput = document.getElementById("bpmInput");
+const sensSlider = document.getElementById("sensSlider");
+const sensVal = document.getElementById("sensVal");
+const volSlider = document.getElementById("volSlider");
+const volVal = document.getElementById("volVal");
+const statTotal = document.getElementById("statTotal");
+const statOnbeat = document.getElementById("statOnbeat");
+const padCountsEl = document.getElementById("padCounts");
+const logBody = document.getElementById("logBody");
+const btnReset = document.getElementById("btnReset");
+
+padCountsEl.innerHTML = PADS.map(p =>
+  `<div class="padcount" style="border-left:3px solid ${p.color}"><div class="n" id="cnt-${p.id}">0</div>${p.label}</div>`
+).join("");
+
+// ---------- audio (synthesized, no sample files) ----------
+let actx = null, masterGain = null;
+function ensureAudio(){
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === "suspended") actx.resume();
+  if (!masterGain) {
+    masterGain = actx.createGain();
+    masterGain.gain.value = Number(volSlider.value) / 100;
+    masterGain.connect(actx.destination);
+  }
+  return actx;
+}
+function noiseBuffer(c, duration){
+  const sr = c.sampleRate, buf = c.createBuffer(1, Math.max(1, sr * duration), sr);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  return buf;
+}
+function playKick(){
+  const c = ensureAudio(), t = c.currentTime;
+  const osc = c.createOscillator(), gain = c.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(150, t);
+  osc.frequency.exponentialRampToValueAtTime(40, t + 0.15);
+  gain.gain.setValueAtTime(1, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+  osc.connect(gain).connect(masterGain);
+  osc.start(t); osc.stop(t + 0.3);
+}
+function playSnare(){
+  const c = ensureAudio(), t = c.currentTime;
+  const noise = c.createBufferSource();
+  noise.buffer = noiseBuffer(c, 0.2);
+  const hp = c.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 1000;
+  const ng = c.createGain();
+  ng.gain.setValueAtTime(1, t);
+  ng.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+  noise.connect(hp).connect(ng).connect(masterGain);
+  noise.start(t); noise.stop(t + 0.2);
+  const osc = c.createOscillator(), og = c.createGain();
+  osc.type = "triangle"; osc.frequency.setValueAtTime(180, t);
+  og.gain.setValueAtTime(0.6, t);
+  og.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+  osc.connect(og).connect(masterGain);
+  osc.start(t); osc.stop(t + 0.12);
+}
+function playHiHat(){
+  const c = ensureAudio(), t = c.currentTime;
+  const noise = c.createBufferSource();
+  noise.buffer = noiseBuffer(c, 0.08);
+  const hp = c.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 7000;
+  const gain = c.createGain();
+  gain.gain.setValueAtTime(0.5, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+  noise.connect(hp).connect(gain).connect(masterGain);
+  noise.start(t); noise.stop(t + 0.08);
+}
+function playCrash(){
+  const c = ensureAudio(), t = c.currentTime;
+  const noise = c.createBufferSource();
+  noise.buffer = noiseBuffer(c, 1.1);
+  const hp = c.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 4000;
+  const gain = c.createGain();
+  gain.gain.setValueAtTime(0.6, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 1.1);
+  noise.connect(hp).connect(gain).connect(masterGain);
+  noise.start(t); noise.stop(t + 1.1);
+}
+function playTom(freq){
+  const c = ensureAudio(), t = c.currentTime;
+  const osc = c.createOscillator(), gain = c.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(freq, t);
+  osc.frequency.exponentialRampToValueAtTime(freq * 0.6, t + 0.2);
+  gain.gain.setValueAtTime(0.8, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+  osc.connect(gain).connect(masterGain);
+  osc.start(t); osc.stop(t + 0.3);
+}
+function playClick(accent){
+  const c = ensureAudio(), t = c.currentTime;
+  const osc = c.createOscillator(), gain = c.createGain();
+  osc.type = "square";
+  osc.frequency.setValueAtTime(accent ? 1400 : 1000, t);
+  gain.gain.setValueAtTime(0.22, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+  osc.connect(gain).connect(masterGain);
+  osc.start(t); osc.stop(t + 0.05);
+}
+function triggerSound(id){
+  switch (id) {
+    case "hihat": playHiHat(); break;
+    case "crash": playCrash(); break;
+    case "snare": playSnare(); break;
+    case "kick":  playKick();  break;
+    case "tom1":  playTom(180); break;
+    case "tom2":  playTom(120); break;
+  }
+}
+
+// ---------- metronome ----------
+let metronomeOn = false;
+let bpm = 90;
+let nextBeatTime = 0;
+let beatCount = 0;
+let schedulerTimer = null;
+
+function startMetronome(){
+  ensureAudio();
+  metronomeOn = true;
+  beatCount = 0;
+  nextBeatTime = actx.currentTime + 0.1;
+  btnMetronome.textContent = "정지";
+  scheduleLoop();
+}
+function stopMetronome(){
+  metronomeOn = false;
+  btnMetronome.textContent = "시작";
+  if (schedulerTimer) clearTimeout(schedulerTimer);
+}
+function scheduleLoop(){
+  if (!metronomeOn) return;
+  while (nextBeatTime < actx.currentTime + LOOKAHEAD) {
+    const isAccent = beatCount % 4 === 0;
+    playClick(isAccent);
+    const delayMs = Math.max(0, (nextBeatTime - actx.currentTime) * 1000);
+    setTimeout(() => flashBeatDot(isAccent), delayMs);
+    nextBeatTime += 60 / bpm;
+    beatCount++;
+  }
+  schedulerTimer = setTimeout(scheduleLoop, 25);
+}
+function flashBeatDot(accent){
+  beatDot.classList.add("on");
+  beatDot.style.transform = accent ? "scale(1.6)" : "scale(1.3)";
+  setTimeout(() => { beatDot.classList.remove("on"); beatDot.style.transform = ""; }, 90);
+}
+function nearestBeatOffsetMs(hitTime){
+  if (!metronomeOn) return null;
+  const interval = 60 / bpm;
+  const k = Math.round((nextBeatTime - hitTime) / interval);
+  const nearestBeat = nextBeatTime - k * interval;
+  return (hitTime - nearestBeat) * 1000;
+}
+
+// ---------- hit detection ----------
+let velocityThreshold = Number(sensSlider.value);
+const handState = [{}, {}];
+const stats = { total: 0, onbeat: 0, withOffset: 0, perPad: {} };
+for (const p of PADS) stats.perPad[p.id] = 0;
+
+function findPad(x, y){
+  for (const p of PADS) {
+    const r = p.rect;
+    if (x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1) return p;
+  }
+  return null;
+}
+
+const padFlashUntil = {};
+
+function triggerHit(pad, handLabel){
+  triggerSound(pad.id);
+  padFlashUntil[pad.id] = performance.now() + 150;
+  stats.total++;
+  stats.perPad[pad.id]++;
+  const offset = metronomeOn ? nearestBeatOffsetMs(actx.currentTime) : null;
+  if (offset !== null) {
+    stats.withOffset++;
+    if (Math.abs(offset) <= 100) stats.onbeat++;
+  }
+  logHit(handLabel, pad.label, offset);
+  updateStatsUI();
+}
+
+function logHit(handLabel, padLabel, offset){
+  const tr = document.createElement("tr");
+  const time = new Date().toLocaleTimeString("ko-KR", { hour12: false });
+  const offsetText = offset === null ? "-" : `${offset >= 0 ? "+" : ""}${offset.toFixed(0)}ms`;
+  tr.innerHTML = `<td>${time}</td><td>${handLabel}</td><td>${padLabel}</td><td>${offsetText}</td>`;
+  logBody.prepend(tr);
+  while (logBody.children.length > 50) logBody.removeChild(logBody.lastChild);
+}
+
+function updateStatsUI(){
+  statTotal.textContent = stats.total;
+  statOnbeat.textContent = stats.withOffset ? Math.round(100 * stats.onbeat / stats.withOffset) + "%" : "—";
+  for (const p of PADS) {
+    const el = document.getElementById("cnt-" + p.id);
+    if (el) el.textContent = stats.perPad[p.id];
+  }
+}
+
+let lastFrameTime = null;
+
+function processHands(result){
+  const now = performance.now();
+  const dt = lastFrameTime === null ? 0 : (now - lastFrameTime) / 1000;
+  lastFrameTime = now;
+
+  const seen = [false, false];
+  const n = Math.min(2, result.landmarks ? result.landmarks.length : 0);
+
+  for (let i = 0; i < n; i++) {
+    seen[i] = true;
+    const lm = result.landmarks[i];
+    const pt = lm[8]; // index fingertip
+    const handedness = result.handednesses?.[i]?.[0]?.categoryName;
+    const handLabel = handedness === "Left" ? "왼손" : handedness === "Right" ? "오른손" : `손${i + 1}`;
+    const s = handState[i];
+
+    if (s.lastSeenAt === undefined || now - s.lastSeenAt > GONE_RESET_MS) {
+      handState[i] = { prevX: pt.x, prevY: pt.y, prevVy: 0, lastHitAt: 0, lastSeenAt: now };
+      continue;
+    }
+
+    const vy = dt > 0 ? (pt.y - s.prevY) / dt : 0;
+    if (vy > velocityThreshold && s.prevVy <= velocityThreshold && now - s.lastHitAt > HIT_COOLDOWN_MS) {
+      const pad = findPad(pt.x, pt.y);
+      if (pad) { triggerHit(pad, handLabel); s.lastHitAt = now; }
+    }
+    handState[i] = { prevX: pt.x, prevY: pt.y, prevVy: vy, lastHitAt: s.lastHitAt, lastSeenAt: now };
+  }
+}
+
+// ---------- render ----------
+function render(result){
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const now = performance.now();
+
+  for (const p of PADS) {
+    const r = p.rect;
+    const x = r.x0 * canvas.width, y = r.y0 * canvas.height;
+    const w = (r.x1 - r.x0) * canvas.width, h = (r.y1 - r.y0) * canvas.height;
+    const flashing = (padFlashUntil[p.id] || 0) > now;
+    ctx.fillStyle = p.color + (flashing ? "55" : "1a");
+    ctx.strokeStyle = p.color;
+    ctx.lineWidth = flashing ? 4 : 2;
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(x, y, w, h, 10) : ctx.rect(x, y, w, h);
+    ctx.fill(); ctx.stroke();
+    ctx.save();
+    ctx.translate(x + w / 2, y + h / 2);
+    ctx.scale(-1, 1); // un-mirror the label text
+    ctx.fillStyle = p.color;
+    ctx.font = "bold 15px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(p.label, 0, 0);
+    ctx.restore();
+  }
+
+  if (!result.landmarks) return;
+  for (const lm of result.landmarks) {
+    ctx.strokeStyle = "rgba(255,255,255,0.85)";
+    ctx.lineWidth = Math.max(2, canvas.width / 260);
+    ctx.beginPath();
+    for (const [a, b] of HAND_CONNECTIONS) {
+      ctx.moveTo(lm[a].x * canvas.width, lm[a].y * canvas.height);
+      ctx.lineTo(lm[b].x * canvas.width, lm[b].y * canvas.height);
+    }
+    ctx.stroke();
+    const tip = lm[8];
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(tip.x * canvas.width, tip.y * canvas.height, Math.max(4, canvas.width / 140), 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// ---------- MediaPipe loop ----------
+let handLandmarker = null;
+let lastVideoTime = -1;
+
+function loop(){
+  requestAnimationFrame(loop);
+  if (!handLandmarker || video.readyState < 2) return;
+  if (video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  const result = handLandmarker.detectForVideo(video, performance.now());
+  render(result);
+  processHands(result);
+}
+
+async function startAll(){
+  btnStart.disabled = true;
+  try {
+    ensureAudio();
+    loadState.textContent = "카메라 권한 요청 중...";
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 960, height: 540 }, audio: false });
+    video.srcObject = stream;
+    await new Promise(res => { video.onloadedmetadata = res; });
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    camState.textContent = "카메라 켜짐";
+
+    loadState.textContent = "모델 다운로드 중 (최초 1회, 네트워크 필요)...";
+    const vision = await FilesetResolver.forVisionTasks(WASM_URL);
+    try {
+      handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: MODEL_URL, delegate: "GPU" },
+        runningMode: "VIDEO",
+        numHands: 2,
+      });
+    } catch (gpuErr) {
+      handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: MODEL_URL, delegate: "CPU" },
+        runningMode: "VIDEO",
+        numHands: 2,
+      });
+    }
+
+    loadState.textContent = "준비 완료 — 패드를 향해 손을 내리쳐 보세요.";
+    loop();
+  } catch (err) {
+    console.error(err);
+    loadState.textContent = "실패: " + (err && err.message ? err.message : String(err)) +
+      " — 카메라 권한과 네트워크 연결(모델·라이브러리 CDN)을 확인하세요.";
+    btnStart.disabled = false;
+  }
+}
+
+// ---------- UI wiring ----------
+btnStart.addEventListener("click", startAll);
+btnMetronome.addEventListener("click", () => {
+  ensureAudio();
+  if (metronomeOn) stopMetronome(); else startMetronome();
+});
+bpmInput.addEventListener("change", () => {
+  bpm = Math.min(220, Math.max(40, Number(bpmInput.value) || 90));
+  bpmInput.value = bpm;
+});
+sensSlider.addEventListener("input", () => {
+  velocityThreshold = Number(sensSlider.value);
+  sensVal.textContent = velocityThreshold.toFixed(1);
+});
+volSlider.addEventListener("input", () => {
+  volVal.textContent = volSlider.value;
+  if (masterGain) masterGain.gain.value = Number(volSlider.value) / 100;
+});
+btnReset.addEventListener("click", () => {
+  stats.total = 0; stats.onbeat = 0; stats.withOffset = 0;
+  for (const p of PADS) stats.perPad[p.id] = 0;
+  logBody.innerHTML = "";
+  updateStatsUI();
+});
+
+sensVal.textContent = velocityThreshold.toFixed(1);
+updateStatsUI();
+</script>
+</body>
+</html>
