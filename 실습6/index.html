@@ -30,13 +30,19 @@ h1{font-size:clamp(22px,3vw,30px);margin:8px 0 6px;letter-spacing:-.01em}
 main{display:grid;grid-template-columns:1.35fr 1fr;gap:20px;padding:22px 24px 60px}
 @media (max-width:920px){ main{grid-template-columns:1fr} }
 .stage{display:flex;flex-direction:column;gap:14px}
+#stageMain{display:flex;flex-direction:column;gap:14px}
+#stageMain:fullscreen{background:#000;justify-content:center;padding:24px}
 .duel{position:relative;display:flex;gap:12px}
 @media (max-width:640px){ .duel{flex-direction:column} }
 .camwrap{position:relative;flex:1;min-width:0;aspect-ratio:4/3;background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
 .camwrap video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .camwrap.mine video{transform:scaleX(-1);filter:brightness(.95)}
 body.spectator-mode .camwrap.mine video{transform:none;filter:none}
-.camwrap canvas{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1)}
+.camwrap canvas{position:absolute;inset:0;width:100%;height:100%}
+.camwrap.mine canvas{transform:scaleX(-1)}
+body.spectator-mode .camwrap.mine canvas{transform:none}
+body.avatar-mode .camwrap video{opacity:0}
+.toolbar-row{display:flex;gap:10px;flex-wrap:wrap}
 .camstate{position:absolute;top:10px;left:10px;max-width:calc(100% - 110px);overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono);font-size:10.5px;color:#fff;
   background:rgba(0,0,0,.55);padding:4px 8px;border-radius:4px;z-index:2}
@@ -103,6 +109,7 @@ footer a{color:inherit}
 
 <main>
   <section class="stage">
+    <div id="stageMain">
     <div class="duel">
       <div class="camwrap mine">
         <video id="video" autoplay playsinline muted></video>
@@ -115,6 +122,7 @@ footer a{color:inherit}
       </div>
       <div class="camwrap theirs">
         <video id="oppVideo" autoplay playsinline></video>
+        <canvas id="oppOverlay"></canvas>
         <div class="camstate" id="oppState">연결 안 됨</div>
         <div class="hpbar-wrap"><div class="hpbar"><span id="hpLabelTheirs">상대</span> HP <span id="oppHpText">100</span>
           <div class="bar"><div class="fill" id="oppHpFill" style="background:var(--bad)"></div></div></div></div>
@@ -125,6 +133,11 @@ footer a{color:inherit}
         <p id="resultSub" style="color:#ddd;font-size:13px"></p>
         <button class="primary" id="btnRematch">다시 시작</button>
       </div>
+    </div>
+    <div class="toolbar-row">
+      <button id="btnFullscreen">전체화면으로 보기</button>
+      <button id="btnAvatarToggle">아바타로 보기</button>
+    </div>
     </div>
     <div class="block" id="legendBlock">
       <h2>기술 · 방어</h2>
@@ -263,7 +276,12 @@ const roomCodeDisplay = document.getElementById("roomCodeDisplay");
 const connState = document.getElementById("connState");
 const specCountHint = document.getElementById("specCountHint");
 const oppVideo = document.getElementById("oppVideo");
+const oppOverlay = document.getElementById("oppOverlay");
+const oppCtx = oppOverlay.getContext("2d");
 const oppState = document.getElementById("oppState");
+const btnFullscreen = document.getElementById("btnFullscreen");
+const btnAvatarToggle = document.getElementById("btnAvatarToggle");
+const stageMainEl = document.getElementById("stageMain");
 const btnRound = document.getElementById("btnRound");
 const btnRematch = document.getElementById("btnRematch");
 const btnReset = document.getElementById("btnReset");
@@ -298,6 +316,117 @@ const specCodeInput = document.getElementById("specCodeInput");
 const btnSpectate = document.getElementById("btnSpectate");
 const specState = document.getElementById("specState");
 const specLogBody = document.getElementById("specLogBody");
+
+// canvases need a size before any video metadata exists — matters especially for spectator
+// mode, which never runs getUserMedia at all, so canvas.width/height would otherwise stay 0.
+canvas.width = 640; canvas.height = 480;
+oppOverlay.width = 640; oppOverlay.height = 480;
+
+// ---------- fullscreen / avatar view toggles ----------
+btnFullscreen.addEventListener("click", () => {
+  if (!document.fullscreenElement) stageMainEl.requestFullscreen().catch(() => {});
+  else document.exitFullscreen().catch(() => {});
+});
+document.addEventListener("fullscreenchange", () => {
+  btnFullscreen.textContent = document.fullscreenElement ? "전체화면 종료" : "전체화면으로 보기";
+});
+
+let avatarMode = false;
+const MINE_COLOR = { light: "#9fc4ff", mid: "#3f6fd6", dark: "#1c3a80" };
+const OPP_COLOR = { light: "#ffb2a0", mid: "#d6543f", dark: "#7a2418" };
+
+btnAvatarToggle.addEventListener("click", () => {
+  avatarMode = !avatarMode;
+  document.body.classList.toggle("avatar-mode", avatarMode);
+  btnAvatarToggle.textContent = avatarMode ? "실제 영상으로 보기" : "아바타로 보기";
+  if (!avatarMode) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    oppCtx.clearRect(0, 0, oppOverlay.width, oppOverlay.height);
+  } else {
+    drawAvatar(oppCtx, oppOverlay, idx => (remotePose ? remotePose[idx] : (poseB ? poseB[idx] : null)), OPP_COLOR);
+    drawAvatarFromPoseA();
+  }
+});
+
+// draws fighter A's avatar into the "mine" slot from whichever data source applies to the
+// current role: a fighter uses its own live landmarks (handled in the render loop instead),
+// a spectator uses the relayed poseA snapshot.
+function drawAvatarFromPoseA(){
+  if (document.body.classList.contains("spectator-mode")) {
+    drawAvatar(ctx, canvas, idx => (poseA ? poseA[idx] : null), MINE_COLOR);
+  }
+}
+
+// pseudo-3D stylized puppet — NOT a trained/realistic face reconstruction, just the same
+// tracked joints (shoulders/elbows/wrists/hips/nose) drawn with perspective-ish shading so a
+// fighter or spectator can watch the actual motion instead of (or alongside) raw video.
+function drawAvatar(targetCtx, targetCanvas, getPoint, color){
+  const W = targetCanvas.width, H = targetCanvas.height;
+  targetCtx.clearRect(0, 0, W, H);
+  const P = idx => { const p = getPoint(idx); return p ? { x: p.x * W, y: p.y * H } : null; };
+  const nose = P(0), ls = P(11), rs = P(12), le = P(13), re = P(14), lw = P(15), rw = P(16), lh = P(23), rh = P(24);
+  if (!ls || !rs) return;
+
+  const shoulderW = Math.max(1, Math.hypot(rs.x - ls.x, rs.y - ls.y));
+  const midShoulder = { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2 };
+  const midHip = (lh && rh) ? { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2 } : { x: midShoulder.x, y: midShoulder.y + shoulderW * 1.6 };
+
+  targetCtx.lineCap = "round";
+  targetCtx.lineJoin = "round";
+
+  // torso
+  const torsoGrad = targetCtx.createLinearGradient(midShoulder.x - shoulderW / 2, 0, midShoulder.x + shoulderW / 2, 0);
+  torsoGrad.addColorStop(0, color.dark); torsoGrad.addColorStop(0.5, color.mid); torsoGrad.addColorStop(1, color.dark);
+  targetCtx.strokeStyle = torsoGrad;
+  targetCtx.lineWidth = shoulderW * 0.62;
+  targetCtx.beginPath(); targetCtx.moveTo(midShoulder.x, midShoulder.y); targetCtx.lineTo(midHip.x, midHip.y); targetCtx.stroke();
+
+  // arms
+  targetCtx.strokeStyle = color.mid;
+  targetCtx.lineWidth = Math.max(6, shoulderW * 0.22);
+  for (const [a, b, c] of [[ls, le, lw], [rs, re, rw]]) {
+    if (!a || !b || !c) continue;
+    targetCtx.beginPath(); targetCtx.moveTo(a.x, a.y); targetCtx.lineTo(b.x, b.y); targetCtx.lineTo(c.x, c.y); targetCtx.stroke();
+  }
+
+  // head — radial gradient fakes a lit 3D sphere
+  if (nose) {
+    const r = Math.max(10, shoulderW * 0.42);
+    const grad = targetCtx.createRadialGradient(nose.x - r * 0.3, nose.y - r * 0.35, r * 0.15, nose.x, nose.y, r);
+    grad.addColorStop(0, color.light); grad.addColorStop(1, color.dark);
+    targetCtx.fillStyle = grad;
+    targetCtx.beginPath(); targetCtx.arc(nose.x, nose.y, r, 0, Math.PI * 2); targetCtx.fill();
+  }
+}
+
+// ---------- pose streaming (drives the opponent's avatar) ----------
+const POSE_STREAM_KEYS = [0, 11, 12, 13, 14, 15, 16, 23, 24];
+const POSE_SEND_INTERVAL_MS = 120;
+let lastPoseSendAt = 0;
+let remotePose = null; // fighter mode: opponent's latest landmarks, keyed by index -> {x,y}
+let poseA = null, poseB = null; // spectator mode: relayed landmarks for each fighter
+
+function packPose(landmarks){
+  const o = {};
+  for (const i of POSE_STREAM_KEYS) {
+    const p = landmarks[i];
+    if (p) o[i] = [Math.round(p.x * 1000) / 1000, Math.round(p.y * 1000) / 1000];
+  }
+  return o;
+}
+function unpackPose(lm){
+  const o = {};
+  for (const k in lm) o[k] = { x: lm[k][0], y: lm[k][1] };
+  return o;
+}
+
+// host-only no-op elsewhere: mirrors broadcastState's fan-out, but for continuous pose data
+// instead of discrete events, so spectators can render both avatars too.
+function relayPoseToSpectators(who, lm){
+  if (!spectatorConns.length) return;
+  const payload = { type: "poseRelay", who, lm };
+  for (const c of spectatorConns) { if (c.open) c.send(payload); }
+}
 
 // ---------- audio (synthesized) ----------
 let actx = null;
@@ -498,6 +627,10 @@ function handleNetMessage(msg){
     updateStatsUI();
   } else if (msg.type === "roundEnd") {
     if (state.roundActive) { setHp("opp", msg.hp); endRoundLocal(msg.reason, false); }
+  } else if (msg.type === "pose") {
+    remotePose = unpackPose(msg.lm);
+    relayPoseToSpectators("b", msg.lm);
+    if (avatarMode) drawAvatar(oppCtx, oppOverlay, idx => remotePose[idx], OPP_COLOR);
   }
 }
 
@@ -522,7 +655,10 @@ function startSpectating(){
 
     const dataToHost = peer.connect(code, { metadata: { role: "spectator" } });
     dataToHost.on("open", () => { specState.textContent = "관전 연결됨 — 상태 수신 중"; });
-    dataToHost.on("data", applySpectatorState);
+    dataToHost.on("data", msg => {
+      if (msg.type === "state") applySpectatorState(msg);
+      else if (msg.type === "poseRelay") applySpectatorPose(msg);
+    });
   });
   peer.on("error", err => { specState.textContent = "연결 오류: " + err.type; });
 }
@@ -552,6 +688,14 @@ function applySpectatorState(msg){
     resultOverlay.classList.add("show");
   }
   specWasActive = msg.roundActive;
+}
+
+function applySpectatorPose(msg){
+  const unpacked = unpackPose(msg.lm);
+  if (msg.who === "a") poseA = unpacked; else poseB = unpacked;
+  if (!avatarMode) return;
+  if (msg.who === "a") drawAvatar(ctx, canvas, idx => poseA[idx], MINE_COLOR);
+  else drawAvatar(oppCtx, oppOverlay, idx => poseB[idx], OPP_COLOR);
 }
 
 // ---------- state ----------
@@ -733,6 +877,13 @@ function processPose(landmarks){
   const dt = lastFrameTime === null ? 0 : (now - lastFrameTime) / 1000;
   lastFrameTime = now;
 
+  if (now - lastPoseSendAt > POSE_SEND_INTERVAL_MS) {
+    lastPoseSendAt = now;
+    const packed = packPose(landmarks);
+    sendMsg({ type: "pose", lm: packed });
+    relayPoseToSpectators("a", packed);
+  }
+
   // punches — elbow angle only decides "guard/wound" state; the actual trigger is
   // wrist speed crossing the threshold (a hook stays bent throughout, so requiring
   // full elbow extension would miss it — see README known limitations).
@@ -820,7 +971,12 @@ function loop(){
   lastVideoTime = video.currentTime;
   const result = poseLandmarker.detectForVideo(video, performance.now());
   const landmarks = result.landmarks && result.landmarks[0] ? result.landmarks[0] : null;
-  render(landmarks);
+  if (avatarMode) {
+    if (landmarks) drawAvatar(ctx, canvas, idx => landmarks[idx], MINE_COLOR);
+    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+  } else {
+    render(landmarks);
+  }
   if (landmarks) processPose(landmarks);
 }
 
