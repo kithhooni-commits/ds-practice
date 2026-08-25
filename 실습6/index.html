@@ -35,22 +35,19 @@ main{display:grid;grid-template-columns:1.35fr 1fr;gap:20px;padding:22px 24px 60
 .arena-wrap{position:relative;background:#0a0c10;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
 .arena-wrap canvas{display:block;width:100%;height:auto}
 .arena-hud{position:absolute;top:10px;left:10px;right:10px;z-index:2;display:flex;gap:10px;align-items:flex-start}
-.arena-hud .side{flex:1;min-width:0}
-.arena-hud .side.right{text-align:right}
+.hpchips{flex:1;min-width:0;display:flex;gap:6px;flex-wrap:wrap}
 .arena-clock{font-family:var(--mono);font-size:20px;font-weight:800;color:#fff;
-  background:rgba(0,0,0,.55);padding:2px 10px;border-radius:5px;flex:none;align-self:center}
+  background:rgba(0,0,0,.55);padding:2px 10px;border-radius:5px;flex:none;align-self:flex-start}
 .hpbar{background:rgba(0,0,0,.5);border-radius:5px;padding:5px 8px;color:#fff;font-family:var(--mono);font-size:10.5px;white-space:nowrap}
 .hpbar .bar{height:8px;background:rgba(255,255,255,.2);border-radius:4px;overflow:hidden;margin-top:3px}
 .hpbar .fill{height:100%;background:var(--ok);width:100%;transition:width .2s ease}
-.duel{position:relative;display:flex;gap:12px}
+.duel{position:relative;display:flex;gap:12px;flex-wrap:wrap}
 @media (max-width:640px){ .duel{flex-direction:column} }
-.camwrap{position:relative;flex:1;min-width:0;aspect-ratio:4/3;background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.camwrap{position:relative;flex:1 1 200px;min-width:150px;aspect-ratio:4/3;background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
 .camwrap video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .camwrap.mine video{transform:scaleX(-1);filter:brightness(.95)}
-body.spectator-mode .camwrap.mine video{transform:none;filter:none}
-.camwrap canvas{position:absolute;inset:0;width:100%;height:100%}
-.camwrap.mine canvas{transform:scaleX(-1)}
-body.spectator-mode .camwrap.mine canvas{transform:none}
+.camwrap.mine canvas{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1)}
+body.spectator-mode #selfCamWrap{display:none}
 /* cams-large view swaps which block dominates: ring shrinks to a strip, cameras grow */
 body.cams-large .arena-wrap{max-width:420px}
 body.cams-large .duel{gap:12px}
@@ -98,7 +95,7 @@ th{position:sticky;top:0;background:var(--panel2);font-family:var(--mono);font-s
 .result{position:absolute;inset:0;z-index:5;display:none;align-items:center;justify-content:center;
   flex-direction:column;gap:10px;background:rgba(0,0,0,.72);color:#fff;text-align:center;padding:20px}
 .result.show{display:flex}
-.result h3{font-size:30px;margin:0}
+.result h3{font-size:26px;margin:0}
 footer{border-top:1px solid var(--line);padding:20px 24px;color:var(--muted);font-size:12px}
 footer a{color:inherit}
 </style>
@@ -106,19 +103,19 @@ footer a{color:inherit}
 <body>
 <header><div class="wrap">
   <div class="kicker">실습6 · Samsung DS Computer Vision Practicum</div>
-  <h1>비전 복싱 (실시간 2인 대전 + 공용 링 뷰)</h1>
+  <h1>비전 복싱 (최대 4인 대전 + 공용 링 뷰)</h1>
   <p class="lede">MediaPipe Pose Landmarker로 양팔·머리 관절을 추적해 잽·훅·어퍼컷과 더킹·위빙을
-  규칙 기반으로 판정한다. 상대는 예고 없이 실제로 접속한 사람이고, 서로의 실제 카메라 영상을 보면서
-  반응해야 한다. 제3자는 방 코드만 알면 카메라 없이 두 선수를 동시에 볼 수 있는 관전 모드로 들어갈
-  수 있다 — 판정은 각자 자기 화면에서 로컬로 계산하고, 결과만 P2P로 주고받는다. 선수와 관전자 모두
-  같은 <b>링 뷰</b>(두 선수가 인형으로 마주 선 공용 화면)를 보고, 실제 카메라 영상은 그 아래에
-  썸네일로 함께 보인다.</p>
-  <div class="io">IN 웹캠 팔·머리 관절 시퀀스 (양쪽) → OUT 기술 판정 + 실시간 P2P 동기화 HP/로그 + 승패</div>
+  규칙 기반으로 판정한다. 최대 4명이 한 방 코드로 서로 직접(P2P) 연결해 실시간으로 겨루고, 제3자는
+  방 코드만으로 카메라 없이 전원을 동시에 보는 관전 모드로 들어갈 수 있다. 모든 참가자는 같은
+  <b>링 뷰</b>(참가자 전원이 인형으로 링 중앙을 마주 보고 서는 공용 화면)를 본다 — 실제로는 다들 자기
+  웹캠을 정면으로 보고 있지만, 인형은 링 중앙 쪽으로 몸을 틀어 상대를 보고 있는 것처럼 렌더링한다.
+  실제 카메라 영상은 그 아래에 썸네일로 함께 보인다.</p>
+  <div class="io">IN 웹캠 팔·머리 관절 시퀀스 (참가자별 로컬) → OUT 기술 판정 + P2P 메시(최대 4인) 동기화 HP/로그 + 순위</div>
   <p class="scopenote">범위 메모: 서버 없이 브라우저끼리 직접 연결하는 WebRTC(PeerJS)를 썼다 — 영상
   통화용 무료 공개 시그널링 서버를 빌려 쓰는 구조라, 네트워크 환경에 따라(특히 엄격한 NAT/방화벽)
-  연결이 안 될 수 있다. 관전자는 호스트(선수 A)에게 상태를 구독하고, 두 선수의 영상은 각각 직접
-  연결해서 받는다. 링 뷰의 인형은 추적된 관절로 그린 스타일화된 형태이며, 실사 3D 얼굴 재구성은
-  여전히 범위 밖 — 이유는 README 참고.</p>
+  연결이 안 될 수 있다. 4인은 전원이 서로 직접 연결되는 완전 연결(mesh) 구조다. 관전자는 호스트
+  (선수 A)에게 상태를 구독하고, 참가한 선수들의 영상은 각각 직접 연결해서 받는다. 링 뷰의 인형은
+  추적된 관절로 그린 스타일화된 형태이며, 실사 3D 얼굴 재구성은 여전히 범위 밖 — 이유는 README 참고.</p>
 </div></header>
 
 <main>
@@ -127,11 +124,8 @@ footer a{color:inherit}
     <div class="arena-wrap">
       <canvas id="arena" width="960" height="540"></canvas>
       <div class="arena-hud">
-        <div class="side"><div class="hpbar"><span id="hpLabelMine">나</span> HP <span id="playerHpText">100</span>
-          <div class="bar"><div class="fill" id="playerHpFill" style="background:var(--ok)"></div></div></div></div>
+        <div class="hpchips" id="hpChips"></div>
         <div class="arena-clock"><span id="roundTimer">60</span></div>
-        <div class="side right"><div class="hpbar"><span id="hpLabelTheirs">상대</span> HP <span id="oppHpText">100</span>
-          <div class="bar"><div class="fill" id="oppHpFill" style="background:var(--bad)"></div></div></div></div>
       </div>
       <div class="techflash" id="techFlash"></div>
       <div class="result" id="resultOverlay">
@@ -140,17 +134,12 @@ footer a{color:inherit}
         <button class="primary" id="btnRematch">다시 시작</button>
       </div>
     </div>
-    <div class="duel">
-      <div class="camwrap mine">
+    <div class="duel" id="camRow">
+      <div class="camwrap mine" id="selfCamWrap">
         <video id="video" autoplay playsinline muted></video>
         <canvas id="overlay"></canvas>
         <div class="camstate" id="camState">카메라 꺼짐</div>
         <div class="camlabel" id="mineLabel">나 (실제 영상)</div>
-      </div>
-      <div class="camwrap theirs">
-        <video id="oppVideo" autoplay playsinline></video>
-        <div class="camstate" id="oppState">연결 안 됨</div>
-        <div class="camlabel" id="theirsLabel">상대 (실제 영상)</div>
       </div>
     </div>
     <div class="toolbar-row">
@@ -169,8 +158,8 @@ footer a{color:inherit}
       </ul>
       <p class="hint">💡 손을 평소 위치에서 <b>바깥으로 빠르게 뻗으면</b> 기술로 인식됩니다(되돌아오는
       동작은 인식 안 됨). <b>카메라에서 한두 걸음 물러나 상반신과 양손이 다 보이게</b> 서야 손목이
-      잡힙니다 — 책상에 앉아 얼굴만 나오면 인식이 안 됩니다. 예고 없이 실시간으로 날아오니, 상대
-      화면을 보고 직접 반응해야 합니다.</p>
+      잡힙니다 — 책상에 앉아 얼굴만 나오면 인식이 안 됩니다. 펀치는 지금 연결된 <b>모든 상대에게</b>
+      동시에 판정이 들어갑니다(특정 상대 조준은 아직 없음).</p>
     </div>
   </section>
 
@@ -181,8 +170,8 @@ footer a{color:inherit}
         <button class="primary" id="modeFighterBtn">선수로 참가</button>
         <button id="modeSpectatorBtn">관전하기</button>
       </div>
-      <p class="hint">선수는 카메라로 직접 대전한다. 관전자는 카메라 없이 방 코드만으로 두 선수의
-      영상과 HP를 동시에 볼 수 있다(중계 화면).</p>
+      <p class="hint">선수는 카메라로 직접 대전한다(최대 4명, 방장이 방을 만들고 나머지가 코드로
+      참가). 관전자는 카메라 없이 방 코드만으로 참가한 선수 전원의 영상과 HP를 동시에 볼 수 있다.</p>
     </div>
 
     <div id="fighterPanel">
@@ -195,7 +184,7 @@ footer a{color:inherit}
       </div>
 
       <div class="block">
-        <h2>2 · 상대와 연결</h2>
+        <h2>2 · 참가자와 연결 <small>(최대 4명)</small></h2>
         <div class="row">
           <button id="btnHost" disabled>방 만들기</button>
           <span class="hint" style="margin:0">또는</span>
@@ -207,7 +196,7 @@ footer a{color:inherit}
         <p class="hint" id="specCountHint" style="display:none"></p>
         <div class="row" style="margin-top:10px">
           <button class="primary" id="btnRound" disabled>라운드 시작</button>
-          <div class="timer"><span id="roundTimer">60</span><span style="font-size:11px;color:var(--muted);font-weight:500"> 초</span></div>
+          <div class="timer"><span id="roundTimerPanel">60</span><span style="font-size:11px;color:var(--muted);font-weight:500"> 초</span></div>
         </div>
       </div>
 
@@ -229,9 +218,9 @@ footer a{color:inherit}
         </div>
         <p class="hint">자동 보정: 누른 뒤 5초 동안 <b>평소 세기로 펀치를 3~4번</b> 날리세요. 그동안
         측정된 최고 손목 속도의 60%로 펀치 감도를 자동 설정합니다.</p>
-        <p class="hint">자세 인식을 건너뛰고 잽 1대를 상대에게 직접 보냅니다 — 이걸로 HP가 깎이면
-        네트워크는 정상이고 <b>펀치 감지</b>가 문제, 이것도 안 깎이면 <b>상대가 계속 회피 중</b>이거나
-        연결 문제입니다.</p>
+        <p class="hint">자세 인식을 건너뛰고 잽 1대를 연결된 모든 상대에게 직접 보냅니다 — 이걸로
+        HP가 깎이면 네트워크는 정상이고 <b>펀치 감지</b>가 문제, 이것도 안 깎이면 <b>상대가 계속
+        회피 중</b>이거나 연결 문제입니다.</p>
         <p class="hint" id="debugLine" style="font-family:var(--mono);font-size:11px;margin-top:10px">
           진단 대기 중 — 카메라를 시작하세요.</p>
       </div>
@@ -265,7 +254,8 @@ footer a{color:inherit}
           <input type="text" id="specCodeInput" placeholder="방 코드" maxlength="6">
           <button class="primary" id="btnSpectate">관전 시작</button>
         </div>
-        <p class="hint" id="specState">호스트(선수 A)의 방 코드를 입력하세요. 두 선수 영상 + 실시간 HP를 받습니다.</p>
+        <p class="hint" id="specState">호스트(선수 A)의 방 코드를 입력하세요. 참가한 선수 전원의 영상 +
+        실시간 HP를 받습니다.</p>
       </div>
       <div class="block">
         <h2>중계 로그 <small>(호스트 시점 기준)</small></h2>
@@ -312,6 +302,25 @@ const SIDES = [
 ];
 const KO_LABEL = { straight: "잽", hook: "훅", uppercut: "어퍼컷" };
 
+// ---------- player identity (up to 4: host = slot "a", joiners = "b"/"c"/"d") ----------
+const SLOTS = ["a", "b", "c", "d"];
+const SLOT_LABEL = { a: "선수 A", b: "선수 B", c: "선수 C", d: "선수 D" };
+let mySlot = null;   // null until hostRoom()/joinRoom() actually claims a slot
+let isHost = false;
+let roomCode = null;
+
+function otherSlots(){ return mySlot ? SLOTS.filter(s => s !== mySlot) : []; }
+function activeSlots(){
+  if (!mySlot) return [];
+  return SLOTS.filter(s => s === mySlot || (opp[s] && opp[s].active));
+}
+function shouldInitiateTo(slot){ return mySlot < slot; }
+function slotFromPeerId(id){
+  if (id === roomCode) return "a";
+  const m = id.match(/-([bcd])$/);
+  return m ? m[1] : null;
+}
+
 // ---------- DOM ----------
 const video = document.getElementById("video");
 const canvas = document.getElementById("overlay");
@@ -325,8 +334,7 @@ const joinCodeInput = document.getElementById("joinCodeInput");
 const roomCodeDisplay = document.getElementById("roomCodeDisplay");
 const connState = document.getElementById("connState");
 const specCountHint = document.getElementById("specCountHint");
-const oppVideo = document.getElementById("oppVideo");
-const oppState = document.getElementById("oppState");
+const camRow = document.getElementById("camRow");
 const arena = document.getElementById("arena");
 const arenaCtx = arena.getContext("2d");
 const btnFullscreen = document.getElementById("btnFullscreen");
@@ -335,11 +343,9 @@ const stageMainEl = document.getElementById("stageMain");
 const btnRound = document.getElementById("btnRound");
 const btnRematch = document.getElementById("btnRematch");
 const btnReset = document.getElementById("btnReset");
-const playerHpText = document.getElementById("playerHpText");
-const playerHpFill = document.getElementById("playerHpFill");
-const oppHpText = document.getElementById("oppHpText");
-const oppHpFill = document.getElementById("oppHpFill");
+const hpChipsEl = document.getElementById("hpChips");
 const roundTimerEl = document.getElementById("roundTimer");
+const roundTimerPanelEl = document.getElementById("roundTimerPanel");
 const techFlash = document.getElementById("techFlash");
 const resultOverlay = document.getElementById("resultOverlay");
 const resultTitle = document.getElementById("resultTitle");
@@ -359,9 +365,6 @@ const fighterPanel = document.getElementById("fighterPanel");
 const spectatorPanel = document.getElementById("spectatorPanel");
 const legendBlock = document.getElementById("legendBlock");
 const mineLabel = document.getElementById("mineLabel");
-const theirsLabel = document.getElementById("theirsLabel");
-const hpLabelMine = document.getElementById("hpLabelMine");
-const hpLabelTheirs = document.getElementById("hpLabelTheirs");
 const specCodeInput = document.getElementById("specCodeInput");
 const btnSpectate = document.getElementById("btnSpectate");
 const specState = document.getElementById("specState");
@@ -395,9 +398,8 @@ btnViewToggle.addEventListener("click", () => {
 const POSE_STREAM_KEYS = [0, 11, 12, 13, 14, 15, 16, 23, 24];
 const POSE_SEND_INTERVAL_MS = 120;
 let lastPoseSendAt = 0;
-let myPose = null;              // fighter: my own latest landmarks
-let remotePose = null;          // fighter: opponent's latest landmarks
-let poseA = null, poseB = null; // spectator: relayed landmarks for each fighter
+let selfPose = null;          // my own latest landmarks, set every frame regardless of connection
+const poses = { a: null, b: null, c: null, d: null }; // latest known landmarks per slot
 
 function packPose(landmarks){
   const o = {};
@@ -414,29 +416,30 @@ function unpackPose(lm){
 }
 
 // host-only no-op elsewhere: mirrors broadcastState's fan-out, but for continuous pose data
-// instead of discrete events, so spectators can render both fighters in the ring too.
-function relayPoseToSpectators(who, lm){
+// instead of discrete events, so spectators can render every participant in the ring too.
+function relayPoseToSpectators(slot, lm){
   if (!spectatorConns.length) return;
-  const payload = { type: "poseRelay", who, lm };
+  const payload = { type: "poseRelay", slot, lm };
   for (const c of spectatorConns) { if (c.open) c.send(payload); }
 }
 
 // ---------- shared ring view ----------
-// One arena rendered identically for BOTH fighters and spectators: the two players are drawn
-// as stylized puppets facing each other inside a perspective ring, driven by the same tracked
-// joints the game already streams. Fighters get it in addition to (not instead of) the raw
-// camera thumbnails, so they can read the opponent's whole body while still seeing real video.
-const LEFT_COLOR = { light: "#9fc4ff", mid: "#3f6fd6", dark: "#1c3a80" };
-const RIGHT_COLOR = { light: "#ffb2a0", mid: "#d6543f", dark: "#7a2418" };
+// One arena rendered identically for every participant (fighters AND spectators): everyone is
+// drawn as a stylized puppet facing the RING CENTER inside a perspective ring, driven by the
+// same tracked joints the game already streams. A real player always faces their own webcam
+// head-on — the ring view fakes a 3/4 turn toward the middle so puppets visibly square up to
+// whoever else is in the ring, however many that is (1-4). Fighters get this in addition to
+// (not instead of) the raw camera thumbnails.
+const RING_COLORS = {
+  a: { light: "#9fc4ff", mid: "#3f6fd6", dark: "#1c3a80" },
+  b: { light: "#ffb2a0", mid: "#d6543f", dark: "#7a2418" },
+  c: { light: "#b7f0a5", mid: "#4fae3a", dark: "#255c1c" },
+  d: { light: "#ffe08a", mid: "#d69c1f", dark: "#7a5710" },
+};
 const SRC_ASPECT = 4 / 3; // camera frames are 4:3; normalized x/y use different pixel scales
-const arenaFlash = { left: 0, right: 0 };
+const arenaFlashUntil = { a: 0, b: 0, c: 0, d: 0 };
 
-function flashArena(side){ arenaFlash[side] = performance.now() + 260; }
-
-// which pose feeds each side depends on the role: a fighter always sees themselves on the
-// left, a spectator sees the host (A) on the left.
-function leftPose(){ return document.body.classList.contains("spectator-mode") ? poseA : myPose; }
-function rightPose(){ return document.body.classList.contains("spectator-mode") ? poseB : remotePose; }
+function flashArenaSlot(slot){ arenaFlashUntil[slot] = performance.now() + 260; }
 
 function drawRing(c, W, H){
   const sky = c.createLinearGradient(0, 0, 0, H);
@@ -473,10 +476,31 @@ function drawRing(c, W, H){
   c.fillRect(W - farInset * 0.72 - 5, H * 0.27, 10, H * 0.17);
 }
 
-// Maps one fighter's normalized landmarks into a fixed slot in the ring, anchored at the hips
-// so the puppet stays put in its corner while its limbs move — otherwise a player stepping
+// Slot layouts for 1-4 puppets. 2 fighters stand left/right (the original layout); 3-4 add a
+// back row (smaller + higher on the canvas) so more bodies fit without overlapping.
+function getRingSlots(n, W, H){
+  if (n <= 1) return [{ cx: W * 0.50, baseY: H * 0.88, h: H * 0.62 }];
+  if (n === 2) return [
+    { cx: W * 0.30, baseY: H * 0.86, h: H * 0.60 },
+    { cx: W * 0.70, baseY: H * 0.86, h: H * 0.60 },
+  ];
+  if (n === 3) return [
+    { cx: W * 0.20, baseY: H * 0.90, h: H * 0.58 },
+    { cx: W * 0.80, baseY: H * 0.90, h: H * 0.58 },
+    { cx: W * 0.50, baseY: H * 0.58, h: H * 0.40 },
+  ];
+  return [
+    { cx: W * 0.22, baseY: H * 0.90, h: H * 0.56 },
+    { cx: W * 0.78, baseY: H * 0.90, h: H * 0.56 },
+    { cx: W * 0.34, baseY: H * 0.58, h: H * 0.38 },
+    { cx: W * 0.66, baseY: H * 0.58, h: H * 0.38 },
+  ];
+}
+
+// Maps one participant's normalized landmarks into a fixed slot in the ring, anchored at the
+// hips so the puppet stays put in its spot while its limbs move — otherwise a player stepping
 // sideways in front of their webcam would slide across the whole arena.
-function drawFighterInRing(c, pose, slot, color, mirror, label, flashUntil){
+function drawFighterInRing(c, pose, slot, color, faceDir, label, flashUntil){
   if (!pose) {
     c.fillStyle = "rgba(255,255,255,0.28)";
     c.font = "600 15px sans-serif"; c.textAlign = "center";
@@ -492,14 +516,14 @@ function drawFighterInRing(c, pose, slot, color, mirror, label, flashUntil){
                             : { x: midShoulder.x, y: midShoulder.y + 0.25 };
   const torsoLen = Math.max(0.06, Math.abs(midHip.y - midShoulder.y));
   const k = (slot.h * 0.42) / torsoLen;   // scale so the torso is ~42% of the figure's height
-  const dir = mirror ? -1 : 1;
   const anchorY = slot.baseY - slot.h * 0.30;
-  // Both players stand square to their own webcam, so raw landmarks always look front-on.
-  // Squashing horizontally fakes a 3/4 turn and `dir` points that turn at the opponent, so
-  // the two figures read as squaring up to each other instead of both facing the viewer.
+  // Every player stands square to their own webcam, so raw landmarks always look front-on.
+  // Squashing horizontally fakes a 3/4 turn and `faceDir` points that turn at the ring's
+  // center, so every figure reads as squaring up toward the middle of the fight.
   const TURN_SQUASH = 0.68;
+  const faceLean = faceDir * slot.h * 0.025;
   const T = p => p ? {
-    x: slot.cx + (p.x - midHip.x) * k * SRC_ASPECT * dir * TURN_SQUASH + slot.faceLean,
+    x: slot.cx + (p.x - midHip.x) * k * SRC_ASPECT * faceDir * TURN_SQUASH + faceLean,
     y: anchorY + (p.y - midHip.y) * k,
   } : null;
 
@@ -543,11 +567,10 @@ function drawFighterInRing(c, pose, slot, color, mirror, label, flashUntil){
     c.beginPath(); c.arc(w.x, w.y, shoulderW * 0.19, 0, Math.PI * 2); c.fill();
   }
 
-  // head — radial gradient fakes a lit sphere, and a face wedge points at the opponent so the
-  // turn direction is unmistakable even when the player is standing square to their camera
+  // head — radial gradient fakes a lit sphere, and a face wedge points toward the ring center
+  // so the turn direction is unmistakable even when the player is square to their own camera
   if (nose) {
     const r = Math.max(9, shoulderW * 0.44);
-    const faceDir = mirror ? -1 : 1; // toward the middle of the ring
     const grad = c.createRadialGradient(nose.x + faceDir * r * 0.3, nose.y - r * 0.35, r * 0.15, nose.x, nose.y, r);
     grad.addColorStop(0, color.light); grad.addColorStop(1, color.dark);
     c.fillStyle = grad;
@@ -566,16 +589,31 @@ function drawFighterInRing(c, pose, slot, color, mirror, label, flashUntil){
   c.fillText(label, slot.cx, slot.baseY + 22);
 }
 
+// Which participants (and whose pose feeds which puppet) depends on the role: a fighter draws
+// itself + whoever is actively connected; a spectator draws whichever slots the host says are
+// active, using poses relayed from the host.
+function ringParticipants(){
+  const spectating = document.body.classList.contains("spectator-mode");
+  if (spectating) {
+    return SLOTS.filter(s => specActiveSlots[s]).map(s => ({ slot: s, pose: poses[s], label: SLOT_LABEL[s], color: RING_COLORS[s] }));
+  }
+  if (!mySlot) return selfPose ? [{ slot: "a", pose: selfPose, label: "나", color: RING_COLORS.a }] : [];
+  return activeSlots().map(s => ({
+    slot: s, pose: s === mySlot ? selfPose : poses[s],
+    label: s === mySlot ? "나" : SLOT_LABEL[s], color: RING_COLORS[s],
+  }));
+}
+
 function drawArena(){
   const W = arena.width, H = arena.height;
   drawRing(arenaCtx, W, H);
-  const slotL = { cx: W * 0.30, baseY: H * 0.86, h: H * 0.60, faceLean: W * 0.015 };
-  const slotR = { cx: W * 0.70, baseY: H * 0.86, h: H * 0.60, faceLean: -W * 0.015 };
-  const spectating = document.body.classList.contains("spectator-mode");
-  drawFighterInRing(arenaCtx, leftPose(), slotL, LEFT_COLOR, false,
-    spectating ? "선수 A" : "나", arenaFlash.left);
-  drawFighterInRing(arenaCtx, rightPose(), slotR, RIGHT_COLOR, true,
-    spectating ? "선수 B" : "상대", arenaFlash.right);
+  const participants = ringParticipants();
+  const ringSlots = getRingSlots(Math.max(participants.length, 1), W, H);
+  participants.forEach((p, i) => {
+    const rs = ringSlots[i];
+    const faceDir = Math.sign(W / 2 - rs.cx) || 1;
+    drawFighterInRing(arenaCtx, p.pose, rs, p.color, faceDir, p.label, arenaFlashUntil[p.slot] || 0);
+  });
 }
 
 function arenaLoop(){
@@ -638,20 +676,23 @@ function enterSpectatorMode(){
   spectatorPanel.style.display = "";
   modeFighterBtn.classList.remove("primary");
   modeSpectatorBtn.classList.add("primary");
-  mineLabel.textContent = "선수 A (호스트)";
-  theirsLabel.textContent = "선수 B";
-  hpLabelMine.textContent = "A";
-  hpLabelTheirs.textContent = "B";
 }
 modeFighterBtn.addEventListener("click", enterFighterMode);
 modeSpectatorBtn.addEventListener("click", enterSpectatorMode);
 enterFighterMode();
 
-// ---------- networking (PeerJS / WebRTC) ----------
+// ---------- networking (PeerJS / WebRTC mesh, up to 4 fighters) ----------
 let peer = null;
-let dataConn = null;       // the OPPONENT fighter's data connection (attack/defense protocol)
-let spectatorConns = [];   // host-only: data connections from spectators (one-way state feed)
 let localStream = null;
+let spectatorConns = [];   // host-only: data connections from spectators (one-way state feed)
+const camUIBySlot = {};    // dynamically-created camera thumbnails, keyed by slot
+
+function newSlotRec(slot){
+  return { slot, active: false, connecting: false, dataConn: null, attempts: 0, retryHandle: null };
+}
+const opp = {}; // per-slot connection bookkeeping for every slot OTHER than mySlot
+
+const hp = { a: 100, b: 100, c: 100, d: 100 };
 
 function genRoomCode(len){
   let s = "";
@@ -659,64 +700,159 @@ function genRoomCode(len){
   return s;
 }
 
+function ensureCamSlotUI(slot){
+  let ui = camUIBySlot[slot];
+  if (ui) return ui;
+  const wrap = document.createElement("div");
+  wrap.className = "camwrap theirs";
+  wrap.dataset.slot = slot;
+  wrap.innerHTML = `<video autoplay playsinline></video>
+    <div class="camstate">연결 중...</div>
+    <div class="camlabel">${SLOT_LABEL[slot]} (실제 영상)</div>`;
+  camRow.appendChild(wrap);
+  ui = { wrap, video: wrap.querySelector("video"), state: wrap.querySelector(".camstate") };
+  camUIBySlot[slot] = ui;
+  return ui;
+}
+
+function ensureHpChip(slot){
+  let chip = ensureHpChip._map && ensureHpChip._map[slot];
+  if (!chip) {
+    if (!ensureHpChip._map) ensureHpChip._map = {};
+    const el = document.createElement("div");
+    el.className = "hpbar";
+    el.dataset.slot = slot;
+    el.innerHTML = `<span class="hpchip-label"></span> HP <span class="hpchip-val">100</span>
+      <div class="bar"><div class="fill" style="background:var(--ok)"></div></div>`;
+    hpChipsEl.appendChild(el);
+    chip = { el, label: el.querySelector(".hpchip-label"), val: el.querySelector(".hpchip-val"), fill: el.querySelector(".fill") };
+    ensureHpChip._map[slot] = chip;
+  }
+  return chip;
+}
+function updateHpChip(slot){
+  const spectating = document.body.classList.contains("spectator-mode");
+  const chip = ensureHpChip(slot);
+  const label = spectating ? SLOT_LABEL[slot] : (slot === mySlot ? "나" : SLOT_LABEL[slot]);
+  chip.label.textContent = label;
+  const v = hp[slot];
+  chip.val.textContent = v;
+  chip.fill.style.width = v + "%";
+  chip.fill.style.background = v > 30 ? "var(--ok)" : "var(--bad)";
+}
+function setSelfHp(value){
+  hp[mySlot] = Math.max(0, Math.min(100, value));
+  updateHpChip(mySlot);
+}
+
+function updateConnUI(){
+  const n = otherSlots().filter(s => opp[s] && opp[s].active).length;
+  specCountHint.style.display = "block";
+  specCountHint.textContent = `연결된 상대 ${n}명 / 최대 3명` +
+    (spectatorConns.length ? ` · 관전자 ${spectatorConns.length}명` : "");
+}
+
 function checkReadyForRound(){
-  if (dataConn && dataConn.open && oppVideo.srcObject) {
+  if (otherSlots().some(s => opp[s] && opp[s].active)) {
     btnRound.disabled = false;
-    connState.textContent = "연결 완료 — 라운드를 시작할 수 있습니다.";
+    connState.textContent = "연결됨 — 라운드를 시작할 수 있습니다. (더 받으려면 코드를 계속 공유하세요)";
   }
 }
 
-function wireDataConnection(conn){
-  dataConn = conn;
-  conn.on("open", () => checkReadyForRound());
-  conn.on("data", handleNetMessage);
-  conn.on("close", () => { connState.textContent = "상대와 연결이 끊겼습니다."; dataConn = null; });
-}
-
-function wireMediaConnection(call){
-  call.on("stream", remoteStream => {
-    oppVideo.srcObject = remoteStream;
-    oppState.textContent = "상대 영상 연결됨";
+function wireDataConnToSlot(conn, slot){
+  const rec = opp[slot];
+  if (!rec) return;
+  conn.on("open", () => {
+    rec.dataConn = conn; rec.active = true; rec.connecting = false;
+    clearTimeout(rec.retryHandle);
+    log("시스템", `${SLOT_LABEL[slot]} 연결됨`);
+    updateHpChip(slot);
+    updateConnUI();
     checkReadyForRound();
   });
-  call.on("close", () => { oppState.textContent = "상대 연결 끊김"; oppVideo.srcObject = null; });
+  conn.on("data", msg => handleNetMessage(slot, msg));
+  conn.on("close", () => {
+    rec.active = false; rec.dataConn = null;
+    log("시스템", `${SLOT_LABEL[slot]} 연결 끊김`);
+    updateConnUI();
+  });
+}
+function wireMediaConnToSlot(call, slot){
+  call.on("stream", stream => {
+    const ui = ensureCamSlotUI(slot);
+    ui.video.srcObject = stream;
+    ui.state.textContent = "영상 연결됨";
+  });
+  call.on("close", () => {
+    const ui = ensureCamSlotUI(slot);
+    ui.video.srcObject = null;
+    ui.state.textContent = "연결 끊김";
+  });
 }
 
-function updateSpecCountHint(){
-  specCountHint.style.display = spectatorConns.length ? "block" : "none";
-  specCountHint.textContent = `관전자 ${spectatorConns.length}명 접속 중`;
+function connectToSlot(slot){
+  const rec = opp[slot];
+  if (!rec || rec.active || rec.connecting) return;
+  rec.connecting = true;
+  rec.attempts++;
+  const targetId = slot === "a" ? roomCode : roomCode + "-" + slot;
+  wireDataConnToSlot(peer.connect(targetId), slot);
+  wireMediaConnToSlot(peer.call(targetId, localStream), slot);
+  clearTimeout(rec.retryHandle);
+  if (rec.attempts < 50) {
+    rec.retryHandle = setTimeout(() => {
+      rec.connecting = false;
+      if (!rec.active) connectToSlot(slot);
+    }, 3000);
+  }
 }
 
 function addSpectatorConn(conn){
   spectatorConns.push(conn);
-  updateSpecCountHint();
+  updateConnUI();
   conn.on("close", () => {
     spectatorConns = spectatorConns.filter(c => c !== conn);
-    updateSpecCountHint();
+    updateConnUI();
   });
+}
+
+function wirePeerCommonHandlers(){
+  peer.on("connection", conn => {
+    if (conn.metadata && conn.metadata.role === "spectator") { addSpectatorConn(conn); return; }
+    const slot = slotFromPeerId(conn.peer);
+    if (!slot || slot === mySlot || !opp[slot]) return;
+    wireDataConnToSlot(conn, slot);
+  });
+  peer.on("call", call => {
+    if (call.metadata && call.metadata.role === "spectator") { call.answer(localStream); return; }
+    call.answer(localStream);
+    const slot = slotFromPeerId(call.peer);
+    if (!slot || slot === mySlot || !opp[slot]) return;
+    wireMediaConnToSlot(call, slot);
+  });
+  peer.on("error", err => {
+    if (err.type !== "peer-unavailable") connState.textContent = "연결 오류: " + err.type;
+  });
+  for (const slot of otherSlots()) {
+    if (shouldInitiateTo(slot)) connectToSlot(slot);
+  }
 }
 
 function hostRoom(){
   if (!localStream) return;
   btnHost.disabled = true; btnJoin.disabled = true;
   modeFighterBtn.disabled = true; modeSpectatorBtn.disabled = true;
-  const code = genRoomCode(5);
-  peer = new Peer(code);
+  mySlot = "a"; isHost = true;
+  roomCode = genRoomCode(5);
+  for (const s of otherSlots()) opp[s] = newSlotRec(s);
+  updateHpChip("a");
+  peer = new Peer(roomCode);
   peer.on("open", id => {
     roomCodeDisplay.style.display = "block";
-    roomCodeDisplay.textContent = "방 코드: " + id;
-    connState.textContent = "대기 중 — 상대에게 이 코드를 알려주세요.";
+    roomCodeDisplay.textContent = "방 코드: " + id + " (최대 4명, 참가자에게 이 코드를 알려주세요)";
+    connState.textContent = "대기 중 — 다른 선수가 이 코드로 참가하면 자동으로 연결됩니다.";
+    wirePeerCommonHandlers();
   });
-  peer.on("call", call => {
-    call.answer(localStream);
-    if (call.metadata && call.metadata.role === "spectator") return; // just serving video, nothing to wire
-    wireMediaConnection(call);
-  });
-  peer.on("connection", conn => {
-    if (conn.metadata && conn.metadata.role === "spectator") addSpectatorConn(conn);
-    else wireDataConnection(conn);
-  });
-  peer.on("error", err => { connState.textContent = "연결 오류: " + err.type; });
 }
 
 function joinRoom(){
@@ -725,35 +861,59 @@ function joinRoom(){
   if (!code) return;
   btnHost.disabled = true; btnJoin.disabled = true;
   modeFighterBtn.disabled = true; modeSpectatorBtn.disabled = true;
-  peer = new Peer(code + "-b"); // deterministic id so spectators can call this fighter directly
-  peer.on("open", () => {
-    connState.textContent = "연결 시도 중...";
-    wireMediaConnection(peer.call(code, localStream));
-    wireDataConnection(peer.connect(code));
-  });
-  peer.on("call", call => {
-    // a spectator calling this fighter directly for its video feed
-    if (call.metadata && call.metadata.role === "spectator") call.answer(localStream);
-  });
-  peer.on("error", err => { connState.textContent = "연결 오류: " + err.type; });
+  roomCode = code; isHost = false;
+  connState.textContent = "빈 자리 확인 중...";
+  tryJoinSlot(["b", "c", "d"], 0);
 }
 
-function sendMsg(obj){
-  if (dataConn && dataConn.open) dataConn.send(obj);
+function tryJoinSlot(candidates, i){
+  if (i >= candidates.length) {
+    connState.textContent = "방이 가득 찼습니다 (최대 4명).";
+    btnHost.disabled = false; btnJoin.disabled = false;
+    modeFighterBtn.disabled = false; modeSpectatorBtn.disabled = false;
+    return;
+  }
+  const slot = candidates[i];
+  const p = new Peer(roomCode + "-" + slot);
+  let settled = false;
+  p.on("open", () => {
+    settled = true;
+    mySlot = slot; peer = p;
+    for (const s of otherSlots()) opp[s] = newSlotRec(s);
+    updateHpChip(slot);
+    connState.textContent = `${SLOT_LABEL[slot]}(으)로 참가 — 연결 중...`;
+    wirePeerCommonHandlers();
+  });
+  p.on("error", err => {
+    if (settled) return;
+    if (err.type === "unavailable-id") { p.destroy(); tryJoinSlot(candidates, i + 1); }
+    else {
+      connState.textContent = "연결 오류: " + err.type;
+      btnHost.disabled = false; btnJoin.disabled = false;
+      modeFighterBtn.disabled = false; modeSpectatorBtn.disabled = false;
+    }
+  });
 }
 
-// host-only: push a state snapshot to every connected spectator. "나"/"상대" are relabeled
-// to the neutral "선수 A"/"선수 B" since a spectator has no "me".
+function sendMsgToAll(obj){
+  for (const s of otherSlots()) {
+    const rec = opp[s];
+    if (rec && rec.dataConn && rec.dataConn.open) rec.dataConn.send(obj);
+  }
+}
+
+// host-only: push a state snapshot to every connected spectator.
 function broadcastState(lastLog){
   if (!spectatorConns.length) return;
   let sendLog = null;
   if (lastLog) {
-    const who = lastLog.who === "나" ? "선수 A" : lastLog.who === "상대" ? "선수 B" : lastLog.who;
+    const who = lastLog.who === "나" ? SLOT_LABEL[mySlot] : lastLog.who;
     sendLog = { who, text: lastLog.text };
   }
   const payload = {
     type: "state",
-    hp: { a: state.hp.player, b: state.hp.opp },
+    hp: { ...hp },
+    active: Object.fromEntries(SLOTS.map(s => [s, s === mySlot || (opp[s] && opp[s].active)])),
     timeLeft: state.timeLeft,
     roundActive: state.roundActive,
     lastLog: sendLog,
@@ -761,54 +921,59 @@ function broadcastState(lastLog){
   for (const c of spectatorConns) { if (c.open) c.send(payload); }
 }
 
-function handleNetMessage(msg){
+function handleNetMessage(fromSlot, msg){
   if (msg.type === "roundStart") {
     beginRoundLocal();
   } else if (msg.type === "attack") {
-    resolveIncomingAttack(msg.punchType, msg.damage);
-  } else if (msg.type === "attackResult") {
-    setHp("opp", msg.hp);
-    let who, text;
-    if (msg.dodged) {
-      stats.evadedByOpp++;
-      who = "상대";
-      text = (msg.punchType === "hook" ? "위빙" : "더킹") + "으로 회피";
-    } else {
-      stats.landed++;
-      who = "나";
-      text = `${KO_LABEL[msg.punchType]} 적중 (상대 HP -${DAMAGE[msg.punchType]})`;
-      flashArena("right");
+    resolveIncomingAttack(fromSlot, msg.punchType, msg.damage);
+  } else if (msg.type === "combatUpdate") {
+    hp[msg.defender] = msg.hp;
+    updateHpChip(msg.defender);
+    if (msg.attacker === mySlot) {
+      if (msg.dodged) {
+        stats.evadedByOpp++;
+        log("나", `${SLOT_LABEL[msg.defender]} 회피 성공`);
+      } else {
+        stats.landed++;
+        log("나", `${KO_LABEL[msg.punchType]} 적중 → ${SLOT_LABEL[msg.defender]} (HP ${msg.hp})`);
+        flashArenaSlot(msg.defender);
+      }
+      updateStatsUI();
     }
-    log(who, text);
-    broadcastState({ who, text });
-    updateStatsUI();
+    if (isHost) broadcastState({ who: SLOT_LABEL[msg.defender], text: msg.dodged ? "회피 성공" : `${KO_LABEL[msg.punchType]} 피격` });
+    checkRoundEndCondition();
   } else if (msg.type === "roundEnd") {
-    if (state.roundActive) { setHp("opp", msg.hp); endRoundLocal(msg.reason, false); }
+    if (state.roundActive) { Object.assign(hp, msg.hp); updateAllHpUI(); endRoundLocal(msg.reason, false); }
   } else if (msg.type === "pose") {
-    remotePose = unpackPose(msg.lm);
-    relayPoseToSpectators("b", msg.lm);
+    poses[fromSlot] = unpackPose(msg.lm);
+    relayPoseToSpectators(fromSlot, msg.lm);
   }
 }
 
 // ---------- spectator mode ----------
 let specWasActive = false;
+const specActiveSlots = { a: false, b: false, c: false, d: false };
 
 function startSpectating(){
   const code = specCodeInput.value.trim().toUpperCase();
   if (!code) return;
   btnSpectate.disabled = true;
   modeFighterBtn.disabled = true; modeSpectatorBtn.disabled = true;
+  roomCode = code;
   peer = new Peer();
   peer.on("open", () => {
     specState.textContent = "연결 시도 중...";
     const empty = new MediaStream(); // spectator sends no video, only receives
-
-    const callA = peer.call(code, empty, { metadata: { role: "spectator" } });
-    callA.on("stream", remoteStream => { video.srcObject = remoteStream; camState.textContent = "선수 A 영상 연결됨"; });
-
-    const callB = peer.call(code + "-b", empty, { metadata: { role: "spectator" } });
-    callB.on("stream", remoteStream => { oppVideo.srcObject = remoteStream; oppState.textContent = "선수 B 영상 연결됨"; });
-
+    for (const slot of SLOTS) {
+      const targetId = slot === "a" ? code : code + "-" + slot;
+      const call = peer.call(targetId, empty, { metadata: { role: "spectator" } });
+      call.on("stream", stream => {
+        specActiveSlots[slot] = true;
+        const ui = ensureCamSlotUI(slot);
+        ui.video.srcObject = stream;
+        ui.state.textContent = SLOT_LABEL[slot] + " 영상 연결됨";
+      });
+    }
     const dataToHost = peer.connect(code, { metadata: { role: "spectator" } });
     dataToHost.on("open", () => { specState.textContent = "관전 연결됨 — 상태 수신 중"; });
     dataToHost.on("data", msg => {
@@ -816,48 +981,53 @@ function startSpectating(){
       else if (msg.type === "poseRelay") applySpectatorPose(msg);
     });
   });
-  peer.on("error", err => { specState.textContent = "연결 오류: " + err.type; });
+  peer.on("error", err => {
+    if (err.type !== "peer-unavailable") specState.textContent = "연결 오류: " + err.type;
+  });
+}
+
+function computeResultTitle(slots, forSelf){
+  const ranked = slots.slice().sort((a, b) => hp[b] - hp[a]);
+  const top = hp[ranked[0]];
+  const winners = ranked.filter(s => hp[s] === top);
+  let title;
+  if (top <= 0) title = "전원 KO — 무승부";
+  else if (winners.length > 1) title = winners.map(s => SLOT_LABEL[s]).join(", ") + " 공동 승리";
+  else if (forSelf && winners[0] === mySlot) title = "승리!";
+  else title = SLOT_LABEL[winners[0]] + " 승리";
+  const sub = slots.map(s => `${forSelf && s === mySlot ? "나" : SLOT_LABEL[s]} ${hp[s]}`).join(" · ");
+  return { title, sub };
 }
 
 function applySpectatorState(msg){
-  if (msg.type !== "state") return;
-  // a spectator never runs the damage code paths, so derive the ring hit-flash from HP drops
-  if (msg.hp.a < Number(playerHpText.textContent)) flashArena("left");
-  if (msg.hp.b < Number(oppHpText.textContent)) flashArena("right");
-  playerHpText.textContent = msg.hp.a;
-  playerHpFill.style.width = msg.hp.a + "%";
-  playerHpFill.style.background = msg.hp.a > 30 ? "var(--ok)" : "var(--bad)";
-  oppHpText.textContent = msg.hp.b;
-  oppHpFill.style.width = msg.hp.b + "%";
+  for (const slot of SLOTS) {
+    if (!msg.active[slot]) continue;
+    if (msg.hp[slot] < hp[slot]) flashArenaSlot(slot);
+    hp[slot] = msg.hp[slot];
+    specActiveSlots[slot] = true;
+    updateHpChip(slot);
+  }
   roundTimerEl.textContent = msg.timeLeft;
+  roundTimerPanelEl.textContent = msg.timeLeft;
   if (msg.lastLog) log(msg.lastLog.who, msg.lastLog.text, specLogBody);
 
   if (msg.roundActive) {
     resultOverlay.classList.remove("show");
   } else if (specWasActive) {
-    let title;
-    if (msg.hp.a <= 0 && msg.hp.b <= 0) title = "무승부 (동시 KO)";
-    else if (msg.hp.a <= 0) title = "선수 B 승리 (KO)";
-    else if (msg.hp.b <= 0) title = "선수 A 승리 (KO)";
-    else if (msg.hp.a > msg.hp.b) title = "선수 A 승리 (판정)";
-    else if (msg.hp.a < msg.hp.b) title = "선수 B 승리 (판정)";
-    else title = "무승부 (판정)";
+    const { title, sub } = computeResultTitle(SLOTS.filter(s => specActiveSlots[s]), false);
     resultTitle.textContent = title;
-    resultSub.textContent = `HP ${msg.hp.a} : ${msg.hp.b}`;
+    resultSub.textContent = sub;
     resultOverlay.classList.add("show");
   }
   specWasActive = msg.roundActive;
 }
 
 function applySpectatorPose(msg){
-  const unpacked = unpackPose(msg.lm);
-  if (msg.who === "a") poseA = unpacked; else poseB = unpacked;
-  // the arena render loop picks these up on its next frame
+  poses[msg.slot] = unpackPose(msg.lm);
 }
 
 // ---------- state ----------
 const state = {
-  hp: { player: 100, opp: 100 },
   roundActive: false,
   timeLeft: ROUND_SECONDS,
   timerHandle: null,
@@ -916,20 +1086,17 @@ function flashTech(text){
   setTimeout(() => techFlash.classList.remove("show"), 500);
 }
 
-function setHp(who, value){
-  state.hp[who] = Math.max(0, Math.min(100, value));
-  if (who === "player") {
-    playerHpText.textContent = state.hp.player;
-    playerHpFill.style.width = state.hp.player + "%";
-    playerHpFill.style.background = state.hp.player > 30 ? "var(--ok)" : "var(--bad)";
-  } else {
-    oppHpText.textContent = state.hp.opp;
-    oppHpFill.style.width = state.hp.opp + "%";
-  }
-  if (state.roundActive && (state.hp.player <= 0 || state.hp.opp <= 0)) endRoundLocal("ko", true);
+function updateAllHpUI(){ for (const s of activeSlots()) updateHpChip(s); }
+
+function checkRoundEndCondition(){
+  if (!state.roundActive || !mySlot) return;
+  const alive = activeSlots().filter(s => hp[s] > 0);
+  if (alive.length <= 1) endRoundLocal("ko", true);
 }
 
-// I threw a punch: classify locally, tell the opponent what hit them, they decide if they dodged.
+// I threw a punch: it swings at every connected opponent at once (no per-target aiming yet).
+// Each recipient decides locally (from its own duck/weave state) whether it was hit, applies
+// damage to itself, and broadcasts the outcome mesh-wide.
 function dealPlayerDamage(type, speed){
   const dmg = DAMAGE[type];
   stats.punches++;
@@ -938,15 +1105,15 @@ function dealPlayerDamage(type, speed){
   updateStatsUI();
   playThud(type === "uppercut" ? 140 : type === "hook" ? 180 : 220);
   flashTech(KO_LABEL[type] + "!");
-  const text = `${KO_LABEL[type]} 시도`;
-  log("나", text);
-  broadcastState({ who: "나", text });
-  sendMsg({ type: "attack", punchType: type, damage: dmg });
+  log("나", `${KO_LABEL[type]} 시도`);
+  if (isHost) broadcastState({ who: SLOT_LABEL[mySlot], text: `${KO_LABEL[type]} 시도` });
+  sendMsgToAll({ type: "attack", punchType: type, damage: dmg });
 }
 
-// opponent's punch arrived over the data channel: I am the defender, I decide using MY OWN
-// recent duck/weave state, apply damage to my own HP, and report the outcome back.
-function resolveIncomingAttack(punchType, damage){
+// an attacker's punch arrived over the data channel: I am the defender, I decide using MY OWN
+// recent duck/weave state, apply damage to my own HP, and broadcast the outcome to everyone
+// (the attacker needs it to update their stats; the host needs it to relay to spectators).
+function resolveIncomingAttack(fromSlot, punchType, damage){
   const now = performance.now();
   const requiresDuck = punchType === "straight" || punchType === "uppercut";
   const dodged = requiresDuck ? now < duckActiveUntil : now < weaveActiveUntil;
@@ -956,25 +1123,25 @@ function resolveIncomingAttack(punchType, damage){
     stats.defenses++;
     playWhoosh();
     flashTech(requiresDuck ? "더킹 성공!" : "위빙 성공!");
-    text = (requiresDuck ? "더킹" : "위빙") + " 성공 — 무피해";
+    text = (requiresDuck ? "더킹" : "위빙") + ` 성공 — ${SLOT_LABEL[fromSlot]} 공격 무효화`;
     log("나", text);
-    broadcastState({ who: "나", text });
   } else {
-    setHp("player", state.hp.player - damage);
+    setSelfHp(hp[mySlot] - damage);
     playThud(90);
     flashTech("맞았다!");
-    flashArena("left");
-    text = `${KO_LABEL[punchType]} 적중 (-${damage} 내 HP)`;
-    log("상대", text);
-    broadcastState({ who: "상대", text });
+    flashArenaSlot(mySlot);
+    text = `${SLOT_LABEL[fromSlot]}의 ${KO_LABEL[punchType]} 적중 (-${damage} 내 HP)`;
+    log("나", text);
   }
   updateStatsUI();
-  sendMsg({ type: "attackResult", punchType, dodged, hp: state.hp.player });
+  sendMsgToAll({ type: "combatUpdate", attacker: fromSlot, defender: mySlot, punchType, dodged, hp: hp[mySlot] });
+  if (isHost) broadcastState({ who: "나", text });
+  checkRoundEndCondition();
 }
 
 // ---------- round control ----------
 function startRound(){
-  sendMsg({ type: "roundStart" });
+  sendMsgToAll({ type: "roundStart" });
   beginRoundLocal();
 }
 
@@ -982,22 +1149,23 @@ function beginRoundLocal(){
   if (state.roundActive) return;
   ensureAudio();
   state.roundActive = true;
-  state.hp = { player: 100, opp: 100 };
+  for (const s of SLOTS) hp[s] = 100;
+  updateAllHpUI();
   state.timeLeft = ROUND_SECONDS;
-  setHp("player", 100);
-  setHp("opp", 100);
   roundTimerEl.textContent = state.timeLeft;
+  roundTimerPanelEl.textContent = state.timeLeft;
   resultOverlay.classList.remove("show");
   playBell();
   btnRound.disabled = true;
   state.timerHandle = setInterval(() => {
     state.timeLeft--;
     roundTimerEl.textContent = state.timeLeft;
-    broadcastState();
+    roundTimerPanelEl.textContent = state.timeLeft;
+    if (isHost) broadcastState();
     if (state.timeLeft <= 0) endRoundLocal("time", true);
   }, 1000);
   log("시스템", "라운드 시작");
-  broadcastState({ who: "시스템", text: "라운드 시작" });
+  if (isHost) broadcastState({ who: "시스템", text: "라운드 시작" });
 }
 
 function endRoundLocal(reason, shouldBroadcast){
@@ -1006,22 +1174,15 @@ function endRoundLocal(reason, shouldBroadcast){
   clearInterval(state.timerHandle);
   playBell();
 
-  let title, sub;
-  if (state.hp.player <= 0 && state.hp.opp <= 0) { title = "무승부"; sub = "동시 KO"; }
-  else if (state.hp.player <= 0) { title = "패배 — KO"; sub = "상대에게 KO 당했습니다"; }
-  else if (state.hp.opp <= 0) { title = "승리 — KO"; sub = "상대를 KO 시켰습니다"; }
-  else if (state.hp.player > state.hp.opp) { title = "승리 — 판정"; sub = `HP ${state.hp.player} : ${state.hp.opp}`; }
-  else if (state.hp.player < state.hp.opp) { title = "패배 — 판정"; sub = `HP ${state.hp.player} : ${state.hp.opp}`; }
-  else { title = "무승부 — 판정"; sub = `HP ${state.hp.player} : ${state.hp.opp}`; }
-
+  const { title, sub } = computeResultTitle(activeSlots(), true);
   resultTitle.textContent = title;
   resultSub.textContent = sub;
   resultOverlay.classList.add("show");
   btnRound.disabled = false;
   const logText = `라운드 종료 (${reason === "ko" ? "KO" : "시간 종료"}) — ${title}`;
   log("시스템", logText);
-  broadcastState({ who: "시스템", text: logText });
-  if (shouldBroadcast) sendMsg({ type: "roundEnd", reason, hp: state.hp.player });
+  if (isHost) broadcastState({ who: "시스템", text: logText });
+  if (shouldBroadcast) sendMsgToAll({ type: "roundEnd", reason, hp: { ...hp } });
 }
 
 // ---------- pose processing ----------
@@ -1033,8 +1194,8 @@ function processPose(landmarks){
   if (now - lastPoseSendAt > POSE_SEND_INTERVAL_MS) {
     lastPoseSendAt = now;
     const packed = packPose(landmarks);
-    sendMsg({ type: "pose", lm: packed });
-    relayPoseToSpectators("a", packed);
+    sendMsgToAll({ type: "pose", lm: packed });
+    if (mySlot) relayPoseToSpectators(mySlot, packed);
   }
 
   // Punch detection. There is deliberately NO elbow-angle gate: requiring a tight guard
@@ -1162,7 +1323,8 @@ function loop(){
   const result = poseLandmarker.detectForVideo(video, performance.now());
   const landmarks = result.landmarks && result.landmarks[0] ? result.landmarks[0] : null;
   render(landmarks);
-  myPose = landmarks;
+  selfPose = landmarks;
+  if (mySlot) poses[mySlot] = landmarks;
   if (landmarks) processPose(landmarks);
 }
 
@@ -1197,7 +1359,7 @@ async function startAll(){
     loadState.textContent = "준비 완료 — 방을 만들거나 참가하세요.";
     btnHost.disabled = false;
     btnJoin.disabled = false;
-    connState.textContent = "방을 만들거나, 상대의 코드로 참가하세요.";
+    connState.textContent = "방을 만들거나, 상대의 코드로 참가하세요 (최대 4명).";
     loop();
   } catch (err) {
     console.error(err);
@@ -1249,7 +1411,7 @@ btnCalibrate.addEventListener("click", () => {
 // bypasses pose detection entirely: proves whether the network path and damage rules work
 btnTestPunch.addEventListener("click", () => {
   if (!state.roundActive) { log("시스템", "테스트 펀치 실패 — 라운드를 먼저 시작하세요"); return; }
-  if (!dataConn || !dataConn.open) { log("시스템", "테스트 펀치 실패 — 상대와 연결되지 않았습니다"); return; }
+  if (!otherSlots().some(s => opp[s] && opp[s].active)) { log("시스템", "테스트 펀치 실패 — 연결된 상대가 없습니다"); return; }
   dealPlayerDamage("straight", 0);
 });
 btnRematch.addEventListener("click", () => { resultOverlay.classList.remove("show"); startRound(); });
