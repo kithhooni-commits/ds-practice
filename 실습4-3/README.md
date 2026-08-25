@@ -1,9 +1,9 @@
-# 실습6 — 비전 복싱 (최대 4인 대전 + 관전 + 공용 링 뷰)
+# 실습4-3 — 비전 복싱 (최대 4인 대전 + 관전 + 공용 링 뷰)
 
 **Computer Vision Practicum** (SNU Visual Computing Lab, 지도: 조한별 / Samsung Electronics DS,
 2026-08-24 ~ 08-28). 기존 오픈소스 도구를 조합해 5일 안에 "의미 있고 재미있는" 비전 앱을 만드는 팀 실습.
 
-**웹에서 보기 →** https://kithhooni-commits.github.io/ds-practice/실습6/
+**웹에서 보기 →** https://kithhooni-commits.github.io/ds-practice/실습4-3/
 
 ## v1 → v2: AI 상대에서 실제 2인 대전으로
 

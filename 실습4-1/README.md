@@ -1,9 +1,9 @@
-# 실습4 — 제스처 비밀번호 잠금장치
+# 실습4-1 — 제스처 비밀번호 잠금장치
 
 **Computer Vision Practicum** (SNU Visual Computing Lab, 지도: 조한별 / Samsung Electronics DS,
 2026-08-24 ~ 08-28). 기존 오픈소스 도구를 조합해 5일 안에 "의미 있고 재미있는" 비전 앱을 만드는 팀 실습.
 
-**웹에서 보기 →** https://kithhooni-commits.github.io/ds-practice/실습4/
+**웹에서 보기 →** https://kithhooni-commits.github.io/ds-practice/실습4-1/
 
 ## IN → OUT
 

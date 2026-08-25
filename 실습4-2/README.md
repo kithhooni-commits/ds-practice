@@ -1,9 +1,9 @@
-# 실습5 — 비전 드럼 연습기
+# 실습4-2 — 비전 드럼 연습기
 
 **Computer Vision Practicum** (SNU Visual Computing Lab, 지도: 조한별 / Samsung Electronics DS,
 2026-08-24 ~ 08-28). 기존 오픈소스 도구를 조합해 5일 안에 "의미 있고 재미있는" 비전 앱을 만드는 팀 실습.
 
-**웹에서 보기 →** https://kithhooni-commits.github.io/ds-practice/실습5/
+**웹에서 보기 →** https://kithhooni-commits.github.io/ds-practice/실습4-2/
 
 ## 문제
 
