@@ -1,0 +1,266 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>실습4 — 웹캠 AR 복싱과 조용한 실패들</title>
+<style>
+:root{
+  --paper:#FAF9F5; --band:#F5F2EA; --card:#FFFFFF; --ink:#1F1E1D; --ink2:#55524C;
+  --ink3:#8A867E; --line:#E3DED2; --coral:#C15F3C; --coral-soft:#F3E4DC; --ochre:#8A6A2F;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --paper:#171614; --band:#1E1D1A; --card:#211F1C; --ink:#F2EFE8; --ink2:#BDB8AE;
+  --ink3:#8A867E; --line:#33302A; --coral:#E08256; --coral-soft:#3A2620; --ochre:#C9A54F;
+}}
+:root[data-theme="dark"]{
+  --paper:#171614; --band:#1E1D1A; --card:#211F1C; --ink:#F2EFE8; --ink2:#BDB8AE;
+  --ink3:#8A867E; --line:#33302A; --coral:#E08256; --coral-soft:#3A2620; --ochre:#C9A54F;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:15px/1.72 -apple-system,"Segoe UI","Malgun Gothic","맑은 고딕",system-ui,sans-serif;}
+.wrap{max-width:980px;margin:0 auto;padding:0 24px 80px}
+header.top{background:var(--band);border-bottom:1px solid var(--line);margin-bottom:34px}
+header.top .wrap{padding-top:38px;padding-bottom:30px}
+.eyebrow{font:600 12px/1 ui-monospace,Consolas,monospace;letter-spacing:.09em;
+  color:var(--coral);text-transform:uppercase}
+h1{font-size:30px;line-height:1.28;margin:14px 0 12px;letter-spacing:-.01em}
+h2{font-size:21px;margin:38px 0 12px;padding-top:16px;border-top:1px solid var(--line)}
+h3{font-size:16.5px;margin:26px 0 8px}
+h4{font-size:14.5px;margin:20px 0 6px;color:var(--ink2)}
+p{margin:0 0 13px;color:var(--ink2)}
+h1+p,.lede{color:var(--ink2);font-size:16px}
+a{color:var(--coral)}
+code{font:13px ui-monospace,Consolas,monospace;background:var(--band);
+  border:1px solid var(--line);border-radius:3px;padding:1px 5px}
+pre{background:var(--band);border:1px solid var(--line);border-radius:4px;
+  padding:13px 15px;overflow-x:auto}
+pre code{background:none;border:0;padding:0}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px;display:block;
+  overflow-x:auto;white-space:nowrap}
+th,td{border:1px solid var(--line);padding:7px 11px;text-align:left}
+th{background:var(--coral-soft);color:var(--ink);font-weight:600}
+td:not(:first-child){font-family:ui-monospace,Consolas,monospace}
+blockquote{border-left:2px solid var(--coral);margin:14px 0;padding:2px 0 2px 15px;color:var(--ink2)}
+hr{border:0;border-top:1px solid var(--line);margin:30px 0}
+ul,ol{color:var(--ink2);padding-left:22px}
+li{margin:4px 0}
+img{max-width:100%;height:auto;border:1px solid var(--line);border-radius:3px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:13px;margin:16px 0}
+.card{display:block;background:var(--card);border:1px solid var(--line);border-radius:4px;
+  padding:14px 15px;text-decoration:none;color:inherit;transition:border-color .12s}
+.card:hover{border-color:var(--coral)}
+.card .k{font:600 14.5px/1.3 ui-monospace,Consolas,monospace;color:var(--ink)}
+.card .d{font-size:12px;color:var(--ink3);margin-top:5px;line-height:1.5}
+.note{border-left:2px solid var(--coral);background:var(--card);padding:12px 16px;
+  margin:18px 0;font-size:13.5px;color:var(--ink2)}
+.note.warn{border-left-color:var(--ochre);background:var(--band)}
+.note b{color:var(--ink)}
+nav.crumb{font-size:12.5px;color:var(--ink3);margin-bottom:6px}
+nav.crumb a{color:var(--ink3)}
+footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--ink3)}
+
+figure{margin:18px 0 22px}
+figure img{width:100%;border:1px solid var(--line);border-radius:5px;display:block}
+figcaption{font-size:12.5px;color:var(--ink3);margin-top:7px;line-height:1.6}
+ol,ul{color:var(--ink2);padding-left:22px;margin:0 0 13px}
+li{margin-bottom:6px}
+</style>
+<header class="top"><div class="wrap">
+  <nav class="crumb"><a href="../">ds-practice</a> / 실습4</nav>
+  <div class="eyebrow">실습4 · MediaPipe Pose · Face Mesh · Three.js</div>
+  <h1>웹캠만으로 4인 실시간 AR 복싱, 그리고 조용한 실패들</h1>
+  <p class="lede">상체 7노드로 복싱 모션을 읽고, 468 랜드마크로 단안 3D 얼굴을 복원해 아바타에 씌우는 브라우저 게임.
+  여기서는 무엇을 만들었나보다 <b>무엇이 잘못됐고 어떻게 알아냈나</b>를 적는다.</p>
+</div></header>
+
+<div class="wrap">
+
+<div class="note">
+<b>결론 한 줄.</b> 가장 많은 시간을 잡아먹은 것은 틀린 알고리즘이 아니라 <b>아무 말 없이 꺼져 있던 기능들</b>이었다.
+자동 조준은 대상 목록이 비어 있어 통째로 무효였고, 이동은 펀치 잠금에 막혀 6초에 <b>0&nbsp;units</b>를 갔고,
+3D 얼굴은 두개골 <b>안쪽</b>에 배치돼 어디서도 보이지 않았다. 셋 다 예외도 경고도 없었고,
+<b>로직 하니스는 전부 통과</b>시켰다. 브라우저로 페이지를 실제로 띄우는 하니스를 만들고 나서야 잡혔다.
+</div>
+
+<h2>실행 화면</h2>
+
+<figure>
+  <img src="figures/arena.png" alt="Host 관제 화면 — 4인 복싱 링, 분노 오라, 타격 이펙트">
+  <figcaption>Host 관제뷰. 왼쪽 빨강 파이터는 분노 게이지가 가득 차 <b>불꽃 오라</b>가 일고 있다(필살기 사용 가능).
+  카드의 얇은 주황 막대가 게이지, 가운데는 타격 이펙트와 데미지 숫자.</figcaption>
+</figure>
+
+<figure>
+  <img src="figures/fighter.png" alt="1인칭 화면 — HP 바, 분노 게이지, 미니맵, 상대 아바타">
+  <figcaption>1인칭. 좌상단 HP 바 아래에 분노 게이지와 <code>⚡ 필살기 준비</code> 안내,
+  우하단 미니맵에 내 위치·시선(삼각형)과 현재 조준 대상까지의 점선.
+  (헤드리스 캡처라 웹캠이 가짜 영상이고 <code>NO POSE</code> 상태다.)</figcaption>
+</figure>
+
+<h2>숫자</h2>
+
+<table>
+<thead><tr><th>항목</th><th>값</th><th>비고</th></tr></thead>
+<tbody>
+<tr><td>추적 노드</td><td>33개 중 <b>7개</b></td><td>코 · 양어깨 · 양팔꿈치 · 양손목</td></tr>
+<tr><td>3D 얼굴</td><td>468 랜드마크 → <b>852 삼각형</b></td><td>사진 1장, Python·GPU·GLB 없음</td></tr>
+<tr><td>얼굴 삼각형 복원 버그</td><td>3288 → <b>852</b></td><td>간선 목록이 양방향 중복</td></tr>
+<tr><td>펀치 판정</td><td>창 380ms · 1.6 m/s · 어깨폭 0.88배</td><td>잽 기준으로 역산</td></tr>
+<tr><td>실측 펀치 간격</td><td>최소 <b>0.20s</b> · 중앙값 0.25s</td><td>서버 로그 533회</td></tr>
+<tr><td>이동 잠금 버그</td><td>6초 연타 중 <b>0.0 → 39.4 units</b></td><td>잠금 하한 480 → 180ms</td></tr>
+<tr><td>자동 조준</td><td>옆(90°) 상대 <b>MISS → HIT</b></td><td>펀치 순간 스냅</td></tr>
+<tr><td>검증</td><td>하니스 <b>11종 267개</b></td><td>로직 7 + 실제 브라우저 4</td></tr>
+</tbody>
+</table>
+
+<h2>조용한 실패 네 건</h2>
+
+<p>기능이 "틀리게" 동작한 적은 거의 없었다. 대신 <b>아무 말 없이 꺼져 있었다.</b>
+예외도 경고도 없고, 화면은 그럴듯하게 돌아간다.</p>
+
+<h3>자동 조준이 통째로 무효</h3>
+<p>서버 타격 판정이 <code>dot(시선, 상대방향) &gt; 0.3</code> 이라 조준이 곧 명중률인데,
+클라이언트는 상대 위치 표를 <b>상대가 보낸 패킷으로만</b> 채우고 있었다. 혼자 접속하면
+돌아오는 패킷의 <code>client_id</code>가 전부 나 자신이라 이 표가 영원히 비고,
+상시 정렬·펀치 스냅·자동 접근이 <b>셋 다 조용히 무효</b>가 된다.</p>
+<p class="note warn"><b>원인의 형태.</b> 서버는 접속 여부와 무관하게 4명 전원을 타격 대상으로 두는데
+클라이언트만 "접속한 상대"로 좁혀 보고 있었다 — 두 쪽이 아는 세계가 달랐다.</p>
+
+<h3>이동이 6초에 0 units</h3>
+<p>펀치 잠금의 하한이 480ms였는데 <b>실측 펀치 간격은 중앙값 0.25초</b>였다. 연타 중에는
+잠금이 한 번도 풀리지 않는다. 게다가 잠금은 세 군데에서 이동을 죽이고 있었다.</p>
+<pre><code>let mCand = "NONE"; if (!locked) { ... }   // (1) 새 상태가 안 생김
+if (locked) mi = 0;                        // (2) 남은 강도까지 0
+if (!punchFreeze) { /* 이동 전체 */ }      // (3) 적용 단계에서 또 차단</code></pre>
+<p>증상이 코드 구조와 정확히 일치했다 — 자동 조준은 <code>punchFreeze</code> 블록 <i>바깥</i>,
+이동은 <i>안</i>에 있었고, 사용자 보고도 "회전은 되는데 이동만 안 된다"였다.</p>
+<p>고친 방향은 "잠금을 없애기"가 아니라 <b>무엇을 잠글지 나누기</b>였다. 잠금의 목적은
+<i>오염된 신호로 새 방향이 생기는 것</i>을 막는 데 있다. 잠금 직전에 이미 확정돼 있던 이동 의사는
+펀치가 만든 것이 아니므로 죽일 이유가 없다.</p>
+
+<h3>3D 얼굴이 두개골 안쪽에</h3>
+<p>얼굴 메쉬를 구 안쪽 <code>z=0.62</code>에 배치해 대부분이 잠겼다. 배치를 상수로 박은 것이 잘못이다 —
+얼굴 깊이는 사람마다 다르다. 이제 정점마다 타원체 밖 조건을 <code>d</code>로 풀어 최댓값을 취한다.</p>
+<pre><code>(x/a)² + (y/b)² + ((z+d)/c)² ≥ 1
+k = 1 − (x/a)² − (y/b)²      k ≤ 0 이면 x·y 만으로 이미 바깥
+그 외에는  d ≥ c·√k − z</code></pre>
+<p><code>bounds.zMin</code> 하나로 어림하면 안 된다. <b>가장 뒤쪽 정점이 가장 깊이 박히는 정점이 아니다</b> —
+옆으로 벌어진 뺨은 타원체가 좁아지는 자리라 오히려 여유가 있고, 가운데 낮은 정점이 더 위험하다.</p>
+
+<h3>host 화면에는 얼굴이 아예 안 뜸</h3>
+<p><code>face3d.js</code>는 넣었는데 <b><code>face_mesh</code> CDN을 안 넣었다.</b> 얼굴 토폴로지가 없으니
+삼각형을 못 만들고 복원이 통째로 실패한다. "host는 얼굴을 <i>촬영</i>하지 않으니 라이브러리가 필요 없다"고
+넘겨짚은 것이 원인이다. 인스턴스를 만들지 않으므로 무거운 WASM은 받지 않는다 — 스크립트만 있으면 됐다.</p>
+
+<h2>두 계층의 하니스</h2>
+
+<p>위 네 건 중 두 건은 <b>로직 하니스가 전부 통과시켰다.</b> 결정적인 사례가 하나 더 있다.</p>
+<pre><code>TypeError: fx.update is not a function
+    at animate (.../client?id=client_2:1122:10)</code></pre>
+<p>이펙트 매니저를 <code>const fx</code>로 받았는데 <code>animate()</code> 안에 원래부터 정면 벡터
+<code>const fx</code>가 있었다. 안쪽이 바깥쪽을 가려 매 프레임 예외가 났고, 그 지점이
+<code>renderer.render()</code> <b>직전</b>이라 3D가 한 번도 안 그려졌다.
+<code>requestAnimationFrame</code>은 함수 맨 위에서 이미 예약되므로 루프는 계속 돌고,
+웹캠 캔버스 그리기는 예외 지점보다 앞이라 멀쩡했다 — "웹캠은 되는데 3D만 안 보인다".</p>
+
+<table>
+<thead><tr><th>계층</th><th>무엇을 보는가</th><th>종수</th></tr></thead>
+<tbody>
+<tr><td>로직 (THREE 최소 스텁)</td><td>알고리즘이 맞는가</td><td>7</td></tr>
+<tr><td><b>실제 브라우저 (헤드리스 Chrome + CDP)</b></td><td><b>페이지가 사는가</b></td><td>4</td></tr>
+</tbody>
+</table>
+
+<p>브라우저 계층은 npm 의존성 없이 Node 22 내장 <code>fetch</code>/<code>WebSocket</code>만 쓴다.
+WebGL은 SwiftShader 소프트웨어 렌더링이라 GPU 없는 환경에서도 돈다.</p>
+
+<h3>하니스가 자기 자신의 오류도 잡았다</h3>
+<ul>
+<li><b>테스트에 로직을 베껴 쓰면 안 된다.</b> 런타임과 조용히 어긋나 정작 잡아야 할 회귀를 통과시킨다.
+그래서 판정 로직을 <code>punch_core.js</code>로 빼 브라우저와 Node가 같은 모듈을 import 하게 했다.</li>
+<li>훅을 <b>직선 이동</b>으로 모델링했더니 속도가 과소평가돼 발동조차 안 됐다. 실제 훅은 손목이 호를 그린다.</li>
+<li>그 호가 <b>중앙을 가로지르지 않아</b> 임팩트 순간 속도가 전방이었고 <code>STRAIGHT</code>로 분류됐다.
+실제 훅은 바깥에서 들어와 상대를 <i>지나쳐</i> 간다.</li>
+<li>옛 머리 반지름을 하드코딩해 얼굴 배치 검사가 틀렸다. 이제 상수를 <b>소스에서 읽는다.</b></li>
+<li>밸런스 검사에서 최강기를 데미지 표 전체의 최댓값으로 잡았더니, <b>아무도 쓸 수 없는</b> 기술이
+최강기가 되어 "6대면 죽는다"는 엉뚱한 실패가 났다.</li>
+</ul>
+
+<p class="note warn"><b>문서도 검사 대상이다.</b> README가 반복적으로 코드와 어긋났다 — 데미지 표는
+밸런스를 바꾼 뒤에도 옛 값이 남았고, <code>ENERGY_WAVE</code>는 감지 로직이 없어 <b>발동조차 못 하는데</b>
+사용 가능한 기술로 적혀 있었다. 조작 문서가 틀리면 사용자는 "기능이 고장났다"고 판단한다 —
+실제로 그런 보고가 여러 번 있었다. 그래서 임계값 26개·데미지 표·액션 목록·미구현 표기를
+코드에서 뽑아 문서와 대조하는 하니스를 두었다.</p>
+
+<h2>단안 3D 얼굴 복원</h2>
+
+<p>기존 검토는 세 안을 놓고 저울질했다.</p>
+<table>
+<thead><tr><th>안</th><th>결과물</th><th>비용</th></tr></thead>
+<tbody>
+<tr><td>A. 사진을 구에 텍스처</td><td>정면만 맞는 2.5D</td><td>낮음</td></tr>
+<tr><td>B. DECA/FLAME 오프라인 복원</td><td>진짜 3D</td><td>Python·GPU·GLB, 시간 리스크 큼</td></tr>
+<tr><td>C. 다중 뷰 빌보드</td><td>중간</td><td>단순성 대비 이득 작음</td></tr>
+</tbody>
+</table>
+
+<p><b>네 번째 길이 있었다.</b> MediaPipe Face Mesh가 브라우저에서 468개 3D 랜드마크를 준다.
+고정 토폴로지를 쓰므로 랜드마크를 정점으로, 테셀레이션을 삼각형으로 삼으면 사진 한 장에서
+<b>그 사람의 실제 3D 얼굴 메쉬</b>가 나온다. <b>B의 결과물을 A의 비용으로</b> 얻는다.</p>
+
+<p>그리고 이 선택이 게임에 직접 값을 한다 — 진짜 메쉬라서 "맞으면 일그러지고 HP가 낮으면 표정이
+바뀌는" 것을 정점 변형으로 표현할 수 있다. 텍스처를 입힌 구였다면 불가능했다.
+FPS는 Face Mesh를 <b>촬영 순간에만</b> 돌리고 끄는 것으로 해결했다 — 복원된 메쉬는 정적이라 추가 비용 0이다.</p>
+
+<h3>세 가지 함정</h3>
+<ol>
+<li><b><code>FACEMESH_TESSELATION</code>은 삼각형이 아니라 간선 쌍 목록</b>이고, 같은 간선을
+<code>[a,b]</code>와 <code>[b,a]</code>로 양방향 모두 담는다(2556 = 1278×2). 3-사이클 탐색으로 복원하면
+같은 삼각형이 2×2 = 4번 잡힌다(3288개). 실은 이 배열이 삼각형 목록에서 생성된 것이라
+<b>3개씩 묶으면 한 삼각형</b>이다(852개 그룹 전부 닫힘, 어긋난 그룹 0개). 추측할 이유가 없었다.</li>
+<li><b>비등방 정규화</b> — MediaPipe 좌표는 x를 이미지 <i>폭</i>으로, y를 <i>높이</i>로 각각 나눈 값이다.
+480×360에서 그대로 쓰면 x가 0.75배로 눌려 얼굴이 세로로 길쭉해진다.</li>
+<li><b>MediaPipe가 결과 캔버스를 재사용한다.</b> 참조만 붙잡아 두면 캡처가 끝날 때쯤 다른 프레임
+그림으로 덮여 있다. 형태는 여러 프레임 평균이 맞지만(지터 제거) <b>UV는 텍스처를 딴 바로 그 프레임의
+좌표</b>여야 한다 — 둘을 분리했다.</li>
+</ol>
+
+<h3>"가면"의 정체</h3>
+<p>얼굴 메쉬만 씌우면 <b>두개골은 원래 색 그대로</b>라 얼굴 가장자리에서 색이 뚝 끊긴다.
+그 경계선이 "얼굴을 붙인 머리"가 아니라 "가면을 쓴 인형"으로 보이게 만든다.
+얼굴 텍스처에서 <b>평균 피부톤을 뽑아</b>(볼·코 주변만 표본, 그림자·하이라이트 제외)
+머리·목·팔다리를 같은 톤으로 맞추니 경계가 사라졌다.</p>
+
+<h2>사람마다 다른 몸</h2>
+<p>전진/후진 임계값을 세 번 고쳤다.</p>
+<table>
+<thead><tr><th>차수</th><th>전진 발동</th><th>후진 발동</th><th>근거</th></tr></thead>
+<tbody>
+<tr><td>4차</td><td>0.16</td><td>0.12</td><td>"사람은 뒤로 조금밖에 못 젖힌다"</td></tr>
+<tr><td>12차</td><td><b>0.105</b></td><td><b>0.175</b></td><td>실사용은 정반대였다</td></tr>
+<tr><td>16차</td><td colspan="2"><b>사람마다 측정</b></td><td>고정값으로는 아무에게도 안 맞는다</td></tr>
+</tbody>
+</table>
+<p>12차에서 뒤집은 이유는 신호 구조에 있었다. 전진 신호는 얼굴·주먹·어깨폭 여러 항으로 <b>분산</b>되는 반면,
+후진은 얼굴이 올라가는 <b>한 가지 신호</b>로 곧장 잡힌다. 같은 임계값이면 후진만 과하게 걸린다.
+그런데 뒤집었더니 이번엔 반대쪽이 안 맞았다 — <b>기울일 수 있는 범위가 사람마다 다르다</b>는 것이
+진짜 원인이었다. 3단계 보정(중립 → 최대 전진 → 최대 후진)으로 재고, 최대 기울기의 45%를 발동 임계로 잡는다.</p>
+
+<h2>한계</h2>
+<ul>
+<li><b>BiLSTM이 런타임에 연결되지 않았다.</b> 합성 데이터로 정확도 100%를 찍었지만 입력 규격이
+손 랜드마크 63차원이라 현재 Pose 7노드 파이프라인과 맞지 않는다. 실제 판정은 전부 규칙 기반이다.
+팀에서 실제 포즈 데이터셋을 모으기 시작했으므로 재학습이 다음 단계다.</li>
+<li><b>단안 복원의 한계</b> — Face Mesh는 얼굴 앞면만 덮는다. 옆·뒤 텍스처가 없어 두개골 구로 메운다.</li>
+<li><b>조명·배경에 민감</b> — 어두운 곳에서는 랜드마크 신뢰도가 떨어져 팔 인식이 흔들린다.</li>
+</ul>
+
+<h2>문서와 코드</h2>
+<ul>
+<li><a href="FINDINGS.md">FINDINGS.md</a> — 전체 분석</li>
+<li><a href="https://github.com/gichul-hong/project-4">gichul-hong/project-4</a> — 코드 (<code>iter3/</code>).
+팀 저장소라 여기서는 분석만 다룬다.</li>
+</ul>
+
+<footer>github.com/kithhooni-commits/ds-practice · 실습4</footer>
+</div>
