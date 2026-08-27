@@ -1,0 +1,2041 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%A5%8A%3C/text%3E%3C/svg%3E">
+  <title>AR Boxing Controller</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- v를 올리면 브라우저 캐시를 무시하고 새로 받는다 (포즈 로직 수정 시 필수) -->
+  <script src="/static/humanoid.js?v=6"></script>
+  <script src="/static/effects.js?v=2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+  <!-- Face Mesh 는 "얼굴 등록" 캡처 순간에만 돌린다. 게임 중에는 Pose 만 돌아 FPS 영향이 없다. -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+  <script src="/static/punch_core.js?v=3"></script>
+  <script src="/static/sound.js?v=1"></script>
+  <script src="/static/face3d.js?v=5"></script>
+  <style>
+    :root { --f-color: {{ color }}; --mono: "Cascadia Mono", monospace; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #08090e; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; user-select: none; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; background: rgba(18,22,34,0.9); border-bottom: 1px solid rgba(255,255,255,0.1); z-index: 10; }
+    .brand { font-size: 15px; font-weight: 800; color: var(--f-color); }
+    .badge { font-family: var(--mono); font-size: 11px; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--f-color); color: var(--f-color); background: rgba(0,0,0,0.5); }
+    .workspace { display: grid; grid-template-columns: 1fr 1.15fr; gap: 12px; padding: 12px; flex: 1; min-height: 0; }
+    .panel { position: relative; background: #000; border: 2px solid rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .panel.cam-view { border-color: var(--f-color); }
+    .panel.ring-view { border-color: #ffd700; }
+    video { display: none; }
+    canvas#cam-canvas { width: 100%; height: 100%; transform: scaleX(-1); object-fit: contain; background: #000; filter: contrast(1.2) saturate(1.4) brightness(0.95); }
+    #first-person-ring { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+    .action-hud { position: absolute; bottom: 10px; left: 10px; right: 10px; background: rgba(0,0,0,0.85); border: 1px solid var(--f-color); border-radius: 6px; padding: 8px 14px; display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 12px; z-index: 5; }
+    .act-title { font-size: 16px; font-weight: 900; color: var(--f-color); }
+    .hit-flash { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 10; opacity: 0;
+      background: radial-gradient(ellipse at center, rgba(255,51,102,0) 30%, rgba(255,51,102,0.55) 72%, rgba(255,20,80,0.95) 100%); }
+    /* K.O. — 내가 쓰러졌을 때 1인칭 화면을 덮는 관전 안내 */
+    .ko-overlay { position: absolute; inset: 0; z-index: 20; display: none; flex-direction: column; align-items: center; justify-content: center;
+      background: rgba(6,8,14,0.82); backdrop-filter: blur(6px); text-align: center; font-family: var(--mono); }
+    .ko-overlay b { font-size: 40px; font-weight: 900; color: #ff3366; text-shadow: 0 0 22px rgba(255,51,102,0.7); letter-spacing: 4px; }
+    .ko-overlay span { margin-top: 10px; font-size: 12px; color: #aaa; }
+    /* 렌더 루프 예외 배너 — animate()가 죽으면 1인칭 화면이 통째로 안 그려지는데,
+       콘솔을 안 보면 원인을 알 수 없다. 화면에 바로 띄운다. */
+    .anim-error { position: absolute; top: 12px; left: 12px; right: 12px; z-index: 30; display: none;
+      background: rgba(120,0,20,0.94); border: 1px solid #ff3366; border-radius: 6px; padding: 8px 12px;
+      font-family: var(--mono); font-size: 11px; color: #ffd7e0; white-space: pre-wrap; }
+    /* 내 HP 바 — 1인칭 화면 안에서 항상 보인다.
+       K.O. 인데도 "왜 안 움직이지"로 읽히던 문제가 여기서 해결된다. */
+    .hp-wrap { position: absolute; top: 12px; left: 12px; width: 210px; z-index: 6; font-family: var(--mono); }
+    .hp-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;
+              font-size: 11px; color: #cfd6e4; text-shadow: 0 1px 3px #000; }
+    .hp-row b { font-size: 17px; font-weight: 900; color: #fff; }
+    /* 분노 게이지 — HP 바 바로 아래. 가득 차면 테두리가 맥박친다. */
+    .rage-row { display: flex; justify-content: space-between; align-items: baseline;
+                margin: 6px 0 3px; font-size: 10px; color: #ffb060; text-shadow: 0 1px 3px #000; }
+    .rage-track { height: 9px; border-radius: 5px; background: rgba(0,0,0,0.65);
+                  border: 1px solid rgba(255,140,40,0.45); overflow: hidden; }
+    .rage-fill { height: 100%; width: 0%; border-radius: 4px;
+                 background: linear-gradient(90deg, #ff5a10, #ffd23a);
+                 box-shadow: 0 0 10px #ff8a20; transition: width 0.18s ease-out; }
+    .rage-track.full { border-color: #ffd23a; animation: ragePulse 0.6s ease-in-out infinite; }
+    @keyframes ragePulse { 0%,100% { box-shadow: 0 0 0 rgba(255,210,58,0); }
+                           50% { box-shadow: 0 0 14px rgba(255,210,58,0.9); } }
+    .rage-ready { color: #ffd23a; font-weight: 900; }
+
+    .hp-track { height: 13px; border-radius: 7px; background: rgba(0,0,0,0.65);
+                border: 1px solid rgba(255,255,255,0.25); overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.6); }
+    .hp-fill { height: 100%; width: 100%; border-radius: 6px; background: #00ff66;
+               box-shadow: 0 0 10px currentColor; transition: width 0.18s ease-out, background-color 0.25s; }
+    /* HP가 낮을 때 맥박 — 위험을 몸으로 느끼게 */
+    .hp-fill.critical { animation: hpPulse 0.7s ease-in-out infinite; }
+    @keyframes hpPulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.9); } }
+
+    /* 미니맵 — 링 전체에서 내가 어디 있는지 */
+    .minimap { position: absolute; bottom: 62px; right: 12px; z-index: 6;
+               background: rgba(6,9,16,0.72); border: 1px solid rgba(255,255,255,0.22); border-radius: 8px;
+               padding: 6px; box-shadow: 0 4px 14px rgba(0,0,0,0.55); }
+    .minimap canvas { display: block; border-radius: 4px; }
+    .minimap-label { font-family: var(--mono); font-size: 9px; color: #7f8a9e; text-align: center; margin-top: 3px; letter-spacing: 1px; }
+
+    /* 이동 보정 마법사 — 웹캠 패널을 덮는다 */
+    .cal-cap { position: absolute; inset: 0; z-index: 26; display: none; flex-direction: column;
+      align-items: center; justify-content: center; background: rgba(5,8,14,0.80);
+      font-family: var(--mono); text-align: center; padding: 16px; }
+    .cal-cap.on { display: flex; }
+    .cal-step { font-size: 11px; color: #7f8a9e; letter-spacing: 2px; }
+    .cal-cap h3 { margin-top: 8px; font-size: 17px; color: #fff; font-weight: 800; }
+    .cal-cap p { margin-top: 6px; font-size: 11px; color: #9fb0c8; line-height: 1.6; }
+    /* 현재 기울기를 막대로 보여준다 — "얼마나 숙였는지"가 눈에 보여야 끝까지 숙인다 */
+    .cal-meter { margin-top: 12px; width: 78%; height: 16px; border-radius: 8px;
+      background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.25);
+      position: relative; overflow: hidden; }
+    .cal-meter i { position: absolute; top: 0; bottom: 0; left: 50%; width: 0;
+      background: var(--f-color); box-shadow: 0 0 10px var(--f-color); }
+    .cal-meter b { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px;
+      background: rgba(255,255,255,0.55); }
+    /* 이번 시도의 최대치 — 여기까지 갔다는 표시 */
+    .cal-meter u { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #ffd23a;
+      box-shadow: 0 0 8px #ffd23a; display: none; }
+    .cal-val { margin-top: 6px; font-size: 20px; font-weight: 900; color: var(--f-color); }
+    .cal-bar { margin-top: 10px; width: 60%; height: 4px; border-radius: 2px;
+      background: rgba(255,255,255,0.12); overflow: hidden; }
+    .cal-bar i { display: block; height: 100%; width: 0; background: #00ff66; }
+    .cal-result { margin-top: 10px; font-size: 11px; color: #cfd8e6; line-height: 1.7; }
+
+    /* 얼굴 등록 오버레이 — 웹캠 패널을 덮는다 */
+    .face-cap { position: absolute; inset: 0; z-index: 25; display: none; flex-direction: column;
+      align-items: center; justify-content: center; background: rgba(5,8,14,0.72);
+      font-family: var(--mono); text-align: center; }
+    .face-cap.on { display: flex; }
+    .face-guide { width: 46%; aspect-ratio: 3/4; border: 3px dashed rgba(255,255,255,0.55);
+      border-radius: 50%; box-shadow: 0 0 0 9999px rgba(0,0,0,0.35); transition: border-color 0.2s; }
+    .face-guide.ok { border-color: #00ff66; border-style: solid; }
+    .face-cap h3 { margin-top: 14px; font-size: 15px; color: #fff; font-weight: 800; }
+    .face-cap p { margin-top: 6px; font-size: 11px; color: #9fb0c8; line-height: 1.6; }
+    .face-cap .count { font-size: 46px; font-weight: 900; color: var(--f-color); margin-top: 6px;
+      text-shadow: 0 0 18px currentColor; min-height: 52px; }
+    .face-btn { margin-top: 12px; padding: 7px 18px; border: none; border-radius: 5px; cursor: pointer;
+      background: var(--f-color); color: #04060a; font-weight: 800; font-size: 12px; font-family: var(--mono); }
+    .face-btn.ghost { background: rgba(255,255,255,0.12); color: #cfd8e6; margin-left: 6px; }
+    /* 복원 결과 미리보기 — 내 얼굴은 1인칭에서 볼 수 없으므로 여기서 확인한다 */
+    .face-preview { display: none; margin-top: 8px; width: 150px; height: 150px;
+      border: 1px solid rgba(255,255,255,0.25); border-radius: 8px; background: rgba(0,0,0,0.35); }
+    .badge.act { cursor: pointer; }
+
+    .move-hud { position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 4px 10px; font-family: var(--mono); font-size: 10px; color: #aaa; z-index: 5; white-space: pre-line; }
+    footer { padding: 6px 16px; background: rgba(18,22,34,0.9); border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; font-size: 11px; color: #888; font-family: var(--mono); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">{{ name }} ({{ client_id | upper }})</div>
+    <div style="display: flex; gap: 8px;">
+      <span class="badge" id="my-hp-badge" style="border-color:#00ff66; color:#00ff66;">HP: 100</span>
+      <span class="badge act" id="mute-btn" title="소리 켜기/끄기">🔊</span>
+      <span class="badge act" id="cal-btn" title="내 몸이 앞뒤로 기울어지는 범위를 재서 이동 임계값을 맞춥니다">🎚️ 이동 보정</span>
+      <span class="badge act" id="face-btn" title="웹캠으로 내 얼굴을 3D로 복원해 아바타 머리에 씌웁니다">📸 얼굴 등록</span>
+      <span class="badge" id="fps-badge">-- FPS</span>
+    </div>
+  </header>
+  <div class="workspace">
+    <div class="panel cam-view">
+      <video id="webcam" playsinline></video>
+      <canvas id="cam-canvas"></canvas>
+      <div class="cal-cap" id="cal-cap">
+        <div class="cal-step" id="cal-step">STEP 1 / 3</div>
+        <h3 id="cal-title">기본 스탠스로 서 주세요</h3>
+        <p id="cal-desc">사람마다 기울이는 범위가 다릅니다.<br>내 범위를 재서 임계값을 맞춥니다.</p>
+        <div class="cal-meter"><i id="cal-fill"></i><b></b><u id="cal-peak"></u></div>
+        <div class="cal-val" id="cal-val">0.00</div>
+        <div class="cal-bar"><i id="cal-prog"></i></div>
+        <div class="cal-result" id="cal-result"></div>
+        <div style="margin-top:12px;">
+          <button class="face-btn" id="cal-start">시작</button>
+          <button class="face-btn ghost" id="cal-skip">닫기</button>
+        </div>
+      </div>
+      <div class="face-cap" id="face-cap">
+        <div class="face-guide" id="face-guide"></div>
+        <h3 id="face-title">얼굴을 원 안에 맞추고 정면을 보세요</h3>
+        <p id="face-desc">Face Mesh 468개 랜드마크로 3D 얼굴을 복원합니다.<br>안경·모자는 벗는 편이 정확합니다.</p>
+        <div class="count" id="face-count"></div>
+        <div class="face-preview" id="face-preview"></div>
+        <div>
+          <button class="face-btn" id="face-start">촬영 시작</button>
+          <button class="face-btn ghost" id="face-skip">나중에</button>
+        </div>
+      </div>
+      <div class="action-hud">
+        <div>Motion: <span class="act-title" id="action-text">IDLE</span></div>
+        <div style="color:#00ff66">Speed: <b id="speed-text">0.0</b> km/h</div>
+      </div>
+    </div>
+    <div class="panel ring-view">
+      <div class="hp-wrap">
+        <div class="hp-row"><span>MY HP</span><b id="hp-num">100</b></div>
+        <div class="hp-track"><div class="hp-fill" id="hp-fill"></div></div>
+        <div class="rage-row"><span id="rage-label">RAGE</span><b id="rage-num">0</b></div>
+        <div class="rage-track" id="rage-track"><div class="rage-fill" id="rage-fill"></div></div>
+      </div>
+      <div class="minimap">
+        <canvas id="minimap" width="132" height="132"></canvas>
+        <div class="minimap-label">RING MAP</div>
+      </div>
+      <div class="move-hud" id="move-hud">--</div>
+      <div id="first-person-ring"></div>
+      <div class="hit-flash" id="hit-flash"></div>
+      <div class="anim-error" id="anim-error"></div>
+      <div class="ko-overlay" id="ko-overlay">
+        <b>K.O.</b>
+        <span>링에서 이탈했습니다 — 관전 모드<br>Host 화면에서 새 라운드를 시작하면 복귀합니다</span>
+      </div>
+    </div>
+  </div>
+  <footer>
+    <div>기울임: 앞(숙이기)·뒤(젖히기)·좌우(어깨 기울이기) | 회전: 어깨 수평 + 주먹 좌/우로 | 펀치: 팔 빠르게 뻗기 | C: 자세 재보정</div>
+    <div id="debug-info">--</div>
+  </footer>
+
+  <script>
+    const clientId = "{{ client_id }}";
+    const userColor = "{{ color }}";
+
+    const videoElement = document.getElementById('webcam');
+    const canvasElement = document.getElementById('cam-canvas');
+    const canvasCtx = canvasElement.getContext('2d');
+    const actionText = document.getElementById('action-text');
+    const speedText = document.getElementById('speed-text');
+    const fpsBadge = document.getElementById('fps-badge');
+    const myHpBadge = document.getElementById('my-hp-badge');
+    const hitFlash = document.getElementById('hit-flash');
+    const koOverlay = document.getElementById('ko-overlay');
+    const hpFill = document.getElementById('hp-fill');
+    const hpNum = document.getElementById('hp-num');
+    const rageFill = document.getElementById('rage-fill');
+    const rageNum = document.getElementById('rage-num');
+    const rageTrack = document.getElementById('rage-track');
+    const rageLabel = document.getElementById('rage-label');
+    const miniCanvas = document.getElementById('minimap');
+    const miniCtx = miniCanvas.getContext('2d');
+    const moveHud = document.getElementById('move-hud');
+    const debugInfo = document.getElementById('debug-info');
+
+    // ========== WebSocket ==========
+    const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+    const socket = new WebSocket(`${protocol}//${location.host}/ws/${clientId}`);
+    socket.onopen = () => console.log(`[OK] Connected as ${clientId}`);
+    socket.onerror = (e) => console.error("[WS ERROR]", e);
+    socket.onclose = (e) => {
+      console.warn("[WS CLOSED]", e.code, e.reason);
+      if (e.code === 4409) showSlotRejectedOverlay(e.reason || "slot_in_use");
+    };
+
+    function showSlotRejectedOverlay(reason) {
+      if (document.getElementById('slot-rejected-overlay')) return;
+      const ov = document.createElement('div');
+      ov.id = 'slot-rejected-overlay';
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(5,7,12,0.96);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:sans-serif;padding:32px;text-align:center;';
+      const slots = ['client_1','client_2','client_3','client_4'].filter(s => s !== clientId);
+      const links = slots.map(s => `<a href="/client?id=${s}" style="color:#0ff;text-decoration:none;padding:6px 12px;border:1px solid #0ff;border-radius:4px;margin:0 4px;font-size:13px;">${s}</a>`).join('');
+      ov.innerHTML = `
+        <div style="font-size:56px;margin-bottom:16px;">🚫</div>
+        <h1 style="font-size:26px;margin:0 0 12px;color:#ff3366;">${clientId} 슬롯이 이미 사용 중입니다</h1>
+        <p style="font-size:15px;max-width:520px;line-height:1.5;color:#ccc;margin:0 0 20px;">
+          다른 창/기기에서 이미 이 파이터로 접속 중입니다.<br>
+          다른 슬롯을 선택하거나, 기존 세션을 닫고 다시 시도하세요.
+        </p>
+        <div style="margin:12px 0 20px;">${links}</div>
+        <p style="font-size:12px;color:#888;font-family:monospace;">reason: ${reason}</p>
+        <button onclick="location.reload()" style="margin-top:12px;padding:10px 24px;background:#0ff;color:#000;border:none;border-radius:4px;font-size:14px;font-weight:700;cursor:pointer;">다시 시도</button>`;
+      document.body.appendChild(ov);
+    }
+
+    // ========== Audio ==========
+    let actx = null;
+    // 전투 음향 — static/sound.js (host 관제뷰와 같은 모듈).
+    // 예전에는 사인파 하나짜리 playThud 였는데, 한 겹으로는 "삑" 소리밖에 안 난다.
+    // 실제 타격음은 저역 '퍽' + 중역 클릭 + 노이즈 '착' 이 겹친 것이고,
+    // 데미지에 따라 낮이·길이·크기가 달라져야 타격감이 산다.
+    const snd = window.createSound();
+    // 브라우저 자동재생 정책상 사용자 제스처가 한 번은 있어야 소리가 난다
+    ['click', 'keydown', 'touchstart'].forEach(ev =>
+      window.addEventListener(ev, () => snd.ensure(), { once: false, passive: true }));
+
+    // ========== Three.js 1인칭 씬 ==========
+    const ringContainer = document.getElementById('first-person-ring');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x080a10);
+    scene.fog = new THREE.Fog(0x080a10, 40, 90);
+
+    // 배경 환경 사진 로드 (없으면 단색 유지)
+    // 방식: 카메라를 감싸는 곡면(원통 안쪽) backdrop. 어떤 비율의 사진이든 자연스럽게 표시.
+    let backdropMesh = null;
+    const bgLoader = new THREE.TextureLoader();
+
+    const camera = new THREE.PerspectiveCamera(68, ringContainer.clientWidth / ringContainer.clientHeight, 0.1, 1000);
+    const cameraRig = new THREE.Group();
+    camera.position.set(0, 0.6, 5.5);
+    cameraRig.add(camera);
+    scene.add(cameraRig);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+    renderer.setSize(ringContainer.clientWidth, ringContainer.clientHeight);
+    renderer.setPixelRatio(1);
+    ringContainer.appendChild(renderer.domElement);
+
+    // 배경 사진 실제 로드 (renderer 준비 후)
+    bgLoader.load('/static/ring_bg.jpg',
+      (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.ClampToEdgeWrapping;
+        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        try { tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); } catch(e) {}
+
+        // 반경 25, 높이 35 원통 안쪽 면 (1인칭 시점 스케일 — 링에 밀착)
+        const backdropGeo = new THREE.CylinderGeometry(25, 25, 35, 48, 1, true);
+        const backdropMat = new THREE.MeshBasicMaterial({
+          map: tex,
+          side: THREE.BackSide,
+          fog: false,
+          depthWrite: false,
+          toneMapped: false,
+          color: 0x8899aa,
+        });
+        backdropMesh = new THREE.Mesh(backdropGeo, backdropMat);
+        backdropMesh.position.y = 8;
+        backdropMesh.renderOrder = -1;
+        scene.add(backdropMesh);
+
+        scene.fog = new THREE.Fog(0x080a10, 30, 80);
+      },
+      undefined,
+      () => {}
+    );
+
+    scene.add(new THREE.AmbientLight(0x445577, 0.9));
+    const spot = new THREE.SpotLight(0xffffff, 1.6); spot.position.set(0,35,0); scene.add(spot);
+
+    // 링 바닥
+    const matMesh = new THREE.Mesh(new THREE.PlaneGeometry(40,40), new THREE.MeshStandardMaterial({color:0x121624, roughness:0.8}));
+    matMesh.rotation.x = -Math.PI/2; scene.add(matMesh);
+
+    // 기둥 4개
+    [[-18,-18],[18,-18],[18,18],[-18,18]].forEach(p => {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,12), new THREE.MeshStandardMaterial({color:0xff3366}));
+      pole.position.set(p[0],5,p[1]); scene.add(pole);
+    });
+
+    // ========== 내 팔 (1인칭) ==========
+    // 글러브 두 개만 있으면 훅인지 어퍼인지 구분이 안 된다 — 궤적이 팔의 "형태"로 드러나기 때문이다.
+    // 어깨 → 팔꿈치 → 손목을 실제로 이어 그려서 팔이 접혔는지 뻗었는지, 옆에서 감아치는지가 보이게 한다.
+    const gloveMat = new THREE.MeshStandardMaterial({ color: userColor, emissive: userColor, emissiveIntensity: 0.4 });
+    const upperMat = new THREE.MeshStandardMaterial({ color: 0x2b3145, roughness: 0.6, metalness: 0.1 });
+    const foreMat  = new THREE.MeshStandardMaterial({ color: 0xc89a6b, roughness: 0.65 });
+
+    const myLeftGlove = new THREE.Mesh(new THREE.SphereGeometry(0.9,12,12), gloveMat);
+    const myRightGlove = new THREE.Mesh(new THREE.SphereGeometry(0.9,12,12), gloveMat);
+    myLeftGlove.position.set(-1.8, -1.2, -3.5);
+    myRightGlove.position.set(1.8, -1.2, -3.5);
+    cameraRig.add(myLeftGlove);
+    cameraRig.add(myRightGlove);
+
+    // 팔꿈치 (구) — 위치는 매 프레임 포즈 랜드마크에서 갱신
+    function makeJoint() {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(0.52, 10, 10), foreMat);
+      cameraRig.add(m);
+      return m;
+    }
+    // 팔 마디 (원통) — 기본 방향이 +y 인 단위 실린더를 두 점 사이로 매 프레임 배치한다
+    function makeBone(mat, radius) {
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.82, radius, 1, 8), mat);
+      cameraRig.add(m);
+      return m;
+    }
+
+    const myArms = {
+      L: { elbow: makeJoint(), upper: makeBone(upperMat, 0.42), fore: makeBone(foreMat, 0.34),
+           shoulder: new THREE.Vector3(-2.35, -0.35, -0.9) },
+      R: { elbow: makeJoint(), upper: makeBone(upperMat, 0.42), fore: makeBone(foreMat, 0.34),
+           shoulder: new THREE.Vector3( 2.35, -0.35, -0.9) },
+    };
+
+    // 원통을 a→b 사이에 놓는다. 길이만큼 y로 늘리고, +y를 (b-a) 방향으로 회전시킨다.
+    const _boneUp = new THREE.Vector3(0, 1, 0);
+    const _boneDir = new THREE.Vector3();
+    function layBone(mesh, a, b) {
+      _boneDir.subVectors(b, a);
+      const len = _boneDir.length();
+      if (len < 1e-4) { mesh.visible = false; return; }
+      // visible 은 호출부(포즈 유무)가 결정한다 — 여기서 되켜면 팔 숨김이 무효가 된다
+      mesh.position.copy(a).addScaledVector(_boneDir, 0.5);
+      mesh.scale.set(1, len, 1);
+      mesh.quaternion.setFromUnitVectors(_boneUp, _boneDir.normalize());
+    }
+
+    // ========== 가드 실드 (1인칭) ==========
+    // host 화면에서만 보이던 가드를 내 화면에도 띄운다 — 지금 막고 있는지 스스로 알아야 한다.
+    const myShield = new THREE.Mesh(
+      new THREE.SphereGeometry(3.4, 22, 16, 0, Math.PI * 2, 0, Math.PI / 2.2),
+      new THREE.MeshBasicMaterial({ color: userColor, wireframe: true, transparent: true, opacity: 0,
+                                    depthWrite: false })
+    );
+    myShield.rotation.x = -Math.PI / 2;   // 볼록한 면이 카메라 정면(-z)을 향하도록
+    myShield.position.set(0, -0.6, -4.2);
+    cameraRig.add(myShield);
+
+    // 상대 아바타
+    const worldConfigs = {
+      "client_1": { pos:[-12,0,0], yaw:Math.PI/2, color:0xff3366 },
+      "client_2": { pos:[12,0,0], yaw:-Math.PI/2, color:0x00e5ff },
+      "client_3": { pos:[0,0,-12], yaw:0, color:0xffd700 },
+      "client_4": { pos:[0,0,12], yaw:Math.PI, color:0x00ff66 }
+    };
+    const opponentMeshes = {};
+    Object.keys(worldConfigs).forEach(id => {
+      if (id === clientId) return;
+      const cfg = worldConfigs[id];
+      const h = window.createHumanoid(cfg.color);
+      h.group.position.set(cfg.pos[0], 0, cfg.pos[2]);
+      h.group.rotation.y = cfg.yaw;
+      scene.add(h.group);
+      opponentMeshes[id] = h;
+    });
+
+    // ========== 게임 상태 ==========
+    const startConfigs = {
+      "client_1": { x:-12, z:0, yaw:-Math.PI/2 },
+      "client_2": { x:12, z:0, yaw:Math.PI/2 },
+      "client_3": { x:0, z:-12, yaw:Math.PI },
+      "client_4": { x:0, z:12, yaw:0 }
+    };
+    const myStart = startConfigs[clientId] || startConfigs["client_1"];
+    let playerX = myStart.x;
+    let playerZ = myStart.z;
+    let rotationAngle = myStart.yaw;
+    // 상대 위치는 스폰 좌표로 미리 채운다.
+    //
+    // 예전에는 상대가 패킷을 보내야만 이 표가 채워졌다. 그런데 서버는 접속 여부와 상관없이
+    // 4명 전원을 fighters 상태로 들고 있고 타격 판정도 전원에게 한다. 그래서 혼자 접속해
+    // 테스트하면 "링에는 아바타가 보이는데 자동 조준은 대상이 없다고 판단"하는 상태가 됐다.
+    // 클라이언트가 아는 타깃 목록을 서버와 일치시킨다.
+    const opponentPositions = {};
+    Object.keys(opponentMeshes).forEach(id => {
+      const cfg = worldConfigs[id];
+      opponentPositions[id] = { x: cfg.pos[0], z: cfg.pos[2], yaw: cfg.yaw };
+    });
+
+    // 타격/K.O. 이펙트 (host 관제뷰와 같은 연출 — static/effects.js)
+    // 이름 주의: animate() 안에 정면 벡터 `fx`가 이미 있다. 같은 이름을 쓰면 그쪽이 이걸 가려
+    // `fx.update is not a function` 으로 매 프레임 죽는다 (1인칭 화면이 통째로 안 그려짐).
+    const hitFx = window.createHitEffects(scene);
+    let hurtFlash = 0;              // 피격 비네트 세기 0..1 (시간 감쇠)
+    let prevShieldOn = false;       // 가드가 켜지는 "순간"에만 소리를 낸다
+    let camKickUlt = 0;             // 필살기 발동 시 카메라 반동
+    let ultChargeNow = 0;           // 필살기 자세 충전 진행도 0..1
+    let shakeT = 0, shakeMag = 0;   // 피격 카메라 흔들림
+
+    const oppHp = {};               // { client_id: hp } — K.O.된 상대는 조준·접근 대상에서 뺀다
+    Object.keys(opponentMeshes).forEach(id => { oppHp[id] = 100; });
+    let myHp = 100;
+    let wasKO = false;              // K.O. 소리를 한 번만 내기 위한 플래그
+
+    // ========== 자동 조준 (Auto-Aim) ==========
+    // 서버 타격 판정은 "내 시선 방향 · 상대 방향"의 dot에 의존한다. 즉 조준이 곧 명중률이다.
+    // 그런데 웹캠 회전 제스처는 1회당 45°가 상한이라 옆에 선 상대를 겨누려면 제스처를 두세 번
+    // 끊어 쳐야 한다. 실제로는 그 사이에 펀치가 나가서 허공을 친다. 그래서 두 단계로 자동화한다.
+    //   (1) 상시 정렬 — 수동 입력이 없을 때 가장 가까운 상대 쪽으로 서서히 돈다
+    //   (2) 펀치 스냅 — 펀치가 나가는 순간 사거리 안의 상대에게 즉시 정렬한다
+    const AIM_SNAP_RANGE    = 11.0;                 // 스냅 사거리 (서버 최대 사거리 10보다 살짝 넓게)
+    const AIM_SNAP_MAX_TURN = 120 * Math.PI / 180;  // 한 번의 스냅으로 돌 수 있는 최대 각 (등 뒤는 포기)
+    const AIM_MANUAL_HOLD   = 500;                  // 수동 회전 직후 상시 정렬을 쉬는 시간(ms)
+    const AIM_RATE_FAR = 3.0, AIM_RATE_ENGAGED = 8.0;   // 상시 정렬 속도 (1/s)
+
+    const angleWrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+
+    /** 살아있는 상대 중 가장 가까운 하나. 없으면 null. */
+    function findNearestOpponent() {
+      let best = null;
+      Object.keys(opponentPositions).forEach(id => {
+        const t = opponentPositions[id];
+        if (!t) return;
+        if ((oppHp[id] !== undefined ? oppHp[id] : 100) <= 0) return;   // K.O.된 상대는 제외
+        const dx = t.x - playerX, dz = t.z - playerZ;
+        const dist = Math.hypot(dx, dz);
+        // 정면 벡터가 (-sin yaw, -cos yaw)이므로 그 방향을 만드는 yaw는 atan2(-dx, -dz)
+        if (!best || dist < best.dist) best = { id, dist, dx, dz, angle: Math.atan2(-dx, -dz) };
+      });
+      return best;
+    }
+
+    /**
+     * 펀치 순간 조준 스냅.
+     * 펀치 패킷은 호출 시점의 rotationAngle을 그대로 실어 보내고 서버는 그 값으로 명중을 판정한다.
+     * 따라서 스냅은 반드시 sendCombatPacket "이전"에 끝나야 한다.
+     * 뒤에 돌리면 화면만 돌아가고 판정은 이미 빗나간 뒤다.
+     */
+    function snapAimForPunch() {
+      const t = findNearestOpponent();
+      if (!t || t.dist > AIM_SNAP_RANGE) return null;
+      const diff = angleWrap(t.angle - rotationAngle);
+      if (Math.abs(diff) > AIM_SNAP_MAX_TURN) return null;
+      rotationAngle = angleWrap(rotationAngle + diff);
+      rotAnchor = null;   // 제스처 회전 앵커를 풀어야 스냅한 방향이 45° 제한에 되감기지 않는다
+      return t;
+    }
+
+    cameraRig.position.set(playerX, 5, playerZ);
+    cameraRig.rotation.y = rotationAngle;
+
+    // ========== 3D 복원 얼굴 적용 ==========
+    // 서버가 중계해 준 얼굴을 상대 아바타 머리에 씌운다.
+    // 텍스처 디코딩이 비동기라 Promise 로 받는다. 같은 얼굴을 두 번 만들지 않도록 캐시한다.
+    const faceApplied = {};   // { client_id: true }
+
+    function applyFaceTo(cid, blob) {
+      const mesh = opponentMeshes[cid];
+      const key = cid + '|' + ((blob && blob.tex) || '').length;
+      if (!mesh || !blob || faceApplied[key]) return;
+      faceApplied[key] = true;
+      const color = (worldConfigs[cid] || {}).color || 0xffffff;
+      window.createFace3DFromBlob(blob, color, 2.6).then(face => {
+        if (!face) return;
+        mesh.setFace(face);
+        face.setHp(oppHp[cid] !== undefined ? oppHp[cid] : 100);
+        console.log('[FACE] ' + cid + ' 3D 얼굴 적용 (' + face.triangleCount + ' 삼각형)');
+      });
+    }
+
+    // ========== HP 바 ==========
+    // HP 색은 3단계로 끊는다. 연속 그라디언트보다 "위험하다"가 한눈에 읽힌다.
+    function renderHpBar(hp) {
+      const v = Math.max(0, Math.min(100, hp));
+      hpNum.innerText = v;
+      hpFill.style.width = v + '%';
+      const col = v > 50 ? '#00ff66' : (v > 25 ? '#ffd23a' : '#ff3366');
+      hpFill.style.background = col;
+      hpFill.style.color = col;                      // box-shadow 의 currentColor
+      hpFill.classList.toggle('critical', v > 0 && v <= 25);
+      hpNum.style.color = v > 25 ? '#fff' : '#ff6b8a';
+    }
+    renderHpBar(100);
+
+    // ========== 분노 게이지 ==========
+    // 게이지가 가득 차면 필살기를 쓸 수 있다. 그 사실이 화면에 분명히 보여야
+    // "언제 쓸 수 있는지"를 조작 없이 알 수 있다.
+    let myRage = 0;
+    function renderRage(v) {
+      const r = Math.max(0, Math.min(100, v));
+      myRage = r;
+      rageFill.style.width = r + '%';
+      rageNum.innerText = Math.round(r);
+      const full = r >= 100;
+      rageTrack.classList.toggle('full', full);
+      rageLabel.innerHTML = full
+        ? '<span class="rage-ready">⚡ 필살기 준비 — 양손을 머리 위로!</span>'
+        : 'RAGE';
+    }
+    renderRage(0);
+
+    // ========== 미니맵 ==========
+    // 링(-16..16)을 위에서 내려다본 2D 뷰. 내가 어디 있고 누구를 보고 있는지 즉시 읽힌다.
+    const RING_HALF = 16;
+    const MINI = { pad: 8 };
+
+    function miniXY(wx, wz) {
+      const size = miniCanvas.width - MINI.pad * 2;
+      // 월드 -z 가 화면 위쪽이 되도록 (3D 정면 방향과 맞춘다)
+      return [
+        MINI.pad + (wx + RING_HALF) / (RING_HALF * 2) * size,
+        MINI.pad + (wz + RING_HALF) / (RING_HALF * 2) * size,
+      ];
+    }
+
+    function drawMinimap() {
+      const W = miniCanvas.width, H = miniCanvas.height;
+      const g = miniCtx;
+      g.clearRect(0, 0, W, H);
+
+      // 링 바닥 + 격자
+      g.fillStyle = 'rgba(18,24,38,0.92)';
+      g.strokeStyle = 'rgba(255,255,255,0.22)';
+      g.lineWidth = 1;
+      const [x0, y0] = miniXY(-RING_HALF, -RING_HALF);
+      const [x1, y1] = miniXY(RING_HALF, RING_HALF);
+      g.fillRect(x0, y0, x1 - x0, y1 - y0);
+      g.strokeRect(x0 + 0.5, y0 + 0.5, x1 - x0 - 1, y1 - y0 - 1);
+      g.strokeStyle = 'rgba(255,255,255,0.08)';
+      for (let i = 1; i < 4; i++) {
+        const t = i / 4;
+        g.beginPath();
+        g.moveTo(x0 + (x1 - x0) * t, y0); g.lineTo(x0 + (x1 - x0) * t, y1);
+        g.moveTo(x0, y0 + (y1 - y0) * t); g.lineTo(x1, y0 + (y1 - y0) * t);
+        g.stroke();
+      }
+
+      // 상대들
+      Object.keys(opponentPositions).forEach(id => {
+        const t = opponentPositions[id];
+        if (!t) return;
+        const dead = (oppHp[id] !== undefined ? oppHp[id] : 100) <= 0;
+        const [px, py] = miniXY(t.x, t.z);
+        const col = '#' + ('000000' + ((worldConfigs[id] || {}).color || 0xffffff).toString(16)).slice(-6);
+        if (dead) {
+          // K.O. — X 표시. 살아있는 점과 확실히 구분돼야 조준 대상을 헷갈리지 않는다.
+          g.strokeStyle = 'rgba(255,255,255,0.35)';
+          g.lineWidth = 2;
+          g.beginPath();
+          g.moveTo(px - 4, py - 4); g.lineTo(px + 4, py + 4);
+          g.moveTo(px + 4, py - 4); g.lineTo(px - 4, py + 4);
+          g.stroke();
+        } else {
+          g.fillStyle = col;
+          g.shadowColor = col; g.shadowBlur = 7;
+          g.beginPath(); g.arc(px, py, 4.2, 0, Math.PI * 2); g.fill();
+          g.shadowBlur = 0;
+        }
+      });
+
+      // 현재 조준 대상을 잇는 선 — 지금 누구를 겨누는지 보인다
+      const tgt = findNearestOpponent();
+      if (tgt && myHp > 0) {
+        const [mx, my] = miniXY(playerX, playerZ);
+        const tp = opponentPositions[tgt.id];
+        const [tx, ty] = miniXY(tp.x, tp.z);
+        g.strokeStyle = 'rgba(255,255,255,0.30)';
+        g.setLineDash([3, 3]); g.lineWidth = 1;
+        g.beginPath(); g.moveTo(mx, my); g.lineTo(tx, ty); g.stroke();
+        g.setLineDash([]);
+      }
+
+      // 나 — 삼각형으로 그려 바라보는 방향까지 표시한다
+      const [mx, my] = miniXY(playerX, playerZ);
+      g.save();
+      g.translate(mx, my);
+      // 월드 정면은 (-sin yaw, -cos yaw). 캔버스에서 위쪽(-y)이 월드 -z 이므로 그대로 대응된다.
+      g.rotate(-rotationAngle);
+      g.fillStyle = myHp > 0 ? userColor : '#666';
+      g.shadowColor = userColor; g.shadowBlur = myHp > 0 ? 10 : 0;
+      g.beginPath();
+      g.moveTo(0, -7.5); g.lineTo(5.2, 5.5); g.lineTo(0, 2.6); g.lineTo(-5.2, 5.5);
+      g.closePath(); g.fill();
+      g.shadowBlur = 0;
+      g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineWidth = 1; g.stroke();
+      g.restore();
+    }
+
+    // 키보드 (화살표 키)
+    const keys = {};
+    window.addEventListener('keydown', e => { keys[e.code] = true; });
+    window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+    // ========== 네트워크 ==========
+    function sendCombatPacket(action, vel) {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ action, velocity: vel, world_x: playerX, world_z: playerZ, yaw: rotationAngle, timestamp: performance.now() }));
+      }
+    }
+
+    // WebSocket 수신
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      // 슬롯 중복 거부 (close 4409 직전에 서버가 보냄)
+      if (data.type === "connection_rejected") {
+        showSlotRejectedOverlay(data.reason || "slot_in_use");
+        return;
+      }
+
+      // 3D 복원 얼굴 — 접속 시 일괄(face_bulk), 이후 등록될 때마다(face_update)
+      if (data.type === "face_bulk") {
+        Object.keys(data.faces || {}).forEach(cid => applyFaceTo(cid, data.faces[cid]));
+        return;
+      }
+      if (data.type === "face_update") {
+        applyFaceTo(data.client_id, data.face);
+        return;
+      }
+
+      // 내 HP & 충돌 보정
+      if (data.fighters) {
+        const me = data.fighters[clientId];
+        if (me) {
+          myHp = me.hp;
+          myHpBadge.innerText = `HP: ${me.hp}`;
+          myHpBadge.style.color = me.hp > 40 ? '#00ff66' : '#ff3366';
+          renderHpBar(me.hp);
+          if (me.world_x !== undefined) playerX = me.world_x;
+          if (me.world_z !== undefined) playerZ = me.world_z;
+          if (me.hp <= 0 && !wasKO) snd.ko();
+          wasKO = me.hp <= 0;
+          koOverlay.style.display = me.hp <= 0 ? 'flex' : 'none';
+          if (me.rage !== undefined) renderRage(me.rage);
+        }
+        // 상대 HP — K.O.된 상대는 링에서 넘어져 사라지고, 조준·자동접근 대상에서도 빠진다.
+        // setDown은 멱등하므로 매 패킷 호출해도 된다(내부에서 진행도만 목표치로 수렴시킨다).
+        Object.keys(opponentMeshes).forEach(id => {
+          const f = data.fighters[id];
+          if (!f) return;
+          oppHp[id] = f.hp;
+          opponentMeshes[id].setDown(f.hp <= 0);
+          // HP 가 떨어질수록 지친 표정 + 코피 (얼굴이 등록된 상대만)
+          const fc = opponentMeshes[id].getFace();
+          if (fc) fc.setHp(f.hp);
+          // 분노 오라 — 상대가 달아오른 것이 눈에 보여야 경계할 수 있다
+          if (f.rage !== undefined) opponentMeshes[id].setRage(f.rage);
+          // 위치도 서버 권한 상태에서 갱신 — 상대가 직접 패킷을 보내지 않아도 좌표가 최신이 된다
+          if (f.world_x !== undefined && f.world_z !== undefined) {
+            const t = opponentPositions[id] || (opponentPositions[id] = {});
+            t.x = f.world_x; t.z = f.world_z;
+            if (f.yaw !== undefined) t.yaw = f.yaw + Math.PI;
+          }
+        });
+      }
+
+      // 타격
+      if (data.hits && data.hits.length > 0) {
+        data.hits.forEach(hit => {
+          // 상대가 맞았다면 그 자리에 3D 타격 이펙트 + 아바타 움찔 리액션
+          const tgtMesh = opponentMeshes[hit.target_id];
+          if (tgtMesh) {
+            const tp = tgtMesh.group.position;
+            const atkColor = (worldConfigs[hit.attacker_id] || {}).color || 0xffffff;
+            hitFx.spawnHit(new THREE.Vector3(tp.x, 4.6, tp.z), atkColor, hit.damage, hit.is_guard);
+            if (!hit.is_guard) tgtMesh.hit(hit.damage);
+            if (hit.ko) hitFx.spawnKO(new THREE.Vector3(tp.x, 5.2, tp.z), atkColor);
+          }
+          if (hit.attacker_id === clientId) {
+            actionText.innerHTML = `<span style="color:#00ff66">HIT! -${hit.damage} HP</span>`;
+            snd.impact(hit.damage, hit.is_guard);
+          }
+          if (hit.target_id === clientId) {
+            // 내가 맞음 — 비네트 세기와 카메라 흔들림을 데미지에 비례시킨다.
+            // 가드로 막았으면 거의 흔들리지 않아 "막았다"가 몸으로 읽힌다.
+            hurtFlash = Math.min(1, (hit.is_guard ? 0.20 : 0.45) + hit.damage / 14);
+            shakeT    = hit.is_guard ? 0.18 : 0.38;
+            shakeMag  = hit.is_guard ? 0.25 : Math.min(1.5, 0.40 + hit.damage * 0.11);
+            // 맞은 쪽은 타격음 + 숨 막히는 저역을 같이 듣는다
+            snd.impact(hit.damage, hit.is_guard);
+            if (!hit.is_guard) snd.hurt(hit.damage);
+          }
+        });
+      }
+
+      // 상대 위치
+      const senderId = data.client_id;
+      if (senderId && senderId !== clientId && opponentMeshes[senderId]) {
+        if (data.world_x !== undefined && data.world_z !== undefined) {
+          opponentPositions[senderId] = { x: data.world_x, z: data.world_z, yaw: data.yaw !== undefined ? data.yaw + Math.PI : undefined };
+        }
+        opponentMeshes[senderId].setAction(data.action);
+      }
+    };
+
+    // ========== MediaPipe Pose — 상체 7노드 (얼굴 · 어깨 · 팔꿈치 · 손목) ==========
+    // 손가락 마디(21×2=42노드) 대신 어깨-팔-손의 큰 관절만 사용해 몸 전체 모션을 읽는다.
+    const P = { NOSE: 0, L_SH: 11, R_SH: 12, L_EL: 13, R_EL: 14, L_WR: 15, R_WR: 16 };
+    const NODE_IDS = [P.NOSE, P.L_SH, P.R_SH, P.L_EL, P.R_EL, P.L_WR, P.R_WR];
+    // 연결선 — NODE_IDS 배열 인덱스 기준 (0:코 1:왼어깨 2:오른어깨 3:왼팔꿈 4:오른팔꿈 5:왼손목 6:오른손목)
+    const SKELETON = [[0,1],[0,2],[1,2],[1,3],[3,5],[2,4],[4,6]];
+    const VIS_MIN = 0.5;        // 자세 판정용 랜드마크 신뢰도 하한
+    const ARM_VIS_MIN = 0.3;    // 펀치 판정용 하한 — 빠른 팔은 visibility가 잘 떨어져서 더 관대하게
+    const SHOULDER_M = 0.40;    // 어깨너비 실측 근사(m) — world 랜드마크가 없을 때의 미터 환산용
+
+    // 펀치 판정기 — static/punch_core.js (런타임·평가기 공용 단일 소스)
+    const punchCore = window.PunchCore.createPunchCore();
+
+    // 자세 지표(roll/pitch/shift)는 "어깨폭" 단위로 정규화 → 카메라 거리·체격에 불변.
+    // 시간 상수는 모두 ms/초 단위 → 포즈 추정 FPS가 바뀌어도 체감이 동일하게 유지된다.
+    const TUNE = {
+      // --- 좌/우 스텝: 어깨선 기울기(deg) ---
+      ROLL_ON: 12.0, ROLL_OFF: 7.0, ROLL_RANGE: 16.0,
+      ROLL_FLAT: 8.0,          // "어깨 평행" 판정 상한 → 앞/뒤·회전의 전제 조건
+      // --- 앞/뒤: 얼굴·주먹의 수직 이동 종합 점수 ---
+      // 사람은 앞으로는 크게 숙일 수 있지만 뒤로는 균형상 조금밖에 못 젖힌다.
+      // 대칭 임계값을 쓰면 후진만 임계값에 못 닿으므로 뒤쪽을 더 낮게 잡는다.
+      // 전진/후진 비대칭 (2026-08-26 실사용 피드백으로 뒤집음).
+      // 4차에서는 "사람은 뒤로 조금밖에 못 젖히므로 후진을 낮게" 잡았는데, 실제로 해 보니
+      // 정반대였다 — 전진은 크게 숙여야 겨우 걸리고 후진은 툭하면 걸려 코너까지 밀렸다.
+      // 원인은 전진 신호가 어깨폭·상체하강 등 여러 항으로 분산되는 반면,
+      // 후진은 얼굴이 올라가는 한 가지 신호로 곧장 잡히기 때문이다.
+      PITCH_ON: 0.105, PITCH_OFF: 0.065, PITCH_RANGE: 0.22,
+      PITCH_BACK_ON: 0.175, PITCH_BACK_OFF: 0.115, PITCH_BACK_RANGE: 0.24,
+      // --- 회전: 주먹의 좌/우 이동 ---
+      SHIFT_ON: 0.40, SHIFT_OFF: 0.24, SHIFT_RANGE: 0.45,
+      // --- 오검출 억제 (프레임 수가 아니라 시간 기준) ---
+      // 이동 반응 지연 — 펀치는 창 래치로 즉시 나가는데 이동은 세 가지가 겹쳐 느렸다.
+      //   EMA 0.19s  →  상태 확정 190ms  →  강도 램프 0.13s   합치면 체감 0.4~0.5초
+      // 셋 다 줄이고, 아래 FAST_RATIO 로 "확실한 신호는 기다리지 않는" 경로를 뒀다.
+      SMOOTH_TAU: 0.11,        // 자세 신호 EMA 시상수(초)
+      HOLD_ON_MS: 110,         // 상태 확정에 필요한 유지 시간
+      HOLD_OFF_MS: 100,
+      INTENSITY_TAU: 0.07,     // 강도 램프 시상수(초)
+      // 임계값을 이 배수만큼 넘기면 투표를 기다리지 않고 즉시 확정한다.
+      // 투표는 애매한 신호의 흔들림을 막으려는 것이지, 크고 분명한 동작까지 붙잡아 둘 이유가 없다.
+      FAST_RATIO: 1.7,
+      // 상태가 확정됐는데 강도가 0 에 가까우면 "켜졌는데 안 움직인다"가 되어 결국 느리게 느껴진다.
+      // 임계값을 갓 넘긴 자세라도 최소 이만큼은 움직인다.
+      MOVE_MIN_INTENSITY: 0.38,
+      // --- 펀치 ---
+      // 펀치 판정 상수는 여기 없다. static/punch_core.js 가 단일 소스이며
+      // 아래 Object.assign 으로 이 TUNE 에 병합된다 (기존 TUNE.PUNCH_* 참조는 그대로 동작).
+      // 런타임과 평가 하니스가 같은 파일을 쓰게 하려는 것 — 값을 두 곳에 두면 조용히 어긋난다.
+      GUARD_HOLD_MS: 160,
+      // 어깨폭 추종 — 커질 때는 빠르게, 작아질 때는 느리게 (몸통 회전은 줄이기만 하므로)
+      SCALE_TAU_UP: 0.12,
+      SCALE_TAU_DOWN: 0.45,
+      CALIB_MS: 1800           // 중립 자세 캘리브레이션 시간
+    };
+    // 펀치 상수를 병합한다. 이후 TUNE.PUNCH_LOCK 등 기존 참조가 그대로 동작하되,
+    // 값의 출처는 punch_core.js 한 곳뿐이다.
+    Object.assign(TUNE, punchCore.tune);
+
+    // --- 이동 속도 ---
+    const MOVE_SPEED = 14.0;   // 기울임 이동 (units/s, 강도 100% 기준)
+    // 회전은 느리고 짧게. 한 번의 제스처로 최대 ROT_LIMIT 까지만 돌 수 있고,
+    // 그 이상 돌려면 주먹을 중앙으로 되돌렸다가(제스처 종료) 다시 밀어야 한다.
+    // 계속 누적되면 제자리에서 한 바퀴 돌아버려 제어가 안 된다.
+    const ROT_SPEED  = 1.3;               // 회전 속도 (rad/s ≈ 75°/s)
+    const ROT_LIMIT  = Math.PI / 4;       // 제스처 1회당 최대 회전량 (45°)
+
+    // --- 근접 교전: 사거리 안에 들어오면 상대에게 붙어 공격 거리를 유지 ---
+    const ENGAGE_RANGE = 9.0;  // 이 안에 들어오면 교전 모드
+    const ENGAGE_DIST  = 6.0;  // 유지하려는 간격 (서버 콜라이더 5.6 바로 바깥)
+    const ENGAGE_PULL  = 7.0;  // 접근 속도 (units/s)
+
+    let latestPose = null;                 // 최근 랜드마크 (오버레이용)
+    let currentAction = "IDLE", currentVelocity = 0.0;
+    let lastSpeedKmh = 0;
+
+    // 이동/회전 상태 (서로 독립적으로 판정)
+    let moveState = "NONE";                // NONE | FORWARD | BACK | LEFT | RIGHT
+    let rotState  = "NONE";                // NONE | ROT_LEFT | ROT_RIGHT
+    let moveIntensity = 0, rotIntensity = 0;
+    const moveVote = { cand: "NONE", since: 0 }, rotVote = { cand: "NONE", since: 0 };
+
+    // 스무딩된 특징값 (sScale은 카메라 거리 전용으로 더 느리게 평활)
+    let sRoll = 0, sPitch = 0, sShift = 0, sScale = 0;
+    let guardSince = 0, guardActive = false;
+    let lastPunchAny = 0, lastRotInputT = 0, punchLocked = false;
+    let rotAnchor = null;                  // 회전 제스처 시작 시점의 yaw (±ROT_LIMIT 제한 기준)
+    let punchLabel = "", punchLabelT = 0;
+    // 잠금 진입 "직전"의 이동 상태 — 펀치로 오염되기 전의 이동 의사다.
+    let wasLocked = false;
+    const lockedMove = { state: "NONE", intensity: 0 };
+    let lastPoseT = 0, poseFps = 0;        // 실제 포즈 추정 주기 (튜닝 관찰용)
+    // HUD 표시용. pitch는 항별로 나눠 보여줘야 어느 신호가 부족한지 바로 알 수 있다.
+    const dbg = { L: { reachN: 0, speed: 0 }, R: { reachN: 0, speed: 0 },
+                  face: 0, fist: 0, body: 0, near: 0 };
+
+    // 중립 자세 (기립 스탠스) 캘리브레이션 기준값
+    const neutral = { roll: 0, faceRel: -0.6, fistRel: 0.5, shMidY: 0.45, scale: 0.20,
+                      lwrOff: 0.35, rwrOff: -0.35, ready: false };
+    let calibN = 0, calibT0 = 0;
+
+    // 팔별 펀치 상태는 punchCore 가 들고 있다 (punchCore.arms).
+    // 여기서 쓰는 건 1인칭 글러브 뻗음 애니메이션 값뿐 — 판정과 무관한 순수 표현용이다.
+    const arms = punchCore.arms;
+    const armAnim = { L: 0, R: 0 };
+
+    const clamp01 = v => (v < 0 ? 0 : (v > 1 ? 1 : v));
+    function visOK(lm, ids) { return ids.every(i => lm[i] && (lm[i].visibility === undefined || lm[i].visibility >= VIS_MIN)); }
+
+    function resetCalibration() { calibN = 0; neutral.ready = false; }
+    window.addEventListener('keydown', e => { if (e.code === 'KeyC') resetCalibration(); });
+
+    // ========== 이동 범위 보정 (Range Calibration) ==========
+    //
+    // 중립 자세만 보정하고 임계값은 모두에게 같은 고정값을 쓰고 있었다.
+    // 그런데 앞뒤로 기울일 수 있는 정도는 사람마다·카메라 각도마다 크게 다르다.
+    // 누구에겐 0.105 가 살짝 끄덕이는 수준이고 누구에겐 최대로 숙여야 닿는 값이다.
+    // 그래서 **본인의 최대 기울기를 직접 재서** 그 비율로 임계값을 잡는다.
+    //
+    // 저장은 localStorage — 접속할 때마다 다시 재게 만들 이유가 없다.
+    const CAL_KEY = 'arena_move_cal_v1';
+    const CAL_TRIGGER = 0.45;   // 최대 기울기의 이 비율에서 발동
+    const CAL_RELEASE = 0.62;   // 발동 임계의 이 비율에서 해제 (히스테리시스)
+    const CAL_MIN_SPAN = 0.06;  // 이보다 범위가 좁으면 측정 실패로 본다
+
+    const moveCal = { ready: false, fwd: 0, back: 0 };
+
+    /** 측정한 범위로 TUNE 의 pitch 임계값을 덮어쓴다. */
+    function applyMoveCal() {
+      if (!moveCal.ready) return;
+      const on   = moveCal.fwd  * CAL_TRIGGER;
+      const bon  = moveCal.back * CAL_TRIGGER;
+      TUNE.PITCH_ON        = on;
+      TUNE.PITCH_OFF       = on * CAL_RELEASE;
+      TUNE.PITCH_RANGE     = Math.max(0.05, moveCal.fwd - on);
+      TUNE.PITCH_BACK_ON   = bon;
+      TUNE.PITCH_BACK_OFF  = bon * CAL_RELEASE;
+      TUNE.PITCH_BACK_RANGE = Math.max(0.05, moveCal.back - bon);
+    }
+
+    function loadMoveCal() {
+      try {
+        const raw = localStorage.getItem(CAL_KEY);
+        if (!raw) return false;
+        const v = JSON.parse(raw);
+        if (!(v.fwd > CAL_MIN_SPAN) || !(v.back > CAL_MIN_SPAN)) return false;
+        moveCal.fwd = v.fwd; moveCal.back = v.back; moveCal.ready = true;
+        applyMoveCal();
+        console.log(`[CAL] 저장된 이동 보정 적용 — 전진 ${TUNE.PITCH_ON.toFixed(3)} / 후진 ${TUNE.PITCH_BACK_ON.toFixed(3)}`);
+        return true;
+      } catch (e) { return false; }
+    }
+
+    function saveMoveCal() {
+      try { localStorage.setItem(CAL_KEY, JSON.stringify({ fwd: moveCal.fwd, back: moveCal.back })); }
+      catch (e) { /* 사생활 보호 모드 등 — 저장 못 해도 이번 세션에는 적용된다 */ }
+    }
+
+    // ── 마법사 ──────────────────────────────────────────────────────
+    const calEls = {
+      box: document.getElementById('cal-cap'),
+      step: document.getElementById('cal-step'),
+      title: document.getElementById('cal-title'),
+      desc: document.getElementById('cal-desc'),
+      fill: document.getElementById('cal-fill'),
+      peak: document.getElementById('cal-peak'),
+      val: document.getElementById('cal-val'),
+      prog: document.getElementById('cal-prog'),
+      result: document.getElementById('cal-result'),
+      start: document.getElementById('cal-start'),
+      skip: document.getElementById('cal-skip'),
+      btn: document.getElementById('cal-btn'),
+    };
+
+    // stage: 0 대기 · 1 중립 · 2 전진 최대 · 3 후진 최대 · 4 완료
+    let cal = null;
+    const CAL_HOLD_MS = 2600;   // 각 단계 측정 시간
+
+    function calOpen() {
+      cal = { stage: 0, t0: 0, peak: 0 };
+      calEls.box.classList.add('on');
+      calEls.step.innerText = '준비';
+      calEls.title.innerText = '이동 범위 보정';
+      calEls.desc.innerHTML = '3단계로 <b>내 몸이 앞뒤로 기울어지는 범위</b>를 잽니다.<br>'
+        + '측정한 범위의 45%를 넘으면 이동이 발동합니다.';
+      calEls.result.innerText = moveCal.ready
+        ? `현재 적용됨 — 전진 ${TUNE.PITCH_ON.toFixed(3)} / 후진 ${TUNE.PITCH_BACK_ON.toFixed(3)}`
+        : '아직 보정하지 않았습니다 (기본값 사용 중)';
+      calEls.start.innerText = moveCal.ready ? '다시 보정' : '시작';
+      calEls.prog.style.width = '0%';
+      calEls.peak.style.display = 'none';
+      calEls.fill.style.width = '0%';
+    }
+
+    function calClose() { cal = null; calEls.box.classList.remove('on'); }
+
+    function calNext(stage) {
+      cal.stage = stage;
+      cal.t0 = 0;
+      cal.peak = 0;
+      calEls.peak.style.display = 'none';
+      calEls.prog.style.width = '0%';
+      calEls.result.innerText = '';
+      if (stage === 1) {
+        calEls.step.innerText = 'STEP 1 / 3';
+        calEls.title.innerText = '기본 스탠스로 가만히';
+        calEls.desc.innerHTML = '복싱 스탠스로 편하게 서 주세요.<br>이 자세가 중립 기준이 됩니다.';
+        resetCalibration();
+      } else if (stage === 2) {
+        calEls.step.innerText = 'STEP 2 / 3';
+        calEls.title.innerText = '앞으로 최대한 숙이세요';
+        calEls.desc.innerHTML = '어깨는 <b>수평으로 유지</b>한 채 상체를 앞으로.<br>가장 깊이 숙인 상태를 유지하세요.';
+      } else if (stage === 3) {
+        calEls.step.innerText = 'STEP 3 / 3';
+        calEls.title.innerText = '뒤로 최대한 젖히세요';
+        calEls.desc.innerHTML = '어깨는 <b>수평으로 유지</b>한 채 상체를 뒤로.<br>넘어지지 않을 만큼만.';
+      }
+    }
+
+    /** 포즈 콜백에서 매 프레임 호출된다. sPitch 는 중립 대비 평활된 기울기. */
+    function calFrame(pitch, now) {
+      if (!cal || cal.stage === 0 || cal.stage === 4) return;
+
+      if (cal.stage === 1) {
+        // 중립 보정은 기존 루틴이 담당한다. 끝나면 다음 단계로.
+        calEls.prog.style.width = Math.min(100, (calibN / 30) * 100) + '%';
+        calEls.val.innerText = neutral.ready ? 'OK' : 'CAL';
+        if (neutral.ready) calNext(2);
+        return;
+      }
+
+      if (!cal.t0) cal.t0 = now;
+      const el = now - cal.t0;
+      const want = cal.stage === 2 ? 1 : -1;          // 전진은 +, 후진은 −
+      const signed = pitch * want;
+      if (signed > cal.peak) cal.peak = signed;
+
+      // 막대: 중앙 기준으로 좌우. 0.35 를 화면 절반으로 본다.
+      const half = 0.35;
+      const w = Math.min(50, Math.abs(pitch) / half * 50);
+      calEls.fill.style.width = w + '%';
+      calEls.fill.style.left = pitch >= 0 ? '50%' : (50 - w) + '%';
+      calEls.peak.style.display = 'block';
+      const pw = Math.min(50, cal.peak / half * 50);
+      calEls.peak.style.left = (want > 0 ? 50 + pw : 50 - pw) + '%';
+      calEls.val.innerText = (want > 0 ? '' : '-') + cal.peak.toFixed(3);
+      calEls.prog.style.width = Math.min(100, el / CAL_HOLD_MS * 100) + '%';
+
+      if (el >= CAL_HOLD_MS) {
+        if (cal.stage === 2) { moveCal.fwd = cal.peak; calNext(3); }
+        else { moveCal.back = cal.peak; calFinish(); }
+      }
+    }
+
+    function calFinish() {
+      cal.stage = 4;
+      calEls.prog.style.width = '100%';
+      const ok = moveCal.fwd > CAL_MIN_SPAN && moveCal.back > CAL_MIN_SPAN;
+      if (!ok) {
+        calEls.step.innerText = '측정 실패';
+        calEls.title.innerText = '기울기가 충분히 잡히지 않았습니다';
+        calEls.desc.innerHTML = '어깨를 수평으로 유지한 채 <b>더 크게</b> 숙였다 젖혀 주세요.<br>'
+          + '카메라가 상반신 전체를 담고 있는지도 확인하세요.';
+        calEls.result.innerText =
+          `측정값 — 전진 ${moveCal.fwd.toFixed(3)} / 후진 ${moveCal.back.toFixed(3)} (최소 ${CAL_MIN_SPAN})`;
+        calEls.start.innerText = '다시 시도';
+        return;
+      }
+      moveCal.ready = true;
+      applyMoveCal();
+      saveMoveCal();
+      calEls.step.innerText = '완료';
+      calEls.title.innerText = '내 범위에 맞췄습니다';
+      calEls.desc.innerHTML = '최대 기울기의 <b>45%</b>를 넘으면 이동이 발동합니다.';
+      calEls.result.innerHTML =
+        `측정된 최대 기울기 — 전진 <b>${moveCal.fwd.toFixed(3)}</b> / 후진 <b>${moveCal.back.toFixed(3)}</b><br>`
+        + `발동 임계 — 전진 <b>${TUNE.PITCH_ON.toFixed(3)}</b> / 후진 <b>${TUNE.PITCH_BACK_ON.toFixed(3)}</b><br>`
+        + `<span style="color:#7f8a9e">브라우저에 저장되어 다음 접속에도 유지됩니다.</span>`;
+      calEls.start.innerText = '다시 보정';
+    }
+
+    // 음소거 토글
+    {
+      const mb = document.getElementById('mute-btn');
+      mb.addEventListener('click', () => {
+        snd.setMuted(!snd.isMuted());
+        mb.innerText = snd.isMuted() ? '🔇' : '🔊';
+        mb.style.opacity = snd.isMuted() ? '0.45' : '1';
+      });
+    }
+
+    calEls.btn.addEventListener('click', () => { if (cal) calClose(); else calOpen(); });
+    calEls.start.addEventListener('click', () => { if (cal) calNext(1); });
+    calEls.skip.addEventListener('click', calClose);
+
+    loadMoveCal();
+
+    // 펀치 운동학·분류·발동은 전부 punchCore 로 옮겼다 (static/punch_core.js).
+    // 이 파일에는 판정 로직이 남아 있지 않다 — 하니스가 같은 파일을 import 해 검증한다.
+
+    /**
+     * 상태 투표. 후보가 일정 시간 유지돼야 확정된다.
+     * @param {boolean} immediate 신호가 임계값을 크게 넘겼는가 — 그러면 기다리지 않는다.
+     *   펀치가 빠른 이유는 이런 "확실한 증거는 즉시" 경로가 있기 때문이다. 이동에도 준다.
+     */
+    function vote(box, cand, cur, now, immediate) {
+      if (cand !== box.cand) { box.cand = cand; box.since = now; }
+      if (immediate && cand !== "NONE") { box.since = now - 1e6; return cand; }
+      const need = (cand === "NONE") ? TUNE.HOLD_OFF_MS : TUNE.HOLD_ON_MS;
+      return (now - box.since >= need) ? cand : cur;
+    }
+
+    function relaxStates() {
+      moveVote.cand = "NONE"; moveVote.since = 0;
+      rotVote.cand = "NONE";  rotVote.since = 0;
+      wasLocked = false; lockedMove.state = "NONE"; lockedMove.intensity = 0;
+      moveState = "NONE"; rotState = "NONE";
+      moveIntensity *= 0.8; rotIntensity *= 0.8;
+      guardSince = 0; guardActive = false;
+      punchLocked = false; rotAnchor = null;
+      punchCore.disarm();
+    }
+
+    // 이동(앞/뒤/좌/우)과 회전을 각각 독립적으로 확정한다.
+    function updateStates(now, dtPose) {
+      // 펀치 중에는 어느 방향으로도 **새** 이동/회전 상태가 생기지 않게 한다.
+      // (펀치 동작이 어깨선·주먹 위치를 흔들어 앞/뒤·좌/우·회전 모두를 오검출시킨다)
+      const locked = punchLocked;
+
+      // 잠금에 막 들어간 순간의 상태 = 펀치로 오염되기 "전"의 이동 의사. 이걸 붙잡아 둔다.
+      if (locked && !wasLocked) {
+        lockedMove.state = moveState;
+        lockedMove.intensity = moveIntensity;
+      }
+      wasLocked = locked;
+
+      if (locked) {
+        // 오염된 신호로 "새" 상태가 생기는 것은 계속 막는다 (3·5차 회귀 방지 — 펀치가 나를 밀지 않는다).
+        // 다만 이미 확정돼 있던 이동 의사까지 0으로 죽이지는 않는다.
+        // 예전에는 여기서 mCand="NONE" + mi=0 으로 지웠는데, 연타 간격(0.20~0.30s)이
+        // 잠금 하한보다 짧으면 잠금이 풀릴 틈이 없어 **영영 못 움직이는** 상태가 됐다.
+        // 붙잡아 둔 값은 펀치 이전 것이므로 펀치가 만들어낸 방향일 수 없다.
+        moveState = lockedMove.state;
+        lockedMove.intensity *= Math.exp(-dtPose / TUNE.PUNCH_MOVE_DECAY);
+        moveIntensity = lockedMove.intensity;
+        // 회전은 계속 완전히 막는다 — 주먹 좌우 이동이 곧 회전 신호라 펀치와 정면으로 겹친다.
+        rotState = "NONE";
+        rotIntensity += (0 - rotIntensity) * (1 - Math.exp(-dtPose / 0.13));
+        return;
+      }
+
+      // --- 이동: 어깨 기울기가 우선, 어깨가 평행할 때만 앞/뒤를 본다 ---
+      let mCand = "NONE";
+      {
+        const rollOn = (moveState === "LEFT" || moveState === "RIGHT") ? TUNE.ROLL_OFF : TUNE.ROLL_ON;
+        if (sRoll > rollOn) mCand = "LEFT";
+        else if (sRoll < -rollOn) mCand = "RIGHT";
+        else if (Math.abs(sRoll) < TUNE.ROLL_FLAT) {
+          const fwdOn  = (moveState === "FORWARD") ? TUNE.PITCH_OFF : TUNE.PITCH_ON;
+          const backOn = (moveState === "BACK")    ? TUNE.PITCH_BACK_OFF : TUNE.PITCH_BACK_ON;
+          if (sPitch > fwdOn) mCand = "FORWARD";
+          else if (sPitch < -backOn) mCand = "BACK";
+        } else {
+          // 평행(8°)과 기울임(12°) 사이의 중간 구간 — 상태를 흔들지 않고 유지
+          mCand = (moveState === "FORWARD" || moveState === "BACK") ? moveState : "NONE";
+        }
+      }
+      // "임계값을 FAST_RATIO 배만큼 넘겼는가" — 넘겼으면 투표를 건너뛴다
+      const F = TUNE.FAST_RATIO;
+      let mFast = false;
+      if (mCand === "LEFT" || mCand === "RIGHT") mFast = Math.abs(sRoll) > TUNE.ROLL_ON * F;
+      else if (mCand === "FORWARD") mFast = sPitch > TUNE.PITCH_ON * F;
+      else if (mCand === "BACK") mFast = -sPitch > TUNE.PITCH_BACK_ON * F;
+      moveState = vote(moveVote, mCand, moveState, now, mFast);
+
+      // --- 회전: 어깨 평행 + 주먹 좌/우 이동. 이동 상태와 무관하게 판정 ---
+      let rCand = "NONE";
+      if (Math.abs(sRoll) < TUNE.ROLL_FLAT) {
+        const sOn = (rotState !== "NONE") ? TUNE.SHIFT_OFF : TUNE.SHIFT_ON;
+        if (sShift > sOn) rCand = "ROT_LEFT";
+        else if (sShift < -sOn) rCand = "ROT_RIGHT";
+      }
+      rotState = vote(rotVote, rCand, rotState, now,
+                      rCand !== "NONE" && Math.abs(sShift) > TUNE.SHIFT_ON * TUNE.FAST_RATIO);
+
+      // --- 강도: 임계값을 넘은 만큼 비례 (0~1), 급변 방지용 EMA (시상수 0.13s) ---
+      const ka = 1 - Math.exp(-dtPose / TUNE.INTENSITY_TAU);
+      let mi = 0;
+      if (moveState === "LEFT" || moveState === "RIGHT") mi = clamp01((Math.abs(sRoll) - TUNE.ROLL_OFF) / TUNE.ROLL_RANGE);
+      else if (moveState === "FORWARD") mi = clamp01((sPitch - TUNE.PITCH_OFF) / TUNE.PITCH_RANGE);
+      else if (moveState === "BACK") mi = clamp01((-sPitch - TUNE.PITCH_BACK_OFF) / TUNE.PITCH_BACK_RANGE);
+      // 즉시 확정된 경우에는 강도 램프도 건너뛴다. 상태만 빨리 켜고 강도를 천천히 올리면
+      // "확정은 됐는데 안 움직이는" 구간이 생겨 결국 똑같이 느리게 느껴진다.
+      // 확정된 상태에는 최소 강도를 보장한다 (임계값을 갓 넘긴 자세도 또렷하게 움직이도록)
+      if (moveState !== "NONE") mi = Math.max(mi, TUNE.MOVE_MIN_INTENSITY);
+      moveIntensity = mFast ? Math.max(moveIntensity, mi) : moveIntensity + (mi - moveIntensity) * ka;
+
+      let ri = (rotState === "NONE") ? 0 : clamp01((Math.abs(sShift) - TUNE.SHIFT_OFF) / TUNE.SHIFT_RANGE);
+      if (rotState !== "NONE") ri = Math.max(ri, TUNE.MOVE_MIN_INTENSITY);
+      rotIntensity += (ri - rotIntensity) * ka;
+      if (rotState !== "NONE") lastRotInputT = now;
+    }
+
+    const pose = new Pose({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}` });
+    // 펀치는 신전 구간이 0.15초 안팎이라 샘플이 성기면 그냥 놓친다.
+    // 정확도보다 시간 해상도가 중요하므로 lite 모델로 프레임을 최대한 확보한다.
+    // (자세 지표는 EMA + 히스테리시스로 평활되므로 lite의 노이즈에 둔감하다)
+    pose.setOptions({
+      modelComplexity: 0,
+      smoothLandmarks: true,
+      enableSegmentation: false,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    });
+
+    pose.onResults((res) => {
+      const now = performance.now();
+      const lm = res.poseLandmarks;
+      const dtPose = lastPoseT ? Math.min(Math.max((now - lastPoseT) / 1000, 0.008), 0.4) : 0.033;
+      if (lastPoseT) poseFps += (1000 / Math.max(now - lastPoseT, 1) - poseFps) * 0.1;
+      lastPoseT = now;
+
+      // 펀치 직후에는 자세 신호를 전혀 갱신하지 않고 직전 값을 유지한다.
+      // 펀치 동작 자체가 어깨선·주먹 위치·투영 어깨폭을 크게 흔들기 때문에, 적용(이동)만 막고
+      // 신호를 계속 적분하면 잠금이 풀리는 순간 그 사이 쌓인 값이 그대로 튀어나가 뒤/옆으로 밀린다.
+      //
+      // 고정 시간만으로는 부족하다. 뻗은 팔이 아직 돌아오는 중인데 잠금이 풀리면 그 자세가 그대로
+      // 신호에 들어간다. 그래서 팔이 실제로 회수될 때까지(속도가 죽고 뻗음이 줄 때까지) 연장한다.
+      const sincePunch = now - lastPunchAny;
+      // 잠금 판정도 punchCore 소유 — 임계값(PUNCH_LOCK / PUNCH_LOCK_MAX)과 "팔이 아직
+      // 나가 있는지" 판정이 한 곳에 모여 있어야 런타임과 평가기가 같은 결론을 낸다.
+      const postureLocked = punchCore.isLocked(now);
+      punchLocked = postureLocked;   // updateStates / animate 가 같은 판정을 쓰도록 공유
+
+      if (!lm || !visOK(lm, [P.NOSE, P.L_SH, P.R_SH])) {
+        latestPose = null;
+        sRoll *= 0.8; sPitch *= 0.8; sShift *= 0.8;
+        relaxStates();
+        currentAction = "IDLE"; currentVelocity = 0; lastSpeedKmh = 0;
+        actionText.innerText = "NO POSE";
+        speedText.innerText = "0.0";
+        return;
+      }
+      latestPose = lm;
+
+      const nose = lm[P.NOSE], lsh = lm[P.L_SH], rsh = lm[P.R_SH];
+      const lwr = lm[P.L_WR], rwr = lm[P.R_WR];
+      const wristOK = visOK(lm, [P.L_EL, P.R_EL, P.L_WR, P.R_WR]);
+      // 펀치는 팔별로 따로 판정 — 반대쪽 팔이 가려져도 치는 팔은 인식되어야 한다.
+      const armVis = {
+        L: lm[P.L_SH] && lm[P.L_EL] && lm[P.L_WR] && (lm[P.L_WR].visibility ?? 1) >= ARM_VIS_MIN && (lm[P.L_EL].visibility ?? 1) >= ARM_VIS_MIN,
+        R: lm[P.R_SH] && lm[P.R_EL] && lm[P.R_WR] && (lm[P.R_WR].visibility ?? 1) >= ARM_VIS_MIN && (lm[P.R_EL].visibility ?? 1) >= ARM_VIS_MIN
+      };
+
+      // 어깨폭을 길이 단위로 사용 (카메라 거리 무관)
+      const shDX = lsh.x - rsh.x, shDY = lsh.y - rsh.y;
+      const scale = Math.max(Math.hypot(shDX, shDY), 0.06);
+      const shMidX = (lsh.x + rsh.x) / 2, shMidY = (lsh.y + rsh.y) / 2;
+
+      // 카메라 거리 지표. 펀치 잠금 중에는 아예 갱신하지 않는다 — 어깨를 넣어 치면 투영 어깨폭이
+      // 줄어드는데, 그 값이 들어가면 "멀어짐 = 후진"으로 오인된다.
+      //
+      // 잠금이 못 잡는 경우(임계값에 못 미친 헛펀치, 몸통을 트는 다른 동작)까지 대비해
+      // 비대칭으로 추종한다. 몸통 회전은 투영 어깨폭을 **줄이기만** 하므로,
+      // 커질 때는 빠르게 / 작아질 때는 느리게 따라가면 회전 오염만 골라서 걸러낼 수 있다.
+      // 진짜 후진은 자세를 유지하는 동작이라 느린 추종으로도 결국 반영된다.
+      if (sScale === 0) sScale = scale;
+      else if (!postureLocked) {
+        const tau = (scale > sScale) ? TUNE.SCALE_TAU_UP : TUNE.SCALE_TAU_DOWN;
+        sScale += (scale - sScale) * (1 - Math.exp(-dtPose / tau));
+      }
+
+      // (1) 어깨선 기울기 — +면 왼쪽 어깨가 내려감 = 몸을 자기 왼쪽으로 기울임
+      const rollRaw = Math.atan2(shDY, Math.abs(shDX)) * 180 / Math.PI;
+
+      // (2) 얼굴 / 주먹의 위치
+      // 길이 단위로는 순간 어깨폭이 아니라 평활된 sScale을 쓴다.
+      // 몸통이 돌면 순간 어깨폭이 줄어드는데, 그걸 분모로 쓰면 얼굴·주먹 비율까지 함께 부풀려져
+      // 방향 판정이 오염된다.
+      const uScale = Math.max(sScale, 0.06);
+      const wrMidY = wristOK ? (lwr.y + rwr.y) / 2 : shMidY + neutral.fistRel * uScale;
+      const faceRel = (nose.y - shMidY) / uScale;   // 어깨선 대비 얼굴 높이 (아래로 갈수록 +)
+      const fistRel = (wrMidY - shMidY) / uScale;   // 어깨선 대비 주먹 높이
+      const lwrOff  = wristOK ? (lwr.x - shMidX) / uScale : neutral.lwrOff;
+      const rwrOff  = wristOK ? (rwr.x - shMidX) / uScale : neutral.rwrOff;
+
+      // 중립 자세 캘리브레이션 (접속 후 CALIB_MS 동안, C 키로 재실행)
+      if (!neutral.ready) {
+        if (calibN === 0) calibT0 = now;
+        const a = (calibN === 0) ? 1 : 0.2;
+        neutral.roll    += (rollRaw - neutral.roll) * a;
+        neutral.faceRel += (faceRel - neutral.faceRel) * a;
+        neutral.fistRel += (fistRel - neutral.fistRel) * a;
+        neutral.shMidY  += (shMidY  - neutral.shMidY)  * a;
+        neutral.scale   += (sScale  - neutral.scale)   * a;
+        neutral.lwrOff  += (lwrOff  - neutral.lwrOff)  * a;
+        neutral.rwrOff  += (rwrOff  - neutral.rwrOff)  * a;
+        calibN++;
+        neutral.ready = (now - calibT0 >= TUNE.CALIB_MS && calibN >= 10);
+      }
+
+      // 가드: 양 손목이 어깨선 위 + 얼굴 근처
+      let guardNow = false;
+      if (wristOK) {
+        const dl = Math.hypot(lwr.x - nose.x, lwr.y - nose.y) / scale;
+        const dr = Math.hypot(rwr.x - nose.x, rwr.y - nose.y) / scale;
+        guardNow = (lwr.y < shMidY + 0.15 * scale) && (rwr.y < shMidY + 0.15 * scale) && dl < 1.0 && dr < 1.0;
+      }
+      if (!guardNow) guardSince = 0;
+      else if (guardSince === 0) guardSince = now;
+      guardActive = guardSince > 0 && (now - guardSince) >= TUNE.GUARD_HOLD_MS;
+
+      // --- 앞/뒤 기울임 점수: 얼굴·주먹이 내려가면 +(전진), 올라가면 −(후진) ---
+      // 가드 중에는 주먹이 얼굴 높이로 올라가므로 주먹 항의 가중치를 얼굴로 넘긴다.
+      //
+      // 네 항의 역할이 서로 다르다.
+      //  - 얼굴/주먹(어깨선 대비): 방향에 반대칭. 턱을 당기면 +, 들면 −. 판별의 기본축.
+      //  - 상체가 화면에서 내려간 정도: 방향엔 **대칭**(어느 쪽으로 기울든 머리는 낮아진다)이지만
+      //    전진에서 가장 크고 안정적인 신호다. 이것만 쓰면 후진이 상쇄되고,
+      //    빼버리면 이번엔 전진이 임계값에 못 닿는다. 그래서 가중치를 낮춰 보조로만 쓴다.
+      //  - 어깨폭(카메라 거리): 가까워지면 +, 멀어지면 −. 반대칭이라 후진을 성립시키는 항.
+      //    단 몸통이 돌아가면(펀치) 투영 폭이 줄어 오염되므로 PUNCH_LOCK 중에는 얼린다.
+      //
+      // 어깨폭은 별도로 더 느리게 평활한다. 펀치할 때 어깨를 넣으면 몸통이 돌아가면서
+      // 투영 어깨폭이 순간적으로 줄어드는데, 그대로 쓰면 "멀어짐 = 후진"으로 오인된다.
+      // 실제 앞/뒤 기울임은 수백 ms에 걸쳐 유지되므로 느린 평활을 통과하지만,
+      // 펀치의 짧은 과도 성분은 크게 감쇠된다.
+      const wFace = guardActive ? 0.70 : 0.45;
+      const wFist = guardActive ? 0.00 : 0.25;
+      const faceDrop  = faceRel - neutral.faceRel;                 // 얼굴이 어깨 대비 아래로
+      const fistDrop  = fistRel - neutral.fistRel;                 // 주먹이 어깨 대비 아래로
+      const bodyDrop  = (shMidY - neutral.shMidY) / uScale;        // 상체가 화면에서 아래로
+      const nearDelta = (sScale - neutral.scale) / neutral.scale;  // 카메라 쪽으로 다가옴
+      // 얼굴·주먹의 어깨선 대비 상하 이동만이 방향을 결정한다. 이 신호는 몸통이 돌아도
+      // 거의 변하지 않아 가장 신뢰할 수 있다.
+      const dirCore = wFace * faceDrop + wFist * fistDrop;
+      // 나머지 두 항은 **보조**다. 방향이 확실히 정해졌을 때(conf), 그리고 그 방향과
+      // 부호가 같을 때만 기여한다.
+      //   - 상체 하강: 방향에 대칭(어느 쪽으로 기울든 내려감) → 전진 쪽으로만
+      //   - 어깨폭: 몸통 회전만으로도 줄어든다 → 얼굴·주먹이 동의할 때만
+      // 이렇게 하면 "몸통만 트는 동작"(감지 안 된 헛펀치 포함)은 dirCore가 0 근처라
+      // conf가 낮아 어깨폭 항이 걸러지고, 뒤로 밀리지 않는다.
+      const conf = clamp01(Math.abs(dirCore) / 0.05);
+      const back = dirCore < 0;
+      const nearAligned = ((nearDelta < 0) === back) ? 1.20 * nearDelta : 0;
+      const bodyAligned = back ? 0 : 0.30 * Math.max(0, bodyDrop);
+      const pitchRaw = dirCore + conf * (nearAligned + bodyAligned);
+      if (!postureLocked) {
+        dbg.face = wFace * faceDrop;   dbg.fist = wFist * fistDrop;
+        dbg.body = conf * bodyAligned; dbg.near = conf * nearAligned;
+      }
+
+      // --- 주먹 좌/우 이동: 양 손목이 같은 방향으로 함께 움직일 때만 인정 ---
+      const dL = lwrOff - neutral.lwrOff, dR = rwrOff - neutral.rwrOff;
+      const coherent = wristOK && ((dL > 0 && dR > 0) || (dL < 0 && dR < 0))
+                    && Math.min(Math.abs(dL), Math.abs(dR)) > TUNE.SHIFT_ON * 0.45;
+      const shiftRaw = coherent ? (dL + dR) / 2 : 0;
+
+      if (!postureLocked) {
+        // 프레임 수가 아니라 경과 시간 기준 EMA → 포즈 FPS가 변해도 반응 속도가 같다
+        const SM = 1 - Math.exp(-dtPose / TUNE.SMOOTH_TAU);
+        sRoll  += ((rollRaw - neutral.roll) - sRoll) * SM;
+        sPitch += (pitchRaw - sPitch) * SM;
+        sShift += (shiftRaw - sShift) * SM;
+      }
+
+      // --- 펀치 판정 ---
+      // 팔 운동학은 3D world 랜드마크(미터, 골반 중심 원점)로 계산한다.
+      // 정면 펀치는 화면상에서 팔이 짧아 보이므로(foreshortening) 2D 좌표만으로는 뻗음을 구분할 수 없다.
+      const wl = res.poseWorldLandmarks;
+      const m2 = SHOULDER_M / scale;   // world 랜드마크가 없을 때의 폴백 환산 계수
+      const M = (wl && wl.length > P.R_WR)
+        ? (i => wl[i])
+        : (i => ({ x: (lm[i].x - shMidX) * m2, y: (lm[i].y - shMidY) * m2, z: lm[i].z * m2 }));
+
+      // 팔 길이도 어깨폭 배수로 정규화 (world 좌표 기준)
+      const wsh = Math.max(Math.hypot(M(P.L_SH).x - M(P.R_SH).x,
+                                      M(P.L_SH).y - M(P.R_SH).y,
+                                      M(P.L_SH).z - M(P.R_SH).z), 0.15);
+
+      const kL = punchCore.kinematics("L", M(P.L_SH), M(P.L_EL), M(P.L_WR), wsh, now);
+      const kR = punchCore.kinematics("R", M(P.R_SH), M(P.R_EL), M(P.R_WR), wsh, now);
+      dbg.L.reachN = kL.reachN; dbg.L.speed = kL.speed;
+      dbg.R.reachN = kR.reachN; dbg.R.speed = kR.speed;
+
+      // 양 손목이 같은 방향·비슷한 속도로 함께 쓸리면 회전 제스처 → 펀치로 보지 않는다.
+      // (펀치는 한쪽 팔만 빠르다)
+      const vL = Math.abs(kL.vx), vR = Math.abs(kR.vx);
+      const sweeping = kL.vx * kR.vx > 0
+                    && Math.min(vL, vR) > 0.8
+                    && Math.min(vL, vR) > 0.6 * Math.max(vL, vR);
+
+      // 손목이 코보다 얼마나 위인가 (어깨폭 배수, 양수 = 위).
+      // world 좌표는 y 가 아래로 증가하므로 (코y − 손목y) 가 양수면 손이 위다.
+      const noseY = M(P.NOSE).y;
+      const lWristUpN = (noseY - M(P.L_WR).y) / wsh;
+      const rWristUpN = (noseY - M(P.R_WR).y) / wsh;
+
+      // 가드 중이라도 한쪽 팔이 뻗어 나가면 펀치다 — 복싱 스탠스는 항상 가드에 가깝기 때문에
+      // 가드로 펀치를 막으면 정작 스탠스를 제대로 잡은 사람이 펀치를 못 낸다.
+      let punch = null;
+      if (neutral.ready) {
+        // 필살기를 먼저 본다. 양손을 함께 밀어내는 동작이라, 일반 펀치로 먼저 소비되면
+        // 정작 필살기가 발동하지 못한다.
+        if (armVis.L && armVis.R) {
+          punch = punchCore.tryUltimate(kL, kR, lWristUpN, rWristUpN, now, myRage >= 100);
+        }
+        if (!punch && !sweeping) {
+          const a = armVis.L ? punchCore.tryPunch(kL, now) : null;
+          const b = armVis.R ? punchCore.tryPunch(kR, now) : null;
+          punch = (a && b) ? (a.speed >= b.speed ? a : b) : (a || b);
+        }
+      }
+      lastSpeedKmh = Math.max(kL.speed, kR.speed) * 3.6;
+
+      if (punch) {
+        lastPunchAny = punchCore.getLastPunchAny();   // 코어가 발동 시각의 단일 소스
+        armAnim[punch.action.startsWith("LEFT") ? "L" : "R"] = 1;
+        // 반드시 패킷 전송 전에 — 서버는 이 패킷의 yaw로 명중을 판정한다.
+        const aimed = snapAimForPunch();
+        punchLabel = punch.action + (aimed ? ` → ${aimed.id.replace('client_', 'P')}` : '');
+        punchLabelT = now;
+        if (punch.action === punchCore.ULTIMATE) {
+          snd.ultimate();
+          armAnim.L = armAnim.R = 1;
+          camKickUlt = 1;
+        } else {
+          snd.whoosh(punch.speed * 3.6);
+        }
+        sendCombatPacket(punch.action, punch.speed * 3.6);
+      }
+
+      calFrame(sPitch, now);
+      updateStates(now, dtPose);
+
+      // 자세가 중립 범위에 오래 머물면 기준값을 천천히 따라가게 해 자세 드리프트를 흡수 (시상수 ~8초)
+      //
+      // 반드시 !postureLocked 여야 한다. 잠금 중에는 sRoll/sPitch/sShift가 얼어 있어 아래 조건이
+      // 항상 참이 되는데, 갱신에 쓰는 rollRaw/faceRel/shMidY는 펀치로 흔들린 생값이다.
+      // 그대로 두면 펀치할 때마다 중립 기준이 펀치 자세 쪽으로 끌려가고,
+      // 그 결과 진짜 정지 자세가 "뒤로 젖힌 것"으로 읽혀 뒤로 밀린다.
+      if (!postureLocked && neutral.ready && !punch
+          && Math.abs(sRoll) < 3 && Math.abs(sPitch) < 0.05 && Math.abs(sShift) < 0.12) {
+        const a = 1 - Math.exp(-dtPose / 8);
+        neutral.roll    += (rollRaw - neutral.roll) * a;
+        neutral.faceRel += (faceRel - neutral.faceRel) * a;
+        neutral.shMidY  += (shMidY  - neutral.shMidY) * a;
+        neutral.scale   += (sScale  - neutral.scale) * a;
+        if (wristOK && !guardActive) {
+          neutral.fistRel += (fistRel - neutral.fistRel) * a;
+          neutral.lwrOff  += (lwrOff  - neutral.lwrOff) * a;
+          neutral.rwrOff  += (rwrOff  - neutral.rwrOff) * a;
+        }
+      }
+
+      // 1인칭 팔 좌표 (웹캠 캔버스는 좌우 반전 표시이므로 미러 좌표 사용)
+      // 손목과 팔꿈치를 같은 방식으로 옮겨야 팔의 굽힘이 화면에서 그대로 재현된다.
+      if (wristOK) {
+        const mapX = (lx, off) => ((1 - lx) - 0.5) * 4.5 + off;
+        const mapY = (ly) => (0.55 - ly) * 3.4 - 1.0;
+        myLeftGlove.position.x  = mapX(lwr.x, -1.4);
+        myLeftGlove.position.y  = mapY(lwr.y);
+        myRightGlove.position.x = mapX(rwr.x, 1.4);
+        myRightGlove.position.y = mapY(rwr.y);
+
+        const lel = lm[P.L_EL], rel = lm[P.R_EL];
+        if (lel) { myArms.L.elbow.position.x = mapX(lel.x, -1.4); myArms.L.elbow.position.y = mapY(lel.y); }
+        if (rel) { myArms.R.elbow.position.x = mapX(rel.x,  1.4); myArms.R.elbow.position.y = mapY(rel.y); }
+      }
+
+      // HUD 라벨: 펀치는 0.5초간 유지, 그 외에는 현재 자세 상태
+      if (punch || now - punchLabelT < 500) actionText.innerText = punchLabel;
+      else if (guardActive) actionText.innerText = "DUAL_GUARD";
+      else if (moveState !== "NONE") actionText.innerText = moveState;
+      else if (rotState !== "NONE") actionText.innerText = rotState;
+      else actionText.innerText = neutral.ready ? "IDLE" : "CALIBRATING";
+      speedText.innerText = lastSpeedKmh.toFixed(1);
+
+      // 펀치 직후에는 가드를 보고하지 않는다. 겹치면 arena의 포즈가 가드로 덮이고
+      // 서버에서도 공격 중에 방어 데미지 감소가 적용된다.
+      currentAction = (guardActive && (now - lastPunchAny) >= TUNE.PUNCH_LOCK) ? "DUAL_GUARD" : "IDLE";
+      currentVelocity = lastSpeedKmh;
+    });
+
+    // ========== 얼굴 등록 (Face Mesh 468 랜드마크 → 3D 복원) ==========
+    //
+    // Pose 와 Face Mesh 를 동시에 돌리면 FPS 가 30 아래로 떨어진다(과거 이력).
+    // 그래서 캡처 중에는 Pose 를 멈추고 Face Mesh 만 돌린 뒤, 끝나면 즉시 되돌린다.
+    // 복원된 메쉬는 정적이므로 게임 중 추가 비용은 0이다.
+    let captureMode = false;
+    let faceMesh = null, faceBusy = false;
+    let capState = null;
+    let myFaceBlob = null;
+    const capEls = {
+      box: document.getElementById('face-cap'),
+      guide: document.getElementById('face-guide'),
+      title: document.getElementById('face-title'),
+      desc: document.getElementById('face-desc'),
+      count: document.getElementById('face-count'),
+      start: document.getElementById('face-start'),
+      skip: document.getElementById('face-skip'),
+      btn: document.getElementById('face-btn'),
+    };
+
+    /** 랜드마크가 충분히 정면인가 — 코끝에서 좌우 광대까지 거리가 비슷해야 한다. */
+    function frontalScore(lm) {
+      const n = lm[1], L = lm[234], R = lm[454];
+      if (!n || !L || !R) return 0;
+      const dl = Math.hypot(n.x - L.x, n.y - L.y);
+      const dr = Math.hypot(n.x - R.x, n.y - R.y);
+      return 1 - Math.abs(dl - dr) / Math.max(dl + dr, 1e-4) * 2;   // 1=정면, 0=측면
+    }
+
+    /** 얼굴이 프레임에서 차지하는 범위 — 너무 작으면 텍스처가 뭉갠다. */
+    function faceSpan(lm) {
+      let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
+      for (let i = 0; i < lm.length; i++) {
+        if (lm[i].x < x0) x0 = lm[i].x;
+        if (lm[i].x > x1) x1 = lm[i].x;
+        if (lm[i].y < y0) y0 = lm[i].y;
+        if (lm[i].y > y1) y1 = lm[i].y;
+      }
+      return { w: x1 - x0, h: y1 - y0, x0, y0, x1, y1 };
+    }
+
+    function ensureFaceMesh() {
+      if (faceMesh) return faceMesh;
+      faceMesh = new FaceMesh({ locateFile: f => 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/' + f });
+      faceMesh.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: false,     // 홍채 468->478. 여기선 불필요하고 느리기만 하다
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.6,
+      });
+      faceMesh.onResults(onFaceResults);
+      return faceMesh;
+    }
+
+    function onFaceResults(res) {
+      if (!captureMode || !capState) return;
+      const faces = res.multiFaceLandmarks;
+      const lm = faces && faces[0];
+      const okFace = !!lm;
+      const front = okFace ? frontalScore(lm) : 0;
+      const span = okFace ? faceSpan(lm) : null;
+      const bigEnough = span && span.w > 0.16;
+      const good = okFace && front > 0.72 && bigEnough;
+
+      capEls.guide.classList.toggle('ok', good);
+
+      if (!capState.armed) {
+        capEls.title.innerText = !okFace ? '얼굴이 보이지 않습니다'
+          : (!bigEnough ? '카메라에 조금 더 가까이'
+          : (front <= 0.72 ? '정면을 봐주세요' : '좋습니다 — 촬영 시작을 누르세요'));
+        return;
+      }
+
+      if (!good) {
+        capEls.title.innerText = !okFace ? '얼굴이 보이지 않습니다'
+          : (!bigEnough ? '조금 더 가까이' : '정면을 봐주세요');
+        return;
+      }
+
+      // 여러 프레임의 랜드마크를 평균낸다 — 한 프레임만 쓰면 추정 지터가 그대로 얼굴 굴곡이 된다
+      const snap = lm.map(q => ({ x: q.x, y: q.y, z: q.z }));
+      capState.frames.push(snap);
+
+      // 텍스처는 얼굴이 가장 크게 잡힌 프레임에서 딴다.
+      //
+      // **반드시 그 자리에서 픽셀을 복사해야 한다.** MediaPipe 는 res.image 캔버스를
+      // 프레임마다 재사용하므로, 참조만 들고 있으면 캡처가 끝날 때쯤엔 이미 다른(나중) 프레임의
+      // 그림으로 덮여 있다. 그 결과 텍스처와 랜드마크가 어긋나 "내 얼굴이 아닌" 얼굴이 나온다.
+      // 같은 이유로 그 프레임의 랜드마크도 함께 붙잡아 UV 계산에 쓴다.
+      if (!capState.best || span.w > capState.best.span.w) {
+        const src = res.image;
+        const W = src.width || videoElement.videoWidth || 480;
+        const H = src.height || videoElement.videoHeight || 360;
+        if (!capState.frameCanvas) capState.frameCanvas = document.createElement('canvas');
+        const fc = capState.frameCanvas;
+        if (fc.width !== W || fc.height !== H) { fc.width = W; fc.height = H; }
+        fc.getContext('2d').drawImage(src, 0, 0, W, H);
+        capState.best = { image: fc, span: span, lm: snap, W: W, H: H };
+      }
+      // 촬영 중에 얼굴이 크게 움직이면 평균이 뭉개진다. 코끝이 많이 튀면 모은 것을 버리고 다시 시작.
+      if (capState.frames.length > 1) {
+        const prev = capState.frames[capState.frames.length - 2][1];
+        const cur = snap[1];
+        if (Math.hypot(cur.x - prev.x, cur.y - prev.y) > 0.020) {
+          capState.frames = [snap];
+          capEls.title.innerText = '움직임 감지 — 다시 모으는 중';
+          capEls.count.innerText = '1/' + capState.want;
+          return;
+        }
+      }
+
+      const got = capState.frames.length, want = capState.want;
+      capEls.title.innerText = '촬영 중 — 그대로 계세요';
+      capEls.count.innerText = got + '/' + want;
+      if (got >= want) finishCapture();
+    }
+
+    function averageLandmarks(frames) {
+      const n = frames[0].length;
+      const out = new Array(n);
+      for (let i = 0; i < n; i++) {
+        let x = 0, y = 0, z = 0;
+        for (let f = 0; f < frames.length; f++) {
+          x += frames[f][i].x; y += frames[f][i].y; z += frames[f][i].z;
+        }
+        out[i] = { x: x / frames.length, y: y / frames.length, z: z / frames.length };
+      }
+      return out;
+    }
+
+    function finishCapture() {
+      const st = capState;
+      capState = null;
+      const lm = averageLandmarks(st.frames);
+      const img = st.best.image;          // 그 자리에서 복사해 둔 캔버스
+      const IW = st.best.W, IH = st.best.H;
+
+      // 얼굴 주변만 잘라 텍스처로 쓴다 — 전체 프레임을 쓰면 해상도의 2/3 를 배경에 버린다
+      const sp = st.best.span;
+      const mx = sp.w * 0.22, my = sp.h * 0.18;
+      const cx0 = Math.max(0, (sp.x0 - mx) * IW);
+      const cy0 = Math.max(0, (sp.y0 - my) * IH);
+      const cw = Math.min(IW - cx0, (sp.w + mx * 2) * IW);
+      const ch = Math.min(IH - cy0, (sp.h + my * 2) * IH);
+
+      const tc = document.createElement('canvas');
+      tc.width = 512; tc.height = 512;
+      tc.getContext('2d').drawImage(img, cx0, cy0, cw, ch, 0, 0, 512, 512);
+
+      const blob = window.serializeFace(lm, tc, {
+        aspect: IW / IH,
+        crop: { x0: cx0, y0: cy0, w: cw, h: ch },
+        imageW: IW, imageH: IH,
+        uvLandmarks: st.best.lm,     // 텍스처를 딴 바로 그 프레임의 좌표 — UV 정합용
+      }, 0.82);
+
+      stopCapture();
+      capEls.title.innerText = '복원 완료 — 아바타에 적용했습니다';
+      capEls.count.innerText = '';
+      capEls.desc.innerHTML = '랜드마크 468개 · 텍스처 ' + Math.round(blob.tex.length / 1024)
+        + 'KB<br>다른 파이터 화면에도 이 얼굴로 보입니다.';
+      capEls.start.innerText = '다시 촬영';
+      capEls.skip.innerText = '닫기';
+
+      // 서버로 보내 모두에게 중계
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'face', face: blob }));
+      }
+      myFaceBlob = blob;
+
+      // 내 얼굴은 1인칭에서 볼 수 없다(내가 카메라니까). 복원 결과를 확인할 수 있도록
+      // 캡처 오버레이에 회전하는 미리보기를 띄운다. 잘못 나왔으면 바로 다시 찍으면 된다.
+      showFacePreview(blob);
+    }
+
+    // 복원된 얼굴을 작은 3D 뷰로 보여준다 (촬영 확인용)
+    let preview = null;
+    function showFacePreview(blob) {
+      const host = document.getElementById('face-preview');
+      if (!host) return;
+      host.style.display = 'block';
+      if (!preview) {
+        const r = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        r.setSize(150, 150); r.setPixelRatio(1);
+        host.appendChild(r.domElement);
+        const sc = new THREE.Scene();
+        const cam = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+        cam.position.set(0, 0, 9);
+        sc.add(new THREE.AmbientLight(0xffffff, 0.95));
+        const dl = new THREE.DirectionalLight(0xffffff, 0.6); dl.position.set(1, 1, 2); sc.add(dl);
+        const pivot = new THREE.Group(); sc.add(pivot);
+        preview = { r, sc, cam, pivot, face: null };
+        (function spin() {
+          requestAnimationFrame(spin);
+          if (host.style.display === 'none') return;
+          // 좌우로 살랑살랑 — 한 바퀴 돌리면 뒤통수(빈 면)가 보인다
+          pivot.rotation.y = Math.sin(performance.now() * 0.0009) * 0.75;
+          if (preview.face) preview.face.update(1 / 60);
+          r.render(sc, cam);
+        })();
+      }
+      if (preview.face) { preview.pivot.remove(preview.face.mesh); preview.face.dispose(); preview.face = null; }
+      window.createFace3DFromBlob(blob, parseInt(userColor.replace('#', ''), 16), 3.4).then(f => {
+        if (!f) return;
+        preview.face = f;
+        preview.pivot.add(f.mesh);
+      });
+    }
+
+    function startCapture() {
+      capState = { frames: [], want: 12, best: null, armed: false };
+      capEls.box.classList.add('on');
+      capEls.count.innerText = '';
+      capEls.title.innerText = '얼굴을 원 안에 맞추세요';
+      capEls.start.innerText = '촬영 시작';
+      hidePreview();
+      captureMode = true;
+      ensureFaceMesh();
+    }
+
+    function armCapture() {
+      if (!capState) capState = { frames: [], want: 12, best: null, armed: false };
+      capState.frames = []; capState.best = null; capState.armed = true;
+      capEls.count.innerText = '0/12';
+    }
+
+    function stopCapture() {
+      captureMode = false;
+      capState = null;
+      capEls.guide.classList.remove('ok');
+    }
+
+    function hidePreview() {
+      const host = document.getElementById('face-preview');
+      if (host) host.style.display = 'none';
+    }
+
+    capEls.btn.addEventListener('click', function () {
+      if (captureMode) { stopCapture(); hidePreview(); capEls.box.classList.remove('on'); }
+      else startCapture();
+    });
+    capEls.start.addEventListener('click', function () { hidePreview(); armCapture(); });
+    capEls.skip.addEventListener('click', function () {
+      stopCapture(); hidePreview(); capEls.box.classList.remove('on');
+    });
+
+    // Camera or Video Injection
+    const urlParams = new URLSearchParams(window.location.search);
+    const videoSource = urlParams.get('video');
+
+    let poseBusy = false, lastSendT = 0;
+
+    if (videoSource) {
+      // 가상 비디오 입력 모드 (예: /client?id=client_1&video=benchmark)
+      const videoSrc = videoSource === "1" || videoSource === "benchmark" ? "/eval_video/benchmark.mp4" : `/eval_video/${videoSource}`;
+      videoElement.src = videoSrc;
+      videoElement.loop = true;
+      videoElement.muted = true;
+      videoElement.playsInline = true;
+      videoElement.play().catch(e => console.warn("Video autoplay blocked:", e));
+
+      async function processVideoFrame() {
+        if (videoElement && videoElement.readyState >= 2 && !poseBusy) {
+          const now = performance.now();
+          if (now - lastSendT >= 30) {
+            poseBusy = true;
+            lastSendT = now;
+            try { await pose.send({ image: videoElement }); } catch(e) {}
+            finally { poseBusy = false; }
+          }
+        }
+        requestAnimationFrame(processVideoFrame);
+      }
+      requestAnimationFrame(processVideoFrame);
+      console.log("🎬 [Video Injection Mode] Loaded:", videoSrc);
+    } else {
+      // 일반 웹캠 모드
+      const cameraUtils = new Camera(videoElement, {
+        onFrame: async () => {
+          if (!videoElement || videoElement.readyState < 2) return;
+          const now = performance.now();
+
+          // 얼굴 등록 중에는 Face Mesh 만 — 두 모델을 같이 돌리면 FPS 가 무너진다
+          if (captureMode) {
+            if (faceBusy || !faceMesh) return;
+            faceBusy = true;
+            try { await faceMesh.send({ image: videoElement }); } catch (e) {}
+            finally { faceBusy = false; }
+            return;
+          }
+
+          if (poseBusy) return;
+          if (now - lastSendT < 30) return; // 최대 ~33fps — 실제 주기는 모델 속도에 맞춰 자동 조절
+          poseBusy = true; lastSendT = now;
+          try { await pose.send({image: videoElement}); } catch(e) {}
+          finally { poseBusy = false; }
+        },
+        width: 480, height: 360
+      });
+      cameraUtils.start();
+    }
+
+    // 10Hz sync
+    setInterval(() => { sendCombatPacket(currentAction, currentVelocity); }, 100);
+
+    // ========== 메인 루프 (단일 rAF) ==========
+    let lastFrameTime = performance.now();
+    let renderFrames = 0, lastFpsTime = performance.now();
+    let lastCamDraw = 0, lastMiniDraw = 0;
+
+    let animErrShown = false;
+    function animate(now) {
+      requestAnimationFrame(animate);
+      try {
+        animateFrame(now);
+      } catch (e) {
+        // rAF는 맨 위에서 이미 예약되므로, 여기서 예외가 나면 renderer.render 만 영원히 건너뛴다.
+        // = 1인칭 화면이 검은 채로 멈춘다. 조용히 죽지 않도록 화면에 띄운다.
+        if (!animErrShown) {
+          animErrShown = true;
+          console.error('[animate]', e);
+          const box = document.getElementById('anim-error');
+          if (box) {
+            box.style.display = 'block';
+            box.textContent = 'RENDER ERROR: ' + ((e && e.stack) ? e.stack.split('\n').slice(0, 3).join('\n') : e);
+          }
+        }
+      }
+    }
+
+    function animateFrame(now) {
+      const dt = Math.min(Math.max((now - lastFrameTime) / 1000, 0.001), 0.1);
+      lastFrameTime = now;
+
+      // FPS
+      renderFrames++;
+      if (now - lastFpsTime >= 1000) {
+        fpsBadge.innerText = `${renderFrames} FPS`;
+        renderFrames = 0; lastFpsTime = now;
+      }
+
+      // === 웹캠 캔버스 (throttled 20fps) ===
+      if (now - lastCamDraw >= 50) {
+        lastCamDraw = now;
+        if (videoElement.readyState >= 2) {
+          if (canvasElement.width !== (videoElement.videoWidth||640)) {
+            canvasElement.width = videoElement.videoWidth||640;
+            canvasElement.height = videoElement.videoHeight||480;
+          }
+          canvasCtx.save();
+          canvasCtx.clearRect(0,0,canvasElement.width,canvasElement.height);
+          canvasCtx.drawImage(videoElement,0,0,canvasElement.width,canvasElement.height);
+
+          // AR 네온 글로우 상체 스켈레톤 (7노드)
+          if (latestPose) {
+            const W = canvasElement.width, H = canvasElement.height;
+            const pts = NODE_IDS.map(i => latestPose[i]);
+            const glow = Math.min(lastSpeedKmh / 15, 1.0);   // 펀치 속도에 비례한 글로우
+            const pulse = 1 + glow * 0.5;
+            canvasCtx.lineCap = 'round';
+
+            // 어깨 수평 기준선 — 기울기 판정 축을 눈으로 확인할 수 있게
+            const ls = pts[1], rs = pts[2];
+            if (ls && rs) {
+              const mx = (ls.x + rs.x) / 2 * W, my = (ls.y + rs.y) / 2 * H;
+              const half = Math.abs(ls.x - rs.x) * W * 0.75;
+              canvasCtx.setLineDash([8, 8]);
+              canvasCtx.strokeStyle = (Math.abs(sRoll) < TUNE.ROLL_FLAT) ? 'rgba(0,255,102,0.55)' : 'rgba(255,51,102,0.75)';
+              canvasCtx.lineWidth = 2;
+              canvasCtx.beginPath();
+              canvasCtx.moveTo(mx - half, my); canvasCtx.lineTo(mx + half, my);
+              canvasCtx.stroke();
+              canvasCtx.setLineDash([]);
+            }
+
+            // 뼈대
+            canvasCtx.shadowColor = userColor;
+            canvasCtx.shadowBlur = 14 + glow * 20;
+            canvasCtx.strokeStyle = userColor;
+            canvasCtx.lineWidth = 5 * pulse;
+            SKELETON.forEach(([a, b]) => {
+              const p = pts[a], q = pts[b];
+              if (!p || !q) return;
+              canvasCtx.beginPath();
+              canvasCtx.moveTo(p.x * W, p.y * H);
+              canvasCtx.lineTo(q.x * W, q.y * H);
+              canvasCtx.stroke();
+            });
+
+            // 노드 — 어깨는 흰색(기준축), 손목은 크게
+            canvasCtx.shadowBlur = 18 + glow * 22;
+            canvasCtx.strokeStyle = '#ffffff';
+            canvasCtx.lineWidth = 2;
+            pts.forEach((p, i) => {
+              if (!p) return;
+              canvasCtx.fillStyle = (i === 1 || i === 2) ? '#ffffff' : userColor;
+              canvasCtx.beginPath();
+              canvasCtx.arc(p.x * W, p.y * H, (i >= 5 ? 11 : 8) * pulse, 0, Math.PI * 2);
+              canvasCtx.fill();
+              canvasCtx.stroke();
+            });
+            canvasCtx.shadowBlur = 0;
+          }
+          canvasCtx.restore();
+        }
+      }
+
+      // === 이동 계산 ===
+      let moveX = 0, moveZ = 0;
+
+      // 키보드 화살표
+      const KB_SPEED = 16;
+      if (keys['ArrowUp']) {
+        moveX -= Math.sin(rotationAngle) * KB_SPEED * dt;
+        moveZ -= Math.cos(rotationAngle) * KB_SPEED * dt;
+      }
+      if (keys['ArrowDown']) {
+        moveX += Math.sin(rotationAngle) * KB_SPEED * dt;
+        moveZ += Math.cos(rotationAngle) * KB_SPEED * dt;
+      }
+      if (keys['ArrowLeft']) {
+        rotationAngle += 2.5 * dt;
+      }
+      if (keys['ArrowRight']) {
+        rotationAngle -= 2.5 * dt;
+      }
+
+      const fx = -Math.sin(rotationAngle), fz = -Math.cos(rotationAngle);   // 정면
+      const lx = -Math.cos(rotationAngle), lz =  Math.sin(rotationAngle);   // 왼쪽
+
+      // 가장 가까운 "살아있는" 상대 (자동 접근 + 자동 조준에 공통으로 사용)
+      const near = findNearestOpponent();
+      const nearDist = near ? near.dist : Infinity;
+      const nearAngle = near ? near.angle : rotationAngle;
+      const nearDX = near ? near.dx : 0, nearDZ = near ? near.dz : 0;
+      const engaged = nearDist < ENGAGE_RANGE;
+      // 내가 K.O.면 관전 상태 — 이동·조준을 모두 멈춘다
+      const dead = myHp <= 0;
+
+      // 펀치 잠금 처리는 updateStates 로 일원화했다(잠금 직전의 이동 의사를 붙잡아 둔다).
+      // 여기서 또 이동을 0으로 만들면 연타 중 영영 못 움직인다 — 그게 "앞으로 안 가진다"의 원인이었다.
+      // moveIntensity 자체가 이미 잠금을 반영하므로 그대로 적용하면 된다.
+      const punchFreeze = punchLocked;
+
+      // 제스처가 끝나면 앵커를 풀어, 다음 제스처가 새로 45°를 쓸 수 있게 한다
+      if (rotState === "NONE") rotAnchor = null;
+
+      {
+        // 몸 기울임 이동 (웹캠) — 어깨 기울기 = 좌/우, 얼굴·주먹 상하 = 앞/뒤
+        if (moveState !== "NONE" && moveIntensity > 0.02) {
+          const s = MOVE_SPEED * moveIntensity * dt;
+          if (moveState === "FORWARD")    { moveX += fx * s;        moveZ += fz * s; }
+          else if (moveState === "BACK")  { moveX -= fx * s * 0.85; moveZ -= fz * s * 0.85; }
+          else if (moveState === "LEFT")  { moveX += lx * s;        moveZ += lz * s; }
+          else if (moveState === "RIGHT") { moveX -= lx * s;        moveZ -= lz * s; }
+        }
+
+        // 회전 (웹캠) — 이동과 독립적으로 적용.
+        // 제스처가 시작된 시점의 yaw를 앵커로 잡고 ±ROT_LIMIT 안으로 제한한다.
+        if (rotState !== "NONE" && rotIntensity > 0.02) {
+          if (rotAnchor === null) rotAnchor = rotationAngle;
+          const step = (rotState === "ROT_LEFT" ? 1 : -1) * ROT_SPEED * rotIntensity * dt;
+          const off = rotationAngle + step - rotAnchor;
+          const wrapped = Math.atan2(Math.sin(off), Math.cos(off));
+          rotationAngle = rotAnchor + Math.max(-ROT_LIMIT, Math.min(ROT_LIMIT, wrapped));
+        }
+
+        // 근접 교전 — 사거리 안에 들어오면 상대에게 붙어 공격 거리를 유지한다.
+        // 뒤로 빼는 중이면 적용하지 않는다(후퇴 의사를 덮어쓰지 않도록).
+        // 이 항은 타깃 방향만 보므로 펀치로 인한 자세 오염과 무관하다 → 잠금 중에도 돌린다.
+        if (engaged && moveState !== "BACK" && nearDist > ENGAGE_DIST) {
+          const pull = Math.min(nearDist - ENGAGE_DIST, 1.5) / 1.5 * ENGAGE_PULL * dt;
+          moveX += (nearDX / nearDist) * pull;
+          moveZ += (nearDZ / nearDist) * pull;
+        }
+      }
+
+      // 상시 자동 조준 — 수동 회전 입력 중이거나 직후(AIM_MANUAL_HOLD)에는 억제한다.
+      // 억제 시간을 1.2초에서 0.5초로 줄였다. 회전 제스처는 주먹을 좌우로 쓰는 것이라
+      // 복싱 중 오검출이 잦은데, 1.2초씩 잠기면 자동 조준이 사실상 켜지지 않는다.
+      // 교전 중에는 상대를 놓치지 않도록 더 빠르게 정렬한다(펀치 판정이 시야각에 의존).
+      let aimErr = 0;
+      const manualRot = keys['ArrowLeft'] || keys['ArrowRight'] || rotState !== "NONE"
+                     || (now - lastRotInputT) < AIM_MANUAL_HOLD;
+      if (near) {
+        aimErr = angleWrap(nearAngle - rotationAngle);
+        if (!manualRot && !dead) {
+          const rate = engaged ? AIM_RATE_ENGAGED : AIM_RATE_FAR;
+          rotationAngle = angleWrap(rotationAngle + aimErr * Math.min(1, rate * dt));
+        }
+      }
+
+      if (dead) { moveX = 0; moveZ = 0; }   // K.O. 상태에서는 링에서 움직이지 않는다
+      playerX += moveX;
+      playerZ += moveZ;
+      playerX = Math.max(-16, Math.min(16, playerX));
+      playerZ = Math.max(-16, Math.min(16, playerZ));
+
+      cameraRig.position.set(playerX, 5, playerZ);
+      cameraRig.rotation.y = rotationAngle;
+
+      // 피격 카메라 흔들림 — 세기는 데미지 비례, 시간에 따라 감쇠
+      if (shakeT > 0) {
+        shakeT -= dt;
+        const a = Math.max(0, shakeT / 0.38) * shakeMag;
+        cameraRig.position.x += (Math.random() - 0.5) * a;
+        cameraRig.position.y += (Math.random() - 0.5) * a;
+        cameraRig.rotation.z = (Math.random() - 0.5) * a * 0.06;
+      } else if (cameraRig.rotation.z !== 0) {
+        cameraRig.rotation.z = 0;
+      }
+
+      // 필살기 발동 반동 — 내가 쏜 것도 몸으로 느껴져야 한다
+      if (camKickUlt > 0) {
+        camKickUlt = Math.max(0, camKickUlt - dt / 0.5);
+        cameraRig.position.z += Math.sin(camKickUlt * Math.PI) * 0.9;
+      }
+
+      // 피격 비네트 감쇠 (0.45초)
+      if (hurtFlash > 0) {
+        hurtFlash = Math.max(0, hurtFlash - dt / 0.45);
+        hitFlash.style.opacity = hurtFlash.toFixed(3);
+      }
+
+      // 필살기 자세를 잡고 있는 동안의 충전 진행도 (0~1)
+      ultChargeNow = punchCore.ultCharge(now);
+      if (ultChargeNow > 0.01) {
+        rageFill.style.width = '100%';
+        rageLabel.innerHTML = `<span class="rage-ready">⚡ 필살기 충전 ${(ultChargeNow * 100) | 0}%</span>`;
+      }
+
+      // 타격/K.O. 이펙트 갱신
+      hitFx.update(dt);
+
+      // 미니맵은 렌더보다 훨씬 느려도 충분하다 (20fps) — 매 프레임 2D 캔버스를 다시 그릴 이유가 없다
+      if (now - lastMiniDraw >= 50) { lastMiniDraw = now; drawMinimap(); }
+
+      // 펀치 뻗음 → 회수 애니메이션 (-z가 정면)
+      armAnim.L = Math.max(0, armAnim.L - dt * 3.5);
+      armAnim.R = Math.max(0, armAnim.R - dt * 3.5);
+      myLeftGlove.position.z  = -3.5 - armAnim.L * 3.2;
+      myRightGlove.position.z = -3.5 - armAnim.R * 3.2;
+      // 팔꿈치는 손목의 절반만 나간다 — 이 차이가 "뻗음/접힘"으로 읽힌다
+      myArms.L.elbow.position.z = -1.9 - armAnim.L * 1.5;
+      myArms.R.elbow.position.z = -1.9 - armAnim.R * 1.5;
+
+      // 포즈를 놓치면 팔을 숨긴다.
+      // 손목·팔꿈치 좌표가 갱신되지 않으면 초기값(원점 근처)에 머무는데, layBone 이 그 사이를
+      // 이어 버려 **팔이 화면을 가로질러 늘어난다.** 프레임 밖으로 나갔을 때 실제로 그렇게 보인다.
+      const armsVisible = !!latestPose && myHp > 0;
+      myLeftGlove.visible = myRightGlove.visible = armsVisible;
+      ['L', 'R'].forEach(sd => {
+        myArms[sd].elbow.visible = armsVisible;
+        myArms[sd].upper.visible = armsVisible;
+        myArms[sd].fore.visible = armsVisible;
+      });
+
+      // 어깨 → 팔꿈치 → 글러브 를 실제로 이어 그린다 (훅/어퍼의 형태가 보이게)
+      layBone(myArms.L.upper, myArms.L.shoulder, myArms.L.elbow.position);
+      layBone(myArms.L.fore,  myArms.L.elbow.position, myLeftGlove.position);
+      layBone(myArms.R.upper, myArms.R.shoulder, myArms.R.elbow.position);
+      layBone(myArms.R.fore,  myArms.R.elbow.position, myRightGlove.position);
+
+      // 가드 실드 — 가드 중이면 정면에 홀로그램이 뜬다 (펀치 중에는 끈다)
+      const shieldOn = guardActive && !punchLocked && myHp > 0;
+      if (shieldOn && !prevShieldOn) snd.shield();
+      prevShieldOn = shieldOn;
+      myShield.material.opacity += ((shieldOn ? 0.55 : 0) - myShield.material.opacity) * Math.min(1, dt * 12);
+      myShield.visible = myShield.material.opacity > 0.01;
+      if (myShield.visible) myShield.rotation.z += dt * 0.8;   // 천천히 회전 — 살아있는 느낌
+
+      // 상대 보간
+      const osmooth = 1 - Math.exp(-dt * 12);
+      Object.keys(opponentMeshes).forEach(id => {
+        const opp = opponentMeshes[id], t = opponentPositions[id];
+        if (t) {
+          opp.group.position.x += (t.x - opp.group.position.x) * osmooth;
+          opp.group.position.z += (t.z - opp.group.position.z) * osmooth;
+          if (t.yaw !== undefined) opp.group.rotation.y += (t.yaw - opp.group.rotation.y) * osmooth;
+        }
+        opp.update();
+      });
+
+      // HUD - 디버그 정보 표시
+      const cal = neutral.ready ? "OK" : "CALIBRATING";
+      moveHud.innerText =
+        `Stance: ${moveState} ${(moveIntensity*100)|0}%\n` +
+        `Turn  : ${rotState} ${(rotIntensity*100)|0}%` +
+        (rotAnchor === null ? "\n"
+          : ` ${(Math.atan2(Math.sin(rotationAngle-rotAnchor), Math.cos(rotationAngle-rotAnchor))*180/Math.PI).toFixed(0)}/45deg\n`) +
+        `Roll  : ${sRoll.toFixed(1)}deg  Pitch: ${sPitch.toFixed(2)}\n` +
+        `  pitch= face ${dbg.face.toFixed(2)} + fist ${dbg.fist.toFixed(2)}` +
+        ` + body ${dbg.body.toFixed(2)} + near ${dbg.near.toFixed(2)}\n` +
+        `  need : fwd +${TUNE.PITCH_ON.toFixed(3)}  back -${TUNE.PITCH_BACK_ON.toFixed(3)}` +
+        `  ${moveCal.ready ? '[내 범위]' : '[기본값]'}\n` +
+        `FistX : ${sShift.toFixed(2)}  Guard: ${guardActive ? "ON" : "--"}` +
+        `  Rage: ${Math.round(myRage)}` +
+        (ultChargeNow > 0.01 ? ` [ULT ${(ultChargeNow * 100) | 0}%]` : "") + `\n` +
+        `ArmL  : reach ${dbg.L.reachN.toFixed(2)} v ${dbg.L.speed.toFixed(1)}${arms.L.armed ? " *" : ""}\n` +
+        `ArmR  : reach ${dbg.R.reachN.toFixed(2)} v ${dbg.R.speed.toFixed(1)}${arms.R.armed ? " *" : ""}\n` +
+        `Pose  : ${latestPose ? "7 nodes" : "none"} ${poseFps.toFixed(0)}fps [${cal}]\n` +
+        `Pos   : ${playerX.toFixed(1)}, ${playerZ.toFixed(1)}
+` +
+        `Target: ${near ? `${near.id.replace('client_', 'P')} ${near.dist.toFixed(1)}u ` +
+                          `${(aimErr * 180 / Math.PI).toFixed(0)}deg ` +
+                          `${Math.abs(aimErr) < 0.25 ? 'LOCKED' : (manualRot ? 'manual' : 'aiming')}`
+                        : '-- (없음)'}`;
+      debugInfo.innerText = `move: ${moveX.toFixed(4)},${moveZ.toFixed(4)} | rot: ${rotationAngle.toFixed(2)}` +
+        ` | near: ${nearDist === Infinity ? '--' : nearDist.toFixed(1)}${engaged ? ' ENGAGED' : ''}${punchFreeze ? ' | PUNCH-FREEZE' : ''}`;
+
+      renderer.render(scene, camera);
+    }
+    animate(performance.now());
+
+    window.addEventListener('resize', () => {
+      camera.aspect = ringContainer.clientWidth / ringContainer.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(ringContainer.clientWidth, ringContainer.clientHeight);
+    });
+  </script>
+</body>
+</html>

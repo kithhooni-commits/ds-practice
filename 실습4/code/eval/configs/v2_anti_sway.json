@@ -1,0 +1,21 @@
+{
+  "version": "v2_anti_sway",
+  "description": "Anti-Sway Footwork Noise Suppression & Stricter Punch Reach",
+  "tune": {
+    "PUNCH_ARM": 1.1,
+    "PUNCH_EXTEND": 0.45,
+    "PUNCH_SPEED": 1.85,
+    "PUNCH_REACH_N": 0.92,
+    "PUNCH_GROW_N": 0.32,
+    "PUNCH_WINDOW_MS": 350,
+    "PUNCH_CD_MS": 380,
+    "PUNCH_CD_ANY_MS": 180,
+    "UPPERCUT_VY": 0.55,
+    "UPPERCUT_ELBOW": 150,
+    "HOOK_VX": 0.56,
+    "HOOK_ELBOW": 158,
+    "LOCK_MIN_MS": 220,
+    "LOCK_MAX_MS": 1100,
+    "TILT_LOCK_DEG": 15.0
+  }
+}

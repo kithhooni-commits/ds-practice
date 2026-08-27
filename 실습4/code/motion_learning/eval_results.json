@@ -1,0 +1,8 @@
+{
+  "device": "cpu",
+  "rule_based_accuracy": 0.3333333333333333,
+  "lstm_accuracy": 1.0,
+  "improvement_pct_points": 66.66666666666667,
+  "training_time_seconds": 51.347163438797,
+  "test_samples": 600
+}

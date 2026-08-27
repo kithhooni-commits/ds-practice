@@ -1,0 +1,21 @@
+{
+  "version": "v1_baseline",
+  "description": "Initial Rule-based Punch Engine Baseline",
+  "tune": {
+    "PUNCH_ARM": 1.0,
+    "PUNCH_EXTEND": 0.40,
+    "PUNCH_SPEED": 1.6,
+    "PUNCH_REACH_N": 0.88,
+    "PUNCH_GROW_N": 0.28,
+    "PUNCH_WINDOW_MS": 380,
+    "PUNCH_CD_MS": 400,
+    "PUNCH_CD_ANY_MS": 200,
+    "UPPERCUT_VY": 0.55,
+    "UPPERCUT_ELBOW": 150,
+    "HOOK_VX": 0.56,
+    "HOOK_ELBOW": 158,
+    "LOCK_MIN_MS": 180,
+    "LOCK_MAX_MS": 1100,
+    "TILT_LOCK_DEG": 999.0
+  }
+}

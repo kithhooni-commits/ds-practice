@@ -1,0 +1,67 @@
+{
+  "case": "combo_mixed",
+  "source": "synthetic",
+  "tolerance_ms": 350,
+  "punches": [
+    {
+      "t_ms": 2393,
+      "side": "L",
+      "kind": "STRAIGHT"
+    },
+    {
+      "t_ms": 3645,
+      "side": "R",
+      "kind": "STRAIGHT"
+    },
+    {
+      "t_ms": 4921,
+      "side": "L",
+      "kind": "HOOK"
+    },
+    {
+      "t_ms": 6246,
+      "side": "R",
+      "kind": "UPPERCUT"
+    },
+    {
+      "t_ms": 7550,
+      "side": "R",
+      "kind": "HOOK"
+    },
+    {
+      "t_ms": 8875,
+      "side": "L",
+      "kind": "UPPERCUT"
+    },
+    {
+      "t_ms": 10155,
+      "side": "L",
+      "kind": "STRAIGHT"
+    },
+    {
+      "t_ms": 11407,
+      "side": "R",
+      "kind": "STRAIGHT"
+    },
+    {
+      "t_ms": 12683,
+      "side": "L",
+      "kind": "HOOK"
+    },
+    {
+      "t_ms": 14008,
+      "side": "R",
+      "kind": "UPPERCUT"
+    },
+    {
+      "t_ms": 15312,
+      "side": "R",
+      "kind": "HOOK"
+    },
+    {
+      "t_ms": 16637,
+      "side": "L",
+      "kind": "UPPERCUT"
+    }
+  ]
+}

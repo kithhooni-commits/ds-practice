@@ -1,0 +1,41 @@
+{
+  "case": "benchmark_90s_protocol",
+  "description": "Standard 90-Second Boxing Protocol Benchmark Video Ground Truth",
+  "source": "iter3/eval/video/benchmark.mp4",
+  "tolerance_ms": 400,
+  "punches": [
+    { "t_ms": 7500, "side": "L", "kind": "STRAIGHT", "desc": "Jab 1" },
+    { "t_ms": 9000, "side": "L", "kind": "STRAIGHT", "desc": "Jab 2" },
+    { "t_ms": 11133, "side": "L", "kind": "STRAIGHT", "desc": "Jab 3" },
+    { "t_ms": 13133, "side": "L", "kind": "STRAIGHT", "desc": "Jab 4" },
+    { "t_ms": 14500, "side": "R", "kind": "STRAIGHT", "desc": "Cross 1" },
+    { "t_ms": 16000, "side": "R", "kind": "STRAIGHT", "desc": "Cross 2" },
+    { "t_ms": 17200, "side": "R", "kind": "STRAIGHT", "desc": "Cross 3" },
+    { "t_ms": 18400, "side": "R", "kind": "STRAIGHT", "desc": "Cross 4" },
+
+    { "t_ms": 24500, "side": "L", "kind": "HOOK", "desc": "Left Hook 1" },
+    { "t_ms": 26666, "side": "L", "kind": "HOOK", "desc": "Left Hook 2" },
+    { "t_ms": 28500, "side": "L", "kind": "HOOK", "desc": "Left Hook 3" },
+    { "t_ms": 30000, "side": "R", "kind": "HOOK", "desc": "Right Hook 1" },
+    { "t_ms": 32000, "side": "R", "kind": "HOOK", "desc": "Right Hook 2" },
+    { "t_ms": 34000, "side": "R", "kind": "HOOK", "desc": "Right Hook 3" },
+
+    { "t_ms": 41500, "side": "L", "kind": "UPPERCUT", "desc": "Left Uppercut 1" },
+    { "t_ms": 43500, "side": "L", "kind": "UPPERCUT", "desc": "Left Uppercut 2" },
+    { "t_ms": 45500, "side": "L", "kind": "UPPERCUT", "desc": "Left Uppercut 3" },
+    { "t_ms": 47500, "side": "R", "kind": "UPPERCUT", "desc": "Right Uppercut 1" },
+    { "t_ms": 49500, "side": "R", "kind": "UPPERCUT", "desc": "Right Uppercut 2" },
+    { "t_ms": 51500, "side": "R", "kind": "UPPERCUT", "desc": "Right Uppercut 3" },
+
+    { "t_ms": 76500, "side": "L", "kind": "STRAIGHT", "desc": "Combo 1-1 (Jab)" },
+    { "t_ms": 76933, "side": "R", "kind": "STRAIGHT", "desc": "Combo 1-2 (Cross)" },
+    { "t_ms": 78200, "side": "L", "kind": "STRAIGHT", "desc": "Combo 2-1 (Jab)" },
+    { "t_ms": 78900, "side": "R", "kind": "STRAIGHT", "desc": "Combo 2-2 (Cross)" },
+    { "t_ms": 80000, "side": "L", "kind": "STRAIGHT", "desc": "Combo 3-1 (Jab)" },
+    { "t_ms": 80466, "side": "R", "kind": "STRAIGHT", "desc": "Combo 3-2 (Cross)" },
+
+    { "t_ms": 81800, "side": "L", "kind": "STRAIGHT", "desc": "Combo 4-1 (Jab)" },
+    { "t_ms": 82366, "side": "R", "kind": "STRAIGHT", "desc": "Combo 4-2 (Cross)" },
+    { "t_ms": 83000, "side": "L", "kind": "HOOK", "desc": "Combo 4-3 (Hook)" }
+  ]
+}

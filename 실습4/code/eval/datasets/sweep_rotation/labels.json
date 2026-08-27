@@ -1,0 +1,6 @@
+{
+  "case": "sweep_rotation",
+  "source": "synthetic",
+  "tolerance_ms": 350,
+  "punches": []
+}

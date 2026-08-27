@@ -41,37 +41,58 @@ MediaPipe Pose 상체 7노드로 복싱 모션을 읽고, Face Mesh 468 랜드�
 
 | 경로 | 내용 |
 |---|---|
-| `FINDINGS.md` | 전체 분석 — 조용한 실패 4건, CV 파이프라인, 검증 전략 |
+| `README.md` | 이 파일 |
+| `FINDINGS.md` | 전체 분석 — 조용한 실패 4건, CV 파이프라인, 검증 전략, 실영상 채점 |
+| `code/` | **실행 가능한 코드 전체** (아래) |
 | `index.html` | GitHub Pages용 렌더 페이지 |
 | `figures/` | 실행 화면 (host 관제뷰 · 1인칭) |
 
-코드는 이 저장소에 없다. [gichul-hong/project-4](https://github.com/gichul-hong/project-4)의
-`iter3/`에 있고, 팀 저장소라 여기서는 분석만 다룬다.
+### `code/`
 
-| 코드 위치 | 내용 |
+`gichul-hong/project-4` 의 `iter3/` 를 그대로 옮긴 것이다. 팀 저장소가 원본이고
+여기 있는 것은 **이 실습 기록과 함께 보존·재현하기 위한 사본**이다.
+
+| 경로 | 내용 |
 |---|---|
-| `iter3/server/static/punch_core.js` | 펀치·필살기 판정 **단일 소스** (브라우저·Node 공용, 의존성 없음) |
-| `iter3/server/static/face3d.js` | 웹캠 사진 → 3D 얼굴 복원 + 피격 손상 |
-| `iter3/server/static/humanoid.js` | 관절형 복서 아바타 |
-| `iter3/tests/` | 하니스 11종 |
+| `server/static/punch_core.js` | 펀치·필살기 판정 **단일 소스** (브라우저·Node 공용, 의존성 없음) |
+| `server/static/face3d.js` | 웹캠 사진 → 3D 얼굴 복원 + 피격 손상 |
+| `server/static/humanoid.js` | 관절형 복서 아바타 |
+| `server/static/effects.js` · `sound.js` | 타격 이펙트 9겹 · Web Audio 실시간 합성 |
+| `server/templates/` | host 관제뷰 · 1인칭 파이터 클라이언트 |
+| `tests/` | 검증 하니스 11종 272개 |
+| `eval/` | 정확도 벤치마크 — 채점기·라벨·랜드마크 캐시 |
+| `motion_learning/` | BiLSTM 정의·학습 스크립트·가중치 |
+| `DEVLOG.md` | 19차까지의 변경 이력 |
 
-## 실행
+**빠진 것** — 원본 영상(`benchmark.mp4` 7.9M), 포즈 모델(`.task` 9M), 팀에서 수집한
+포즈 데이터셋(96M). 셋 다 **랜드마크를 다시 뽑을 때만** 필요하고 그건 `opencv` + `mediapipe`
+(Python 3.11)가 있어야 한다. 캐시가 들어 있으므로 **채점은 이것들 없이 돌아간다.**
+
+## 돌려보기
 
 ```bash
-cd iter3
+# 1) 로직 하니스 7종 197개 — 서버도 브라우저도 필요 없다 (약 3초)
+cd 실습4/code/tests
+node pose_harness.js && node effects_harness.js && node aim_harness.js
+node move_harness.js && node face_harness.js && node punch_harness.js && node doc_harness.js
+
+# 2) 합성 11케이스 채점 — pip install 없이 돈다 (표준 라이브러리만)
+cd 실습4
+python code/eval/run_suite.py
+
+# 3) 실영상 채점 — 랜드마크 캐시를 쓰므로 opencv/mediapipe 불필요
+python code/eval/run_pipeline.py --video code/eval/video/benchmark.mp4 --labels code/eval/video/benchmark_labels.json --version <태그이름>
+
+# 4) 게임 서버 (웹캠 필요)
+cd 실습4/code
+pip install fastapi uvicorn jinja2 cryptography
 python run_arena_server.py          # https://localhost:8000/arena
 ```
 
-conda 불필요 — 서버는 `fastapi/uvicorn/jinja2/cryptography`만 쓴다.
-MediaPipe는 브라우저가 CDN에서 받고, torch는 학습 스크립트 전용이다.
+3번은 `--video` 경로가 실제로 없어도 된다 — 같은 이름의 랜드마크 캐시를 찾아 쓴다.
+`--version` 을 생략하면 `v1_baseline` 을 덮어쓰므로 새 실험은 반드시 태그를 준다.
 
-```bash
-cd iter3/tests
-node pose_harness.js && node effects_harness.js && node aim_harness.js
-node move_harness.js && node face_harness.js && node punch_harness.js && node doc_harness.js
-node page_harness.js && node match_harness.js                    # 서버 필요
-node face_page_harness.js && node avatar_page_harness.js         # 서버 필요
-```
+되는 것과 안 되는 것은 `code/README.md` 9장 「웹에서 이어서 작업할 때」에 표로 정리돼 있다.
 
 ## 실영상 벤치마크
 

@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%A5%8A%3C/text%3E%3C/svg%3E">
+  <title>🥊 4-Player AR Shadow Boxing & Battle Arena (Host View)</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- v를 올리면 브라우저 캐시를 무시하고 새로 받는다 (포즈 로직 수정 시 필수) -->
+  <script src="/static/humanoid.js?v=6"></script>
+  <script src="/static/effects.js?v=2"></script>
+  <!-- Face Mesh 라이브러리 — host 는 얼굴을 "촬영"하지는 않지만 FACEMESH_TESSELATION
+       (얼굴 토폴로지)이 있어야 3D 얼굴 메쉬를 만들 수 있다. 이게 없으면 얼굴이 통째로 안 뜬다.
+       FaceMesh 인스턴스를 만들지 않으므로 무거운 WASM 은 받지 않는다. -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+  <script src="/static/face3d.js?v=5"></script>
+  <script src="/static/sound.js?v=1"></script>
+  <style>
+    :root {
+      --bg: #07080d;
+      --panel: rgba(15, 18, 28, 0.85);
+      --red: #ff3366;
+      --cyan: #00e5ff;
+      --gold: #ffd700;
+      --green: #00ff66;
+      --font: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", sans-serif;
+      --mono: "Cascadia Mono", monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: #fff;
+      font-family: var(--font);
+      overflow: hidden;
+      user-select: none;
+    }
+    #arena-canvas {
+      width: 100vw;
+      height: 100vh;
+      position: absolute;
+      top: 0; left: 0;
+      z-index: 1;
+    }
+
+    /* Top HUD: 4-Player Health Bars */
+    .hud-top {
+      position: absolute;
+      top: 16px; left: 20px; right: 20px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .fighter-card {
+      background: var(--panel);
+      backdrop-filter: blur(12px);
+      border: 2px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 10px 14px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+      transition: all 0.2s;
+    }
+    .fighter-card.active { border-color: var(--f-color); }
+    /* K.O. — 링에서 사라진 파이터는 카드도 죽은 상태로 표시 */
+    .fighter-card.ko {
+      opacity: 0.4;
+      filter: grayscale(1);
+      border-color: rgba(255,255,255,0.08);
+    }
+    .fighter-card.ko .fighter-head::after {
+      content: " K.O.";
+      color: #ff3366;
+      font-weight: 900;
+    }
+    .fighter-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--f-color);
+    }
+    .hp-bar-bg {
+      width: 100%;
+      height: 12px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .hp-bar-fill {
+      height: 100%;
+      background: var(--f-color);
+      width: 100%;
+      transition: width 0.25s ease-out;
+      box-shadow: 0 0 10px var(--f-color);
+    }
+    /* 분노 게이지 — HP 바 아래 얇은 줄. 가득 차면 맥박친다. */
+    .rage-bg { width: 100%; height: 5px; margin-top: 3px; border-radius: 3px;
+               background: rgba(255,255,255,0.08); overflow: hidden; }
+    .rage-fill { height: 100%; width: 0%; border-radius: 3px;
+                 background: linear-gradient(90deg, #ff5a10, #ffd23a); transition: width 0.2s; }
+    .fighter-card.rage-full .rage-bg { box-shadow: 0 0 12px #ffd23a; }
+    .action-badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: #aaa;
+      margin-top: 4px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Center Combat Feed */
+    .hit-banner {
+      position: absolute;
+      top: 18%; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.8);
+      border: 2px solid var(--red);
+      border-radius: 10px;
+      padding: 12px 28px;
+      font-family: var(--mono);
+      font-size: 20px;
+      font-weight: 900;
+      color: #fff;
+      display: none;
+      z-index: 15;
+      text-shadow: 0 0 15px var(--red);
+      animation: popHit 0.3s ease;
+    }
+    @keyframes popHit {
+      0% { transform: translate(-50%, -20px) scale(0.8); opacity: 0; }
+      100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+    }
+
+    /* Bottom Status Bar */
+    .hud-bottom {
+      position: absolute;
+      bottom: 20px; left: 20px; right: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .system-stats {
+      background: var(--panel);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .btn-numbers {
+      background: linear-gradient(135deg, var(--red), #ff6b00);
+      color: #fff;
+      font-weight: 800;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      pointer-events: auto;
+      box-shadow: 0 4px 15px rgba(255,51,102,0.4);
+    }
+  </style>
+</head>
+<body>
+  <div id="arena-canvas"></div>
+
+  <!-- Top HUD: 4-Player Health Bars & Match Clock -->
+  <div class="hud-top">
+    <div class="fighter-card" id="card-client_1" style="--f-color: var(--red);">
+      <div class="fighter-head"><span>🥊 User 1 (Red)</span><span id="hp-text-client_1">100 HP</span></div>
+      <div class="hp-bar-bg"><div class="hp-bar-fill" id="hp-bar-client_1"></div></div>
+      <div class="rage-bg"><div class="rage-fill" id="rage-bar-client_1"></div></div>
+      <div class="action-badge"><span>Action:</span><b id="act-client_1">IDLE</b></div>
+    </div>
+    <div class="fighter-card" id="card-client_2" style="--f-color: var(--cyan);">
+      <div class="fighter-head"><span>🥊 User 2 (Cyan)</span><span id="hp-text-client_2">100 HP</span></div>
+      <div class="hp-bar-bg"><div class="hp-bar-fill" id="hp-bar-client_2"></div></div>
+      <div class="rage-bg"><div class="rage-fill" id="rage-bar-client_2"></div></div>
+      <div class="action-badge"><span>Action:</span><b id="act-client_2">IDLE</b></div>
+    </div>
+    <div class="fighter-card" id="card-client_3" style="--f-color: var(--gold);">
+      <div class="fighter-head"><span>⚡ User 3 (Gold)</span><span id="hp-text-client_3">100 HP</span></div>
+      <div class="hp-bar-bg"><div class="hp-bar-fill" id="hp-bar-client_3"></div></div>
+      <div class="rage-bg"><div class="rage-fill" id="rage-bar-client_3"></div></div>
+      <div class="action-badge"><span>Action:</span><b id="act-client_3">IDLE</b></div>
+    </div>
+    <div class="fighter-card" id="card-client_4" style="--f-color: var(--green);">
+      <div class="fighter-head"><span>🥊 User 4 (Green)</span><span id="hp-text-client_4">100 HP</span></div>
+      <div class="hp-bar-bg"><div class="hp-bar-fill" id="hp-bar-client_4"></div></div>
+      <div class="rage-bg"><div class="rage-fill" id="rage-bar-client_4"></div></div>
+      <div class="action-badge"><span>Action:</span><b id="act-client_4">IDLE</b></div>
+    </div>
+  </div>
+
+  <!-- Center Round Match Clock & Combat Banner -->
+  <div style="position:absolute; top:85px; left:50%; transform:translateX(-50%); z-index:10; display:flex; flex-direction:column; align-items:center; gap:8px;">
+    <div style="background:rgba(0,0,0,0.75); border:1px solid rgba(255,255,255,0.2); padding:4px 18px; border-radius:20px; font-family:var(--mono); font-size:18px; font-weight:800; color:#ffd700;">
+      ⏱️ LAST MAN STANDING &nbsp;|&nbsp; <span id="round-clock">0:00</span>
+    </div>
+    <div class="hit-banner" id="hit-banner" style="position:static; transform:none;">💥 CRITICAL HIT! -25 HP</div>
+  </div>
+
+  <!-- K.O. Match Result Overlay -->
+  <div id="result-modal" style="position:absolute; inset:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(8px); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:100;">
+    <div style="font-size:48px; margin-bottom:10px;">🏆</div>
+    <h1 id="result-winner-title" style="font-size:36px; font-weight:900; color:#ffd700; text-shadow:0 0 20px rgba(255,215,0,0.6); margin-bottom:8px;">RED BOXER K.O. VICTORY!</h1>
+    <p id="result-sub" style="font-size:16px; color:#aaa; font-family:var(--mono); margin-bottom:24px;">최후의 1인 생존 챔피언 등극!</p>
+    <button class="btn-numbers" style="font-size:16px; padding:12px 30px;" onclick="resetRoundMatch()">🥊 새 라운드 시작 (Rematch)</button>
+  </div>
+
+  <!-- Bottom HUD: Combat Statistics & Event Log -->
+  <div class="hud-bottom">
+    <div style="display:flex; gap:16px;">
+      <!-- Stats Summary Box -->
+      <div class="system-stats">
+        <div>🥊 <b>FPS</b>: <span id="stat-fps" style="color:#00ff66">--</span> | <b>Punches</b>: <span id="stat-punches" style="color:var(--cyan)">0</span> | <b>Hit Rate</b>: <span id="stat-hitrate" style="color:var(--green)">0%</span></div>
+        <div>⚡ <b>Avg Speed</b>: <span id="stat-speed" style="color:#ffd700">0.0 km/h</span> | <b>GPU LSTM</b>: <span style="color:var(--green)">Active</span></div>
+      </div>
+      <!-- Mini Combat Log Box -->
+      <div class="system-stats" style="max-height:85px; width:320px; overflow-y:auto; font-size:11px; padding:6px 12px;" id="combat-log-box">
+        <div style="color:#888;">[시스템] 4인 배틀 아레나가 준비되었습니다.</div>
+      </div>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <button class="btn-numbers" style="background: #223355;" onclick="resetRoundMatch()">🔄 게임 리셋 (HP 100)</button>
+      <button class="btn-numbers" onclick="showNumbersReport()">📊 Show Numbers (GPU 학습 지표)</button>
+    </div>
+  </div>
+
+  <script>
+    // --- 1. Three.js 3D 사이버펑크 복싱 링 아레나 구축 ---
+    const container = document.getElementById('arena-canvas');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x07080d);
+    scene.fog = new THREE.Fog(0x07080d, 60, 120);
+
+    // 배경 환경 사진 로드 (없으면 단색 유지)
+    // 방식: 링을 감싸는 곡면(원통 안쪽) backdrop. 어떤 비율의 사진이든 자연스럽게 표시.
+    let backdropMesh = null;
+    const bgLoader = new THREE.TextureLoader();
+
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 35, 55);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(1);
+    renderer.shadowMap.enabled = false;
+    container.appendChild(renderer.domElement);
+
+    // 배경 사진 실제 로드 (renderer 준비 후 실행)
+    bgLoader.load('/static/ring_bg.jpg',
+      (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.ClampToEdgeWrapping;
+        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        try { tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); } catch(e) {}
+
+        // 반경 45, 높이 60의 곡면 원통(안쪽 면) — 링(40x40) 바로 바깥에 밀착.
+        const backdropGeo = new THREE.CylinderGeometry(45, 45, 60, 64, 1, true);
+        const backdropMat = new THREE.MeshBasicMaterial({
+          map: tex,
+          side: THREE.BackSide,
+          fog: false,
+          depthWrite: false,
+          toneMapped: false,
+          color: 0x8899aa, // 살짝 어둡고 채도 낮춤 → 링 조명과 어우러짐
+        });
+        backdropMesh = new THREE.Mesh(backdropGeo, backdropMat);
+        backdropMesh.position.y = 15;
+        backdropMesh.renderOrder = -1;
+        scene.add(backdropMesh);
+
+        scene.fog = new THREE.Fog(0x07080d, 50, 120);
+        if (typeof addCombatLog === 'function') {
+          addCombatLog("<b style='color:#0ff'>배경 환경 사진 로드 완료</b>");
+        }
+      },
+      undefined,
+      () => { console.log('[BG] 배경 이미지 없음 - 기본 단색 사용'); }
+    );
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 - 0.05;
+
+    // 조명
+    scene.add(new THREE.AmbientLight(0x334466, 0.8));
+    const ringLight = new THREE.SpotLight(0xffffff, 2.0);
+    ringLight.position.set(0, 50, 0);
+    ringLight.angle = Math.PI / 3;
+    ringLight.castShadow = false;
+    scene.add(ringLight);
+
+    // 복싱 링 바닥 (Neon Mat)
+    const matGeo = new THREE.BoxGeometry(40, 2, 40);
+    const matMat = new THREE.MeshStandardMaterial({ color: 0x111420, roughness: 0.8 });
+    const ringMat = new THREE.Mesh(matGeo, matMat);
+    ringMat.position.y = -1;
+    ringMat.receiveShadow = false;
+    scene.add(ringMat);
+
+    // 링 로프 기둥 4개 & 네온 로프
+    const cornerPositions = [[-18, -18], [18, -18], [18, 18], [-18, 18]];
+    cornerPositions.forEach(pos => {
+      const pole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.6, 0.6, 12),
+        new THREE.MeshStandardMaterial({ color: 0xff3366, metalness: 0.8 })
+      );
+      pole.position.set(pos[0], 5, pos[1]);
+      scene.add(pole);
+    });
+
+    // --- 2. 4인 3D 파이터 아바타 생성 (관절형 휴머노이드, baseYaw = 링 중앙 마주보기) ---
+    const fighterConfigs = {
+      "client_1": { color: 0xff3366, name: "Red Boxer", pos: [-12, 0, 0], baseYaw: Math.PI / 2 },
+      "client_2": { color: 0x00e5ff, name: "Cyan Boxer", pos: [12, 0, 0], baseYaw: -Math.PI / 2 },
+      "client_3": { color: 0xffd700, name: "Gold Mage", pos: [0, 0, -12], baseYaw: 0 },
+      "client_4": { color: 0x00ff66, name: "Green Striker", pos: [0, 0, 12], baseYaw: Math.PI }
+    };
+
+    const fighterMeshes = {}; // { client_id: humanoid }
+    const fx = window.createHitEffects(scene);   // 타격/K.O. 이펙트
+
+    // 3D 복원 얼굴 — 파이터가 등록하면 서버가 중계해 준다
+    const faceApplied = {};
+    function applyFaceTo(cid, blob) {
+      const mesh = fighterMeshes[cid];
+      const key = cid + '|' + ((blob && blob.tex) || '').length;
+      if (!mesh || !blob || faceApplied[key]) return;
+      faceApplied[key] = true;
+      window.createFace3DFromBlob(blob, fighterConfigs[cid].color, 2.6).then(face => {
+        if (!face) return;
+        mesh.setFace(face);
+        addCombatLog('<b style="color:#0ff">' + fighterConfigs[cid].name + ' 3D 얼굴 등록 ('
+                     + face.triangleCount + ' 삼각형)</b>');
+      });
+    }
+    const koState = {};                          // { client_id: true } — 이미 K.O. 연출을 재생했는지
+
+    Object.keys(fighterConfigs).forEach(cid => {
+      const cfg = fighterConfigs[cid];
+      const h = window.createHumanoid(cfg.color);
+      h.group.position.set(cfg.pos[0], 0, cfg.pos[2]);
+      h.group.rotation.y = cfg.baseYaw;
+      scene.add(h.group);
+      fighterMeshes[cid] = h;
+    });
+
+    // --- 전투 음향 (static/sound.js — 1인칭 뷰와 같은 모듈) ---
+    // 데미지에 따라 낮이·길이·크기가 달라지는 3겹 합성음. 오디오 파일 의존이 없다.
+    const snd = window.createSound();
+    ['click', 'keydown', 'touchstart'].forEach(ev =>
+      window.addEventListener(ev, () => snd.ensure(), { passive: true }));
+
+    // --- 경기 타이머 및 통계 관리 ---
+    // 제한 시간 없음 — 마지막 1인이 남을 때까지 싸운다.
+    // 시계는 경과 시간만 세고 경기를 끝내지 않는다 (판정승 제거).
+    let matchElapsed = 0;
+    let matchTimer = null;
+    let matchOver = false;
+    const matchStats = { punches: 0, hits: 0, speeds: [] };
+
+    function renderClock() {
+      const m = Math.floor(matchElapsed / 60), sec = matchElapsed % 60;
+      document.getElementById('round-clock').innerText = `${m}:${String(sec).padStart(2, '0')}`;
+    }
+
+    function startMatchClock(playAudio = false) {
+      if (matchTimer) clearInterval(matchTimer);
+      matchElapsed = 0;
+      matchOver = false;
+      renderClock();
+      if (playAudio) snd.bell();
+      matchTimer = setInterval(() => { matchElapsed++; renderClock(); }, 1000);
+    }
+    startMatchClock(false);
+
+    function addCombatLog(text) {
+      const box = document.getElementById('combat-log-box');
+      const time = new Date().toLocaleTimeString("ko-KR", { hour12: false });
+      const row = document.createElement('div');
+      row.innerHTML = `<span style="color:#666;">[${time}]</span> ${text}`;
+      box.prepend(row);
+      while (box.children.length > 20) box.removeChild(box.lastChild);
+    }
+
+    function declareWinner(reason, winnerId) {
+      snd.bell();
+      snd.victory();
+      let bestFighter, maxHp = -1;
+      if (winnerId && fighterConfigs[winnerId]) {
+        bestFighter = fighterConfigs[winnerId].name || winnerId;
+        const text = document.getElementById(`hp-text-${winnerId}`);
+        maxHp = parseInt(text ? text.innerText : "0") || 0;
+      } else {
+        // 생존자를 못 받은 경우에만 HP 최대값으로 보조 판정
+        bestFighter = "Red Boxer";
+        Object.keys(fighterConfigs).forEach(cid => {
+          const text = document.getElementById(`hp-text-${cid}`);
+          const hp = parseInt(text ? text.innerText : "0") || 0;
+          if (hp > maxHp) { maxHp = hp; bestFighter = fighterConfigs[cid].name || cid; }
+        });
+      }
+
+      const m = Math.floor(matchElapsed / 60), sec = matchElapsed % 60;
+      document.getElementById('result-winner-title').innerText = `🏆 ${bestFighter} 승리!`;
+      document.getElementById('result-sub').innerText =
+        `${reason} (남은 체력: ${maxHp} HP · 경기 시간 ${m}:${String(sec).padStart(2, '0')})`;
+      document.getElementById('result-modal').style.display = 'flex';
+    }
+
+    function resetRoundMatch() {
+      document.getElementById('result-modal').style.display = 'none';
+      fetch('/api/reset-game').then(() => {
+        fx.clear();
+        Object.keys(fighterMeshes).forEach(cid => {
+          fighterMeshes[cid].setDown(false);
+          koState[cid] = false;
+          const card = document.getElementById(`card-${cid}`);
+          if (card) card.classList.remove('ko');
+        });
+        startMatchClock();
+        addCombatLog("<b style='color:#00ff66'>새 라운드가 시작되었습니다! (HP 100 리셋)</b>");
+      });
+    }
+
+    // 펀치 타격 광선 이펙트 (Punch Laser Beam) — setInterval 대신 rAF 기반 감쇠
+    const activeTrails = [];
+    function spawnPunchTrail(startPos, colorHex) {
+      const dir = new THREE.Vector3(0, 4, 0).sub(startPos).normalize();
+      const endPos = startPos.clone().addScaledVector(dir, 15);
+      const geom = new THREE.BufferGeometry().setFromPoints([startPos, endPos]);
+      const mat = new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 1.0 });
+      const line = new THREE.Line(geom, mat);
+      scene.add(line);
+      activeTrails.push({ line, life: 1.0 });
+    }
+
+    // --- 3. WebSocket 실시간 연동 ---
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const socket = new WebSocket(`${protocol}//${window.location.host}/ws/host_arena`);
+
+    socket.onopen = () => {
+      console.log("[✓] Arena WebSocket connected");
+      addCombatLog("<b style='color:#0f0'>WebSocket CONNECTED to server</b>");
+    };
+    socket.onerror = (e) => {
+      console.error("[✗] Arena WebSocket ERROR:", e);
+      addCombatLog("<b style='color:red'>WebSocket ERROR - 서버 연결 실패!</b>");
+    };
+    socket.onclose = (e) => {
+      console.warn("[✗] Arena WebSocket CLOSED:", e.code, e.reason);
+      if (e.code === 4409) {
+        // 슬롯 중복 — 다른 Host 창이 이미 열려 있음
+        showHostRejectedOverlay(e.reason || "slot_in_use");
+      } else {
+        addCombatLog(`<b style='color:red'>WebSocket CLOSED (${e.code})</b>`);
+      }
+    };
+
+    // 슬롯 중복 시 화면을 덮는 안내 오버레이
+    function showHostRejectedOverlay(reason) {
+      if (document.getElementById('host-rejected-overlay')) return;
+      const ov = document.createElement('div');
+      ov.id = 'host-rejected-overlay';
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(5,7,12,0.96);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:sans-serif;padding:32px;text-align:center;';
+      ov.innerHTML = `
+        <div style="font-size:56px;margin-bottom:16px;">🚫</div>
+        <h1 style="font-size:28px;margin:0 0 12px;color:#ff3366;">Host 슬롯이 이미 사용 중입니다</h1>
+        <p style="font-size:16px;max-width:520px;line-height:1.5;color:#ccc;margin:0 0 24px;">
+          이 배틀 아레나에는 하나의 Host 뷰만 접속할 수 있습니다.<br>
+          다른 창/기기에서 이미 <code style="color:#0ff;">host_arena</code> 슬롯을 사용 중입니다.
+        </p>
+        <p style="font-size:13px;color:#888;font-family:monospace;">reason: ${reason}</p>
+        <button onclick="location.reload()" style="margin-top:24px;padding:10px 24px;background:#0ff;color:#000;border:none;border-radius:4px;font-size:14px;font-weight:700;cursor:pointer;">다시 시도</button>`;
+      document.body.appendChild(ov);
+    }
+
+    let shakeDuration = 0, shakeMag = 1.8;
+    const keyboardState = {}; // WASD 키보드 입력 상태 (fighter_client 미러 방지)
+
+    // 목표 위치 버퍼 (onmessage에서 저장 → animate에서 보간)
+    const targetStates = {};
+    Object.keys(fighterConfigs).forEach(cid => {
+      targetStates[cid] = { x: null, z: null, yaw: null, action: "IDLE" };
+    });
+
+    // DOM 갱신 캐시 — 값이 실제로 바뀔 때만 innerText/style을 갱신해 리플로우 최소화
+    const domCache = {};
+    Object.keys(fighterConfigs).forEach(cid => { domCache[cid] = { hp: -1, action: "" }; });
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      // 슬롯 중복 거부 (close 4409 직전에 서버가 보냄)
+      if (data.type === "connection_rejected") {
+        showHostRejectedOverlay(data.reason || "slot_in_use");
+        return;
+      }
+
+      // 3D 복원 얼굴
+      if (data.type === "face_bulk") {
+        Object.keys(data.faces || {}).forEach(cid => applyFaceTo(cid, data.faces[cid]));
+        return;
+      }
+      if (data.type === "face_update") {
+        applyFaceTo(data.client_id, data.face);
+        return;
+      }
+
+      // 1. 파이터 HP, 위치 & 액션 UI 갱신 (서버 상태 동기화)
+      if (data.fighters) {
+        let aliveCount = 0;
+        Object.keys(data.fighters).forEach(cid => {
+          const f = data.fighters[cid];
+          const c = domCache[cid];
+          if (c && c.hp !== f.hp) {
+            c.hp = f.hp;
+            const bar = document.getElementById(`hp-bar-${cid}`);
+            const text = document.getElementById(`hp-text-${cid}`);
+            if (bar) bar.style.width = `${f.hp}%`;
+            if (text) text.innerText = `${f.hp} HP`;
+          }
+          if (f.hp > 0) aliveCount++;
+
+          // K.O. — 링에서 넘어지며 사라진다. setDown은 멱등하므로 매 패킷 호출해도 된다.
+          const koMesh = fighterMeshes[cid];
+          const isKO = f.hp <= 0;
+          if (koMesh) koMesh.setDown(isKO);
+          // HP 가 떨어질수록 지친 표정 + 코피
+          const kf = koMesh && koMesh.getFace();
+          if (kf) kf.setHp(f.hp);
+          // 분노 게이지 — 카드 막대 + 아바타 불꽃 오라
+          if (f.rage !== undefined) {
+            if (koMesh) koMesh.setRage(f.rage);
+            const rb = document.getElementById(`rage-bar-${cid}`);
+            if (rb) rb.style.width = Math.max(0, Math.min(100, f.rage)) + '%';
+            const rc = document.getElementById(`card-${cid}`);
+            if (rc) rc.classList.toggle('rage-full', f.rage >= 99.5);
+          }
+          const card = document.getElementById(`card-${cid}`);
+          if (card) card.classList.toggle('ko', isKO);
+          // K.O. 연출은 쓰러지는 순간 한 번만 재생 (매 패킷 재생 방지)
+          if (isKO && !koState[cid]) {
+            koState[cid] = true;
+            if (koMesh) {
+              const kp = koMesh.group.position;
+              fx.spawnKO(new THREE.Vector3(kp.x, 5.2, kp.z), fighterConfigs[cid].color);
+            }
+            snd.ko();
+            addCombatLog(`<b style="color:#ff3366">☠️ ${fighterConfigs[cid].name} K.O.! 링에서 이탈</b>`);
+          } else if (!isKO && koState[cid]) {
+            koState[cid] = false;   // 라운드 리셋으로 부활
+          }
+
+          // 서버 전체 파이터 위치 3D 동기화
+          if (targetStates[cid]) {
+            if (f.world_x !== undefined && f.world_z !== undefined) {
+              targetStates[cid].x = f.world_x;
+              targetStates[cid].z = f.world_z;
+            }
+            if (f.yaw !== undefined) {
+              targetStates[cid].yaw = f.yaw + Math.PI;
+            }
+          }
+        });
+
+        // 마지막 1인이 남으면 승자 선언. 시간 제한이 없으므로 이것이 유일한 종료 조건이다.
+        // 시작 시점에는 4명 전원이 살아 있어 aliveCount === 1 이 될 수 없으므로 별도 가드가 필요 없다.
+        if (aliveCount === 1 && !matchOver) {
+          matchOver = true;
+          clearInterval(matchTimer);
+          const survivor = Object.keys(data.fighters).find(id => data.fighters[id].hp > 0);
+          declareWinner("K.O. LAST MAN STANDING", survivor);
+        }
+      }
+
+      const cid = data.client_id;
+      if (!cid) return;  // game_state 이벤트 등 client_id가 없는 패킷 무시
+      const mesh = fighterMeshes[cid];
+      if (!mesh) return;
+
+      const action = data.action || "IDLE";
+
+      // 2. 목표 상태만 저장 (렌더 루프에서 부드럽게 보간)
+      if (data.world_x !== undefined && data.world_z !== undefined) {
+        targetStates[cid].x = data.world_x;
+        targetStates[cid].z = data.world_z;
+        console.log(`[WS] ${cid} target -> (${data.world_x.toFixed(1)}, ${data.world_z.toFixed(1)}) mesh at (${mesh.group.position.x.toFixed(1)}, ${mesh.group.position.z.toFixed(1)})`);
+      }
+      if (data.yaw !== undefined) {
+        targetStates[cid].yaw = data.yaw + Math.PI;
+      }
+      targetStates[cid].action = action;
+
+      // 액션 텍스트는 변경 시에만 갱신 (위치 텍스트는 렌더 루프로 이관)
+      if (domCache[cid].action !== action) {
+        domCache[cid].action = action;
+        const actEl = document.getElementById(`act-${cid}`);
+        if (actEl) actEl.innerText = action;
+      }
+
+      // 3. 양손 펀치 & 가드 3D 애니메이션 연출 (+z가 정면 링 중앙 방향)
+      mesh.setAction(action);
+      if (action === 'RIGHT_CROSS' || action === 'JAB_STRAIGHT' || action === 'RIGHT_UPPERCUT' || action === 'RIGHT_HOOK') {
+        const gw = new THREE.Vector3();
+        mesh.rightGlove.getWorldPosition(gw);
+        spawnPunchTrail(gw, fighterConfigs[cid].color);
+        snd.whoosh(data.velocity || 20);
+        matchStats.punches++;
+      } else if (action === 'LEFT_JAB' || action === 'LEFT_HOOK' || action === 'LEFT_UPPERCUT') {
+        const gw = new THREE.Vector3();
+        mesh.leftGlove.getWorldPosition(gw);
+        spawnPunchTrail(gw, fighterConfigs[cid].color);
+        snd.whoosh(data.velocity || 20);
+        matchStats.punches++;
+      }
+
+      // 4. 타격 피격 & 화면 흔들림(Camera Shake) & 사운드
+      if (data.hits && data.hits.length > 0) {
+        const hit = data.hits[0];
+        // 흔들림 세기를 데미지에 비례시킨다 — 가드로 막힌 타격은 거의 흔들리지 않는다
+        shakeDuration = hit.is_guard ? 5 : Math.min(20, 8 + hit.damage);
+        shakeMag = hit.is_guard ? 0.6 : Math.min(2.6, 0.9 + hit.damage * 0.15);
+        matchStats.hits++;
+
+        // 필살기는 부채꼴 안의 모두를 때리므로 **모든** 피격자에게 연출을 준다
+        const ultimate = data.hits.some(x => x.ultimate);
+        data.hits.forEach(hh => {
+          const tgt = fighterMeshes[hh.target_id];
+          if (!tgt) return;
+          const tp = tgt.group.position;
+          const atkColor = (fighterConfigs[hh.attacker_id] || {}).color || 0xffffff;
+          if (hh.ultimate) {
+            // 필살기 — 불꽃색 대폭발
+            fx.spawnKO(new THREE.Vector3(tp.x, 4.8, tp.z), 0xff8a20);
+            fx.spawnHit(new THREE.Vector3(tp.x, 4.6, tp.z), 0xffd23a, hh.damage, hh.is_guard);
+          } else {
+            fx.spawnHit(new THREE.Vector3(tp.x, 4.6, tp.z), atkColor, hh.damage, hh.is_guard);
+          }
+          if (!hh.is_guard) tgt.hit(hh.damage);
+        });
+        if (ultimate) { snd.ultimate(); shakeDuration = 30; shakeMag = 3.4; }
+        if (data.velocity) matchStats.speeds.push(data.velocity);
+
+        // 통계 UI 갱신
+        document.getElementById('stat-punches').innerText = matchStats.punches;
+        document.getElementById('stat-hitrate').innerText = `${Math.round((matchStats.hits / Math.max(1, matchStats.punches)) * 100)}%`;
+        if (matchStats.speeds.length > 0) {
+          const avgSpd = matchStats.speeds.reduce((a, b) => a + b, 0) / matchStats.speeds.length;
+          document.getElementById('stat-speed').innerText = `${avgSpd.toFixed(1)} km/h`;
+        }
+
+        // 사운드 재생
+        snd.impact(hit.damage, hit.is_guard);
+
+        const banner = document.getElementById('hit-banner');
+        banner.innerText = hit.is_guard ? `🛡️ GUARD! DEFLECTED (-${hit.damage} HP)` : `💥 CRITICAL HIT! -${hit.damage} HP (${data.velocity ? data.velocity.toFixed(1) : '38'} km/h)`;
+        banner.style.display = 'block';
+        setTimeout(() => { banner.style.display = 'none'; }, 900);
+
+        addCombatLog(`💥 <b>${hit.attacker_id}</b> ➔ <b>${hit.target_id}</b> 타격! (-${hit.damage} HP, 잔여: ${hit.target_hp})`);
+      }
+    };
+
+    // --- 4. 렌더 루프 ---
+    let frameCount = 0, lastFpsTime = performance.now(), lastFrameTime = performance.now();
+    const fpsEl = document.getElementById('stat-fps');
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+
+      const dtSec = Math.min(Math.max((now - lastFrameTime) / 1000, 0.001), 0.1);
+      lastFrameTime = now;
+
+      // FPS 측정
+      frameCount++;
+      if (now - lastFpsTime >= 1000) {
+        if (fpsEl) fpsEl.innerText = frameCount;
+        frameCount = 0;
+        lastFpsTime = now;
+      }
+
+      // 목표 상태로부터 프레임레이트 무관 보간 (지수 스무딩: 반응성 일정)
+      const smooth = 1 - Math.exp(-dtSec * 14);
+      let debugTxt = '';
+      Object.keys(fighterMeshes).forEach(cid => {
+        const f = fighterMeshes[cid];
+        const t = targetStates[cid];
+        if (t.x !== null && t.z !== null) {
+          f.group.position.x += (t.x - f.group.position.x) * smooth;
+          f.group.position.z += (t.z - f.group.position.z) * smooth;
+        }
+        if (t.yaw !== null) {
+          // yaw 보간 시 각도 wrap-around 처리
+          let dy = t.yaw - f.group.rotation.y;
+          while (dy > Math.PI) dy -= 2*Math.PI;
+          while (dy < -Math.PI) dy += 2*Math.PI;
+          f.group.rotation.y += dy * smooth;
+        }
+        f.update();
+        debugTxt += `${cid.slice(-1)}: tgt(${t.x !== null ? t.x.toFixed(1) : '-'},${t.z !== null ? t.z.toFixed(1) : '-'}) pos(${f.group.position.x.toFixed(1)},${f.group.position.z.toFixed(1)}) | `;
+      });
+      // 디버그: 좌측 하단 stat에 위치 표시
+      if (frameCount === 1) {
+        const dbg = document.getElementById('combat-log-box');
+        if (dbg) {
+          const row = document.createElement('div');
+          row.style.color = '#0f0';
+          row.textContent = debugTxt;
+          dbg.prepend(row);
+          while (dbg.children.length > 8) dbg.removeChild(dbg.lastChild);
+        }
+      }
+
+      // 타격/K.O. 이펙트 갱신
+      fx.update(dtSec);
+
+      // 펀치 트레일 감쇠 (setInterval → rAF)
+      for (let i = activeTrails.length - 1; i >= 0; i--) {
+        const t = activeTrails[i];
+        t.life -= dtSec * 5;
+        t.line.material.opacity = t.life;
+        if (t.life <= 0) {
+          scene.remove(t.line);
+          t.line.geometry.dispose();
+          t.line.material.dispose();
+          activeTrails.splice(i, 1);
+        }
+      }
+
+      // 화면 흔들림 — OrbitControls.target을 일시 변위 후 원점 복귀
+      controls.update();
+      if (shakeDuration > 0) {
+        const shakeX = (Math.random() - 0.5) * shakeMag;
+        const shakeZ = (Math.random() - 0.5) * shakeMag;
+        controls.target.x += shakeX;
+        controls.target.z += shakeZ;
+        // 다음 프레임에서 복귀되도록 예약 (누적 드리프트 방지)
+        shakeDuration--;
+        if (shakeDuration === 0) {
+          controls.target.set(0, 0, 0);
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+    animate(performance.now());
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    function showNumbersReport() {
+      fetch('/api/motion-eval')
+        .then(r => r.json())
+        .then(data => {
+          alert(`📊 [Show Numbers - GPU 딥러닝 모션 분류 지표]\n\n` +
+            `• 학습 디바이스: ${data.device}\n` +
+            `• 정적 2D 키포인트 베이스라인: ${(data.rule_based_accuracy * 100).toFixed(1)}%\n` +
+            `• 시계열 Bi-LSTM (GPU 학습): ${(data.lstm_accuracy * 100).toFixed(1)}%\n` +
+            `• 정확도 향상: +${data.improvement_pct_points.toFixed(1)}%p 달성!\n` +
+            `• 15 Epochs 학습 시간: ${data.training_time_seconds.toFixed(2)}초`);
+        });
+    }
+  </script>
+</body>
+</html>

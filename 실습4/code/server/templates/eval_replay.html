@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>🥊 3D High-Performance Motion Replay & Action Viewer</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥊</text></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="/static/punch_core.js?v=3"></script>
+  <script src="/static/effects.js?v=2"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #090d16;
+      color: #e6edf3;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      background: #121824;
+      border-bottom: 1px solid #283347;
+      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 52px;
+      flex-shrink: 0;
+    }
+    .title-group { display: flex; align-items: center; gap: 10px; }
+    .title-group h1 { font-size: 1.05rem; font-weight: 700; color: #00E5FF; }
+    .badge {
+      background: rgba(0,229,255,0.15);
+      border: 1px solid #00E5FF;
+      color: #00E5FF;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+    .hud-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.82rem;
+      font-family: monospace;
+    }
+    .hud-item {
+      background: #1b2333;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid #2c3952;
+    }
+    .hud-item span { font-weight: bold; color: #3fb950; }
+
+    #main-container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+    .pane {
+      flex: 1;
+      position: relative;
+      background: #05080f;
+      overflow: hidden;
+    }
+    .pane:first-child {
+      border-right: 2px solid #283347;
+    }
+    .pane-header {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 10;
+      background: rgba(18, 24, 36, 0.88);
+      backdrop-filter: blur(6px);
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: 1px solid #2c3952;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #c9d1d9;
+    }
+
+    .video-wrapper {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+    }
+    #video-element {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    #skeleton-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 5;
+    }
+    #three-canvas-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    /* Action Banner Overlay */
+    #action-banner {
+      position: absolute;
+      top: 25px;
+      right: 25px;
+      z-index: 20;
+      background: rgba(13, 17, 23, 0.94);
+      border: 2px solid #FF3366;
+      padding: 10px 24px;
+      border-radius: 20px;
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #FF3366;
+      box-shadow: 0 0 25px rgba(255,51,102,0.45);
+      transition: all 0.15s ease;
+      opacity: 0;
+      pointer-events: none;
+    }
+    #action-banner.active {
+      opacity: 1;
+      transform: scale(1.06);
+    }
+
+    /* Controls Bar */
+    footer {
+      background: #121824;
+      border-top: 1px solid #283347;
+      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      height: 52px;
+      flex-shrink: 0;
+    }
+    .btn {
+      background: #238636;
+      color: #fff;
+      border: none;
+      padding: 7px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: background 0.15s;
+    }
+    .btn:hover { background: #2ea043; }
+    .btn-secondary { background: #30363d; }
+    .btn-secondary:hover { background: #3c444d; }
+
+    .slider-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    input[type=range] {
+      flex: 1;
+      accent-color: #00E5FF;
+      cursor: pointer;
+      height: 6px;
+    }
+    .time-label {
+      font-family: monospace;
+      font-size: 0.85rem;
+      color: #8b949e;
+      min-width: 85px;
+    }
+    select {
+      background: #1b2333;
+      color: #e6edf3;
+      border: 1px solid #2c3952;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="title-group">
+      <h1>🥊 3D 실시간 모션 미러링 & 펀치 리플레이어</h1>
+      <span class="badge">60 FPS CACHED STREAM</span>
+    </div>
+    <div class="hud-bar">
+      <div class="hud-item">PUNCH: <span id="hud-punch">[READY]</span></div>
+      <div class="hud-item">MOVE: <span id="hud-move">NONE</span></div>
+      <div class="hud-item">GUARD: <span id="hud-guard">OFF</span></div>
+      <div class="hud-item">STATUS: <span id="hud-status" style="color:#00E5FF">로딩 중...</span></div>
+    </div>
+  </header>
+
+  <div id="main-container">
+    <!-- 좌측: 비디오 및 2D 스켈레톤 -->
+    <div class="pane">
+      <div class="pane-header">📹 원본 녹화 영상 & MediaPipe 관절 궤적</div>
+      <div class="video-wrapper">
+        <video id="video-element" src="/eval_video/benchmark.mp4" playsinline muted crossorigin="anonymous"></video>
+        <canvas id="skeleton-canvas"></canvas>
+      </div>
+    </div>
+
+    <!-- 우측: Three.js 3D 아바타 복서 (실시간 모션 복제) -->
+    <div class="pane">
+      <div class="pane-header">🥊 Three.js 3D 복서 (전 구간 0~88초 무지연 1:1 관절 IK 추종)</div>
+      <div id="three-canvas-container"></div>
+      <div id="action-banner">LEFT_JAB</div>
+    </div>
+  </div>
+
+  <footer>
+    <button id="btn-play" class="btn">▶ 재생</button>
+    <div class="slider-container">
+      <span id="time-cur" class="time-label">00:00</span>
+      <input type="range" id="seek-bar" min="0" max="100" value="0" step="0.1">
+      <span id="time-dur" class="time-label">00:00</span>
+    </div>
+    <select id="speed-select">
+      <option value="0.5">0.5x 슬로우</option>
+      <option value="1.0" selected>1.0x 정상</option>
+      <option value="1.5">1.5x 고속</option>
+    </select>
+    <button id="btn-reset-cam" class="btn btn-secondary">카메라 리셋</button>
+  </footer>
+
+  <script>
+    const video = document.getElementById('video-element');
+    const skeletonCanvas = document.getElementById('skeleton-canvas');
+    const skeletonCtx = skeletonCanvas.getContext('2d');
+    const threeContainer = document.getElementById('three-canvas-container');
+
+    const btnPlay = document.getElementById('btn-play');
+    const seekBar = document.getElementById('seek-bar');
+    const timeCur = document.getElementById('time-cur');
+    const timeDur = document.getElementById('time-dur');
+    const speedSelect = document.getElementById('speed-select');
+    const btnResetCam = document.getElementById('btn-reset-cam');
+
+    const hudPunch = document.getElementById('hud-punch');
+    const hudMove = document.getElementById('hud-move');
+    const hudGuard = document.getElementById('hud-guard');
+    const hudStatus = document.getElementById('hud-status');
+    const actionBanner = document.getElementById('action-banner');
+
+    // ========== 1. Three.js 3D Scene Setup ==========
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x060911);
+    scene.fog = new THREE.FogExp2(0x060911, 0.025);
+
+    let width = threeContainer.clientWidth || 600;
+    let height = threeContainer.clientHeight || 500;
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+    camera.position.set(0, 2.8, 6.2);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    threeContainer.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 1.4, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+
+    // 조명
+    const ambLight = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    dirLight.position.set(5, 12, 6);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    const cyanPoint = new THREE.PointLight(0x00E5FF, 1.8, 15);
+    cyanPoint.position.set(0, 3, 2);
+    scene.add(cyanPoint);
+
+    const redPoint = new THREE.PointLight(0xFF3366, 1.2, 12);
+    redPoint.position.set(0, 2, -2);
+    scene.add(redPoint);
+
+    // 복싱 링 바닥 및 그리드
+    const floorGeo = new THREE.PlaneGeometry(14, 14);
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x0f1522, roughness: 0.4, metalness: 0.3 });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    const grid = new THREE.GridHelper(14, 14, 0x00E5FF, 0x1b2538);
+    grid.position.y = 0.01;
+    scene.add(grid);
+
+    // 로프 기둥 4개
+    const postMat = new THREE.MeshStandardMaterial({ color: 0xFF3366, metalness: 0.7, roughness: 0.2 });
+    [[-5, -5], [5, -5], [-5, 5], [5, 5]].forEach(([px, pz]) => {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 3.0, 16), postMat);
+      post.position.set(px, 1.5, pz);
+      scene.add(post);
+    });
+
+    // 타격 이펙트 매니저
+    const hitFx = window.createHitEffects ? window.createHitEffects(scene) : null;
+
+    // ========== 2. 1:1 관절 제어형 3D 아바타 빌드 (Rigged Boxer) ==========
+    const avatarGroup = new THREE.Group();
+    scene.add(avatarGroup);
+
+    const matBody = new THREE.MeshStandardMaterial({ color: 0x1a2333, roughness: 0.4, metalness: 0.3 });
+    const matCyan = new THREE.MeshStandardMaterial({ color: 0x00E5FF, roughness: 0.3, metalness: 0.4 });
+    const matGloveL = new THREE.MeshStandardMaterial({ color: 0x00E5FF, emissive: 0x00E5FF, emissiveIntensity: 0.45 });
+    const matGloveR = new THREE.MeshStandardMaterial({ color: 0xFF3366, emissive: 0xFF3366, emissiveIntensity: 0.45 });
+    const matJoint = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
+
+    // 머리
+    const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), matCyan);
+    headMesh.position.set(0, 1.9, 0);
+    avatarGroup.add(headMesh);
+
+    // 몸통 (상체)
+    const torsoMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.30, 0.85, 12), matBody);
+    torsoMesh.position.set(0, 1.25, 0);
+    avatarGroup.add(torsoMesh);
+
+    // 양 어깨
+    const shMeshL = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 12), matJoint);
+    const shMeshR = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 12), matJoint);
+    avatarGroup.add(shMeshL, shMeshR);
+
+    // 양 팔꿈치
+    const elMeshL = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), matJoint);
+    const elMeshR = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), matJoint);
+    avatarGroup.add(elMeshL, elMeshR);
+
+    // 양 글러브 (손목)
+    const gloveL = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 16), matGloveL);
+    const gloveR = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 16), matGloveR);
+    avatarGroup.add(gloveL, gloveR);
+
+    // 팔 뼈대 실린더 (상완/전완 4개)
+    function createBoneMesh(mat) {
+      const g = new THREE.CylinderGeometry(0.08, 0.08, 1, 10);
+      g.translate(0, 0.5, 0);
+      g.rotateX(Math.PI / 2);
+      return new THREE.Mesh(g, mat);
+    }
+    const boneUpperL = createBoneMesh(matBody);
+    const boneForeL = createBoneMesh(matCyan);
+    const boneUpperR = createBoneMesh(matBody);
+    const boneForeR = createBoneMesh(matCyan);
+    avatarGroup.add(boneUpperL, boneForeL, boneUpperR, boneForeR);
+
+    function layBone(mesh, pA, pB) {
+      if (!pA || !pB || isNaN(pA.x) || isNaN(pB.x)) return;
+      mesh.position.copy(pA);
+      const len = pA.distanceTo(pB);
+      if (len > 0.001) {
+        mesh.lookAt(pB);
+        mesh.scale.set(1, 1, len);
+      }
+    }
+
+    // 하체 (고정 다리 2개)
+    const legL = createBoneMesh(matBody);
+    const legR = createBoneMesh(matBody);
+    avatarGroup.add(legL, legR);
+    layBone(legL, new THREE.Vector3(-0.25, 0.85, 0), new THREE.Vector3(-0.35, 0, 0.1));
+    layBone(legR, new THREE.Vector3(0.25, 0.85, 0), new THREE.Vector3(0.35, 0, -0.1));
+
+    // ========== 3. PunchCore 펀치 판정 엔진 ==========
+    const punchCore = window.PunchCore ? window.PunchCore.createPunchCore() : null;
+    let guardActive = false, lastBannerT = 0;
+    const SKELETON = [[0, 11], [0, 12], [11, 12], [11, 13], [13, 15], [12, 14], [14, 16]];
+
+    // ========== 4. 미리 추출된 랜드마크 스트림 로드 ==========
+    let cachedFrames = [];
+
+    async function loadLandmarksCache() {
+      try {
+        hudStatus.innerText = "데이터 로딩 중...";
+        const res = await fetch('/eval_video/benchmark_landmarks.jsonl');
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const text = await res.text();
+        const lines = text.trim().split('\n');
+        cachedFrames = lines.map(line => {
+          try { return JSON.parse(line); } catch(e) { return null; }
+        }).filter(Boolean);
+
+        hudStatus.innerText = `READY (${cachedFrames.length} Frames)`;
+        hudStatus.style.color = "#3fb950";
+        console.log(`✅ Loaded ${cachedFrames.length} motion frames!`);
+        resizeCanvas();
+      } catch(e) {
+        hudStatus.innerText = "캐시 로드 실패";
+        hudStatus.style.color = "#ff3366";
+        console.warn("Failed to load pre-extracted landmarks:", e);
+      }
+    }
+    loadLandmarksCache();
+
+    function resizeCanvas() {
+      const rect = video.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        skeletonCanvas.width = rect.width;
+        skeletonCanvas.height = rect.height;
+      }
+    }
+    window.addEventListener('resize', resizeCanvas);
+    video.addEventListener('loadedmetadata', resizeCanvas);
+
+    // 2D 스켈레톤 렌더링 (레터박스 오프셋 완벽 보정)
+    function drawSkeleton(lm) {
+      if (!lm) return;
+      const cW = skeletonCanvas.width;
+      const cH = skeletonCanvas.height;
+      if (cW === 0 || cH === 0) return;
+
+      skeletonCtx.clearRect(0, 0, cW, cH);
+
+      // video contain 비율 계산
+      const vW = video.videoWidth || 640;
+      const vH = video.videoHeight || 480;
+      const vAspect = vW / vH;
+      const cAspect = cW / cH;
+
+      let rW = cW, rH = cH, oX = 0, oY = 0;
+      if (cAspect > vAspect) {
+        rW = cH * vAspect;
+        oX = (cW - rW) / 2;
+      } else {
+        rH = cW / vAspect;
+        oY = (cH - rH) / 2;
+      }
+
+      function getPt(p) {
+        const x = Array.isArray(p) ? p[0] : p.x;
+        const y = Array.isArray(p) ? p[1] : p.y;
+        return { x: oX + x * rW, y: oY + y * rH };
+      }
+
+      skeletonCtx.lineWidth = 3;
+      skeletonCtx.strokeStyle = "#00E5FF";
+
+      SKELETON.forEach(([a, b]) => {
+        const pa = lm[a], pb = lm[b];
+        if (pa && pb) {
+          const ptA = getPt(pa);
+          const ptB = getPt(pb);
+          skeletonCtx.beginPath();
+          skeletonCtx.moveTo(ptA.x, ptA.y);
+          skeletonCtx.lineTo(ptB.x, ptB.y);
+          skeletonCtx.stroke();
+        }
+      });
+
+      [0, 11, 12, 13, 14, 15, 16].forEach(idx => {
+        const p = lm[idx];
+        if (p) {
+          const pt = getPt(p);
+          skeletonCtx.fillStyle = idx >= 15 ? (idx === 15 ? "#00E5FF" : "#FF3366") : "#58a6ff";
+          skeletonCtx.beginPath();
+          skeletonCtx.arc(pt.x, pt.y, 5.5, 0, Math.PI * 2);
+          skeletonCtx.fill();
+        }
+      });
+    }
+
+    // 3D 관절 실시간 IK 반영
+    function update3DAvatar(lm, wl, nowMs) {
+      if (!lm || !wl || wl.length <= 16) return;
+
+      const SCALE = 2.8;
+      const BASE_Y = 1.6;
+
+      function toVec3(p) {
+        const x = Array.isArray(p) ? p[0] : p.x;
+        const y = Array.isArray(p) ? p[1] : p.y;
+        const z = Array.isArray(p) ? p[2] : p.z;
+        return new THREE.Vector3(-x * SCALE, BASE_Y - y * SCALE, -z * SCALE * 1.5 + 0.3);
+      }
+
+      const vNose = toVec3(wl[0]);
+      const vShL = toVec3(wl[11]);
+      const vShR = toVec3(wl[12]);
+      const vElL = toVec3(wl[13]);
+      const vElR = toVec3(wl[14]);
+      const vWrL = toVec3(wl[15]);
+      const vWrR = toVec3(wl[16]);
+
+      // 1. 관절 위치 직접 동기화 (lerp 0.5로 부드러운 추종)
+      headMesh.position.lerp(vNose, 0.5);
+      shMeshL.position.lerp(vShL, 0.5);
+      shMeshR.position.lerp(vShR, 0.5);
+      elMeshL.position.lerp(vElL, 0.5);
+      elMeshR.position.lerp(vElR, 0.5);
+      gloveL.position.lerp(vWrL, 0.55);
+      gloveR.position.lerp(vWrR, 0.55);
+
+      // 2. 뼈대 실린더 IK 연결
+      layBone(boneUpperL, shMeshL.position, elMeshL.position);
+      layBone(boneForeL, elMeshL.position, gloveL.position);
+      layBone(boneUpperR, shMeshR.position, elMeshR.position);
+      layBone(boneForeR, elMeshR.position, gloveR.position);
+
+      // 3. 몸통 기울기
+      const shMid = new THREE.Vector3().addVectors(shMeshL.position, shMeshR.position).multiplyScalar(0.5);
+      torsoMesh.position.set(shMid.x, shMid.y - 0.45, shMid.z * 0.5);
+      const rollAng = Math.atan2(vShL.y - vShR.y, vShR.x - vShL.x);
+      if (!isNaN(rollAng)) {
+        torsoMesh.rotation.z = THREE.MathUtils.lerp(torsoMesh.rotation.z, rollAng * 0.7, 0.25);
+      }
+
+      // 4. 펀치 판정
+      function getPt(p) {
+        return Array.isArray(p) ? { x: p[0], y: p[1], z: p[2] } : p;
+      }
+      const lsh = getPt(wl[11]), rsh = getPt(wl[12]), lel = getPt(wl[13]), rel = getPt(wl[14]), lwr = getPt(wl[15]), rwr = getPt(wl[16]);
+      const shW = Math.max(Math.hypot(lsh.x - rsh.x, lsh.y - rsh.y, lsh.z - rsh.z), 0.15);
+
+      let punchFired = null;
+      if (punchCore) {
+        const kL = punchCore.kinematics('L', lsh, lel, lwr, shW, nowMs);
+        const kR = punchCore.kinematics('R', rsh, rel, rwr, shW, nowMs);
+        const pL = punchCore.tryPunch(kL, nowMs);
+        const pR = punchCore.tryPunch(kR, nowMs);
+        punchFired = pL || pR;
+      }
+
+      // 5. 가드 판정
+      const nP = getPt(lm[0]), lwrP = getPt(lm[15]), rwrP = getPt(lm[16]), lshP = getPt(lm[11]), rshP = getPt(lm[12]);
+      const dl = Math.hypot(lwrP.x - nP.x, lwrP.y - nP.y);
+      const dr = Math.hypot(rwrP.x - nP.x, rwrP.y - nP.y);
+      guardActive = (lwrP.y < lshP.y + 0.1) && (rwrP.y < rshP.y + 0.1) && dl < 0.32 && dr < 0.32;
+
+      // 6. 풋워크
+      let moveState = "NONE";
+      const rollDeg = rollAng * 180 / Math.PI;
+      if (rollDeg > 8) moveState = "LEFT";
+      else if (rollDeg < -8) moveState = "RIGHT";
+
+      if (punchFired) {
+        showActionBanner(punchFired.action, punchFired.speed);
+        hudPunch.innerText = `${punchFired.action} (${(punchFired.speed * 3.6).toFixed(1)} km/h)`;
+        hudPunch.style.color = "#FF3366";
+
+        if (hitFx && hitFx.spawnHit) {
+          const hp = punchFired.action.startsWith("LEFT") ? gloveL.position.clone() : gloveR.position.clone();
+          hp.z += 0.3;
+          hitFx.spawnHit(hp, 0xFF3366, 8, false);
+        }
+      }
+
+      hudGuard.innerText = guardActive ? "ON (GUARD)" : "OFF";
+      hudGuard.style.color = guardActive ? "#3fb950" : "#8b949e";
+
+      hudMove.innerText = moveState;
+      hudMove.style.color = moveState !== "NONE" ? "#00E5FF" : "#8b949e";
+    }
+
+    function showActionBanner(action, speed) {
+      actionBanner.innerText = `💥 ${action} (${(speed * 3.6).toFixed(1)} km/h)`;
+      actionBanner.classList.add('active');
+      lastBannerT = performance.now();
+    }
+
+    // 타임스탬프 기준 최적 프레임 인덱스 검색 (Binary Search)
+    function findFrameByTime(tMs) {
+      if (cachedFrames.length === 0) return null;
+      let low = 0, high = cachedFrames.length - 1;
+      while (low <= high) {
+        const mid = (low + high) >> 1;
+        const midT = cachedFrames[mid].t_ms;
+        if (midT === tMs) return cachedFrames[mid];
+        else if (midT < tMs) low = mid + 1;
+        else high = mid - 1;
+      }
+      const idx = Math.max(0, Math.min(low, cachedFrames.length - 1));
+      return cachedFrames[idx];
+    }
+
+    // ========== 5. 60 FPS 초고속 비디오 & 모션 싱크 루프 ==========
+    function syncLoop() {
+      if (cachedFrames.length > 0) {
+        const curMs = Math.round(video.currentTime * 1000);
+        const data = findFrameByTime(curMs);
+        if (data) {
+          drawSkeleton(data.lm);
+          update3DAvatar(data.lm, data.wl, curMs);
+        }
+      }
+      requestAnimationFrame(syncLoop);
+    }
+    requestAnimationFrame(syncLoop);
+
+    function formatTime(s) {
+      if (isNaN(s)) return "00:00";
+      const m = Math.floor(s / 60);
+      const sec = Math.floor(s % 60);
+      return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+    }
+
+    video.addEventListener('loadedmetadata', () => {
+      timeDur.innerText = formatTime(video.duration);
+      seekBar.max = video.duration;
+      resizeCanvas();
+    });
+
+    video.addEventListener('timeupdate', () => {
+      timeCur.innerText = formatTime(video.currentTime);
+      seekBar.value = video.currentTime;
+      if (performance.now() - lastBannerT > 650) {
+        actionBanner.classList.remove('active');
+      }
+    });
+
+    btnPlay.addEventListener('click', () => {
+      if (video.paused) {
+        video.play().then(() => {
+          btnPlay.innerText = "⏸ 일시정지";
+          btnPlay.classList.add('btn-secondary');
+        }).catch(e => {
+          alert("비디오 재생 실패: " + e.message);
+        });
+      } else {
+        video.pause();
+        btnPlay.innerText = "▶ 재생";
+        btnPlay.classList.remove('btn-secondary');
+      }
+    });
+
+    seekBar.addEventListener('input', () => {
+      video.currentTime = parseFloat(seekBar.value);
+    });
+
+    speedSelect.addEventListener('change', () => {
+      video.playbackRate = parseFloat(speedSelect.value);
+    });
+
+    btnResetCam.addEventListener('click', () => {
+      camera.position.set(0, 2.8, 6.2);
+      controls.target.set(0, 1.4, 0);
+    });
+
+    window.addEventListener('resize', () => {
+      width = threeContainer.clientWidth;
+      height = threeContainer.clientHeight;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height);
+      resizeCanvas();
+    });
+
+    // 3D Render Loop
+    let clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = clock.getDelta();
+      controls.update();
+      if (hitFx) hitFx.update(dt);
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>

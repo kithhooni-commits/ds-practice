@@ -1,0 +1,32 @@
+{
+  "runs": [
+    {
+      "version": "v1_baseline",
+      "timestamp": "2026-08-26 15:23:23",
+      "f1": 0.3863,
+      "precision": 0.2881,
+      "recall": 0.5862,
+      "tp": 17,
+      "fp": 42,
+      "fn": 12,
+      "non_action_fp": 11,
+      "timing_err_ms": 111.9,
+      "config_path": "C:\\hong\\project-4\\iter3\\eval\\configs\\v1_baseline.json",
+      "run_dir": "C:\\hong\\project-4\\iter3\\eval\\runs\\v1_baseline"
+    },
+    {
+      "version": "v2_anti_sway",
+      "timestamp": "2026-08-26 15:24:35",
+      "f1": 0.3514,
+      "precision": 0.2889,
+      "recall": 0.4483,
+      "tp": 13,
+      "fp": 32,
+      "fn": 16,
+      "non_action_fp": 6,
+      "timing_err_ms": 115.6,
+      "config_path": "C:\\hong\\project-4\\iter3\\eval\\configs\\v2_anti_sway.json",
+      "run_dir": "C:\\hong\\project-4\\iter3\\eval\\runs\\v2_anti_sway"
+    }
+  ]
+}

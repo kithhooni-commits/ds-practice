@@ -1,0 +1,47 @@
+{
+  "case": "clean_hook_R",
+  "source": "synthetic",
+  "tolerance_ms": 350,
+  "punches": [
+    {
+      "t_ms": 2417,
+      "side": "R",
+      "kind": "HOOK"
+    },
+    {
+      "t_ms": 3755,
+      "side": "R",
+      "kind": "HOOK"
+    },
+    {
+      "t_ms": 5093,
+      "side": "R",
+      "kind": "HOOK"
+    },
+    {
+      "t_ms": 6431,
+      "side": "R",
+      "kind": "HOOK"
+    },
+    {
+      "t_ms": 7769,
+      "side": "R",
+      "kind": "HOOK"
+    },
+    {
+      "t_ms": 9107,
+      "side": "R",
+      "kind": "HOOK"
+    },
+    {
+      "t_ms": 10445,
+      "side": "R",
+      "kind": "HOOK"
+    },
+    {
+      "t_ms": 11783,
+      "side": "R",
+      "kind": "HOOK"
+    }
+  ]
+}

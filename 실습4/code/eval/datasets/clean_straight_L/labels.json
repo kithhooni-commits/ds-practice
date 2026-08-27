@@ -1,0 +1,47 @@
+{
+  "case": "clean_straight_L",
+  "source": "synthetic",
+  "tolerance_ms": 350,
+  "punches": [
+    {
+      "t_ms": 2393,
+      "side": "L",
+      "kind": "STRAIGHT"
+    },
+    {
+      "t_ms": 3645,
+      "side": "L",
+      "kind": "STRAIGHT"
+    },
+    {
+      "t_ms": 4897,
+      "side": "L",
+      "kind": "STRAIGHT"
+    },
+    {
+      "t_ms": 6149,
+      "side": "L",
+      "kind": "STRAIGHT"
+    },
+    {
+      "t_ms": 7401,
+      "side": "L",
+      "kind": "STRAIGHT"
+    },
+    {
+      "t_ms": 8653,
+      "side": "L",
+      "kind": "STRAIGHT"
+    },
+    {
+      "t_ms": 9905,
+      "side": "L",
+      "kind": "STRAIGHT"
+    },
+    {
+      "t_ms": 11157,
+      "side": "L",
+      "kind": "STRAIGHT"
+    }
+  ]
+}

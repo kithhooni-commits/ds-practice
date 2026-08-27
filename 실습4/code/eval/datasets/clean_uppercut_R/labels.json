@@ -1,0 +1,47 @@
+{
+  "case": "clean_uppercut_R",
+  "source": "synthetic",
+  "tolerance_ms": 350,
+  "punches": [
+    {
+      "t_ms": 2404,
+      "side": "R",
+      "kind": "UPPERCUT"
+    },
+    {
+      "t_ms": 3695,
+      "side": "R",
+      "kind": "UPPERCUT"
+    },
+    {
+      "t_ms": 4986,
+      "side": "R",
+      "kind": "UPPERCUT"
+    },
+    {
+      "t_ms": 6277,
+      "side": "R",
+      "kind": "UPPERCUT"
+    },
+    {
+      "t_ms": 7568,
+      "side": "R",
+      "kind": "UPPERCUT"
+    },
+    {
+      "t_ms": 8859,
+      "side": "R",
+      "kind": "UPPERCUT"
+    },
+    {
+      "t_ms": 10150,
+      "side": "R",
+      "kind": "UPPERCUT"
+    },
+    {
+      "t_ms": 11441,
+      "side": "R",
+      "kind": "UPPERCUT"
+    }
+  ]
+}

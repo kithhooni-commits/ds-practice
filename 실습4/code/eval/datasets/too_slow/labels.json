@@ -1,0 +1,6 @@
+{
+  "case": "too_slow",
+  "source": "synthetic",
+  "tolerance_ms": 350,
+  "punches": []
+}

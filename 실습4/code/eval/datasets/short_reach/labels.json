@@ -1,0 +1,6 @@
+{
+  "case": "short_reach",
+  "source": "synthetic",
+  "tolerance_ms": 350,
+  "punches": []
+}

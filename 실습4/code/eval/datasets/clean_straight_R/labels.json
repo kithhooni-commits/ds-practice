@@ -1,0 +1,47 @@
+{
+  "case": "clean_straight_R",
+  "source": "synthetic",
+  "tolerance_ms": 350,
+  "punches": [
+    {
+      "t_ms": 2393,
+      "side": "R",
+      "kind": "STRAIGHT"
+    },
+    {
+      "t_ms": 3645,
+      "side": "R",
+      "kind": "STRAIGHT"
+    },
+    {
+      "t_ms": 4897,
+      "side": "R",
+      "kind": "STRAIGHT"
+    },
+    {
+      "t_ms": 6149,
+      "side": "R",
+      "kind": "STRAIGHT"
+    },
+    {
+      "t_ms": 7401,
+      "side": "R",
+      "kind": "STRAIGHT"
+    },
+    {
+      "t_ms": 8653,
+      "side": "R",
+      "kind": "STRAIGHT"
+    },
+    {
+      "t_ms": 9905,
+      "side": "R",
+      "kind": "STRAIGHT"
+    },
+    {
+      "t_ms": 11157,
+      "side": "R",
+      "kind": "STRAIGHT"
+    }
+  ]
+}
