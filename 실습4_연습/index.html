@@ -1,6 +1,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>데이터 사이언스 실습</title>
+<title>실습4 연습 — 실습4로 가는 길</title>
 <style>
 :root{
   --paper:#FAF9F5; --band:#F5F2EA; --card:#FFFFFF; --ink:#1F1E1D; --ink2:#55524C;
@@ -59,13 +59,36 @@ nav.crumb a{color:var(--ink3)}
 footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
   font-size:12.5px;color:var(--ink3)}
 </style>
-<header class="top"><div class="wrap">
-  <div class="eyebrow">ds-practice</div>
-  <h1>데이터 사이언스 실습</h1>
-  <p class="lede">로컬 · Colab · Claude Code on the web에서 이어서 작업하는 저장소.
-  실습 하나당 폴더 하나.</p>
-</div></header>
 <div class="wrap">
-<div class="grid"><a class="card" href="실습3/"><div class="k">실습3</div><div class="d">이미지 생성 모델 개인화 — 파이프라인과 지표 검증</div></a><a class="card" href="실습4/"><div class="k">실습4</div><div class="d">웹캠 4인 실시간 AR 복싱 — 모션 인식과 단안 3D 얼굴 복원</div></a><a class="card" href="실습4_연습/"><div class="k">실습4 연습</div><div class="d">실습4로 가는 길에 만든 연습 4편 — 제스처 잠금장치 · 비전 드럼 · WebRTC 복싱 · 타당성 노트</div></a></div>
-<footer>github.com/kithhooni-commits/ds-practice</footer>
+<p><a href="../">← 실습 목록</a></p>
+
+<h1>실습4 연습</h1>
+
+<p>실습4(웹캠 4인 AR 복싱)로 가기까지 5일간 만든 연습 4편이다. 같은 실습 안에서 나온
+결과물이라 하나로 묶었다. 뒤로 갈수록 앞 편에서 막힌 지점을 풀어 간다.</p>
+
+<div class="grid">
+<a class="card" href="실습4-1/"><div class="k">실습4-1</div>
+<div class="d">제스처 비밀번호 잠금장치 — MediaPipe Hand Landmarker + 규칙 기반 제스처 분류로 만든 브라우저 인증 데모</div></a>
+<a class="card" href="실습4-2/"><div class="k">실습4-2</div>
+<div class="d">비전 드럼 연습기 — 웹캠 손 속도로 가상 드럼 패드를 치고 Web Audio로 합성음·메트로놈 박자 오차를 낸다</div></a>
+<a class="card" href="실습4-3/"><div class="k">실습4-3</div>
+<div class="d">비전 복싱 (최대 4인 대전 + 관전 + 링 뷰) — Pose Landmarker 기술 판정, PeerJS(WebRTC) mesh P2P 대전·관전</div></a>
+<a class="card" href="실습4-4/README.md"><div class="k">실습4-4</div>
+<div class="d">다음 단계 타당성 검토 — 펀치 방향 보정 · 3D 얼굴 복원 · RL 동작 합성을 구현 전에 따져본 노트 (코드 없음)</div></a>
+</div>
+
+<h2>실습4 본편으로 어떻게 이어지나</h2>
+
+<p><b>실습4-3</b>이 직접적인 전신이다. PeerJS mesh 로 브라우저끼리 P2P 대전을 붙였는데,
+참가자가 늘수록 연결이 n² 로 늘고 관전자까지 붙으면 감당이 안 된다. 본편에서 <b>FastAPI
++ WebSocket 중앙 서버</b>로 바꾼 이유가 이것이다.</p>
+
+<p><b>실습4-4</b>는 구현 전에 따져본 노트다. 여기 적힌 세 가지 중 <b>펀치 방향 보정</b>(자동 조준)과
+<b>단안 3D 얼굴 복원</b>은 본편에서 실제로 구현했고, <b>RL 동작 합성</b>은 하지 않았다.
+타당성 판단이 맞았는지 본편 결과와 나란히 놓고 볼 수 있다.</p>
+
+<p><a href="../실습4/">→ 실습4 본편 보기</a></p>
+
+<footer>github.com/kithhooni-commits/ds-practice · 실습4 연습</footer>
 </div>

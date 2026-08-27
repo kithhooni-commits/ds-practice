@@ -1,0 +1,1428 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>비전 복싱 — 실습4-3</title>
+<style>
+:root{
+  --bg:#F4F5F7; --panel:#FFFFFF; --panel2:#ECEEF2; --ink:#14171C; --ink2:#4B515C; --muted:#7A8190;
+  --line:#DADEE5; --ok:#1B8A63; --ok-soft:#E3F5EC; --bad:#C23B3B; --bad-soft:#FBE7E7;
+  --accent:#C23B3B; --accent-soft:#F8E4E4; --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Segoe UI","Malgun Gothic",sans-serif;
+}
+@media (prefers-color-scheme:dark){ :root{
+  --bg:#0E1013; --panel:#181B20; --panel2:#1F2329; --ink:#EDEFF3; --ink2:#B7BEC9; --muted:#7C8492;
+  --line:#2A2F37; --ok:#3FCB92; --ok-soft:#12291F; --bad:#F1685F; --bad-soft:#301717;
+  --accent:#E85C5C; --accent-soft:#2C1717;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6}
+header{padding:28px 24px 18px;border-bottom:1px solid var(--line)}
+header .wrap,footer .wrap,main{max-width:1220px;margin:0 auto}
+.kicker{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+h1{font-size:clamp(22px,3vw,30px);margin:8px 0 6px;letter-spacing:-.01em}
+.lede{color:var(--ink2);font-size:14.5px;margin:0;max-width:74ch}
+.io{font-family:var(--mono);font-size:12.5px;color:var(--accent);background:var(--accent-soft);
+  display:inline-flex;gap:6px;padding:6px 10px;border-radius:4px;margin-top:12px}
+.scopenote{margin-top:10px;font-size:12.5px;color:var(--muted);max-width:74ch;border-left:2px solid var(--muted);padding-left:10px}
+main{display:grid;grid-template-columns:1.35fr 1fr;gap:20px;padding:22px 24px 60px}
+@media (max-width:920px){ main{grid-template-columns:1fr} }
+.stage{display:flex;flex-direction:column;gap:14px}
+#stageMain{display:flex;flex-direction:column;gap:14px}
+#stageMain:fullscreen{background:#000;justify-content:center;padding:24px}
+.arena-wrap{position:relative;background:#0a0c10;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.arena-wrap canvas{display:block;width:100%;height:auto}
+.arena-hud{position:absolute;top:10px;left:10px;right:10px;z-index:2;display:flex;gap:10px;align-items:flex-start}
+.hpchips{flex:1;min-width:0;display:flex;gap:6px;flex-wrap:wrap}
+.arena-clock{font-family:var(--mono);font-size:20px;font-weight:800;color:#fff;
+  background:rgba(0,0,0,.55);padding:2px 10px;border-radius:5px;flex:none;align-self:flex-start}
+.hpbar{background:rgba(0,0,0,.5);border-radius:5px;padding:5px 8px;color:#fff;font-family:var(--mono);font-size:10.5px;white-space:nowrap}
+.hpbar .bar{height:8px;background:rgba(255,255,255,.2);border-radius:4px;overflow:hidden;margin-top:3px}
+.hpbar .fill{height:100%;background:var(--ok);width:100%;transition:width .2s ease}
+.duel{position:relative;display:flex;gap:12px;flex-wrap:wrap}
+@media (max-width:640px){ .duel{flex-direction:column} }
+.camwrap{position:relative;flex:1 1 200px;min-width:150px;aspect-ratio:4/3;background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.camwrap video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.camwrap.mine video{transform:scaleX(-1);filter:brightness(.95)}
+.camwrap.mine canvas{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1)}
+body.spectator-mode #selfCamWrap{display:none}
+/* cams-large view swaps which block dominates: ring shrinks to a strip, cameras grow */
+body.cams-large .arena-wrap{max-width:420px}
+body.cams-large .duel{gap:12px}
+.toolbar-row{display:flex;gap:10px;flex-wrap:wrap}
+.camstate{position:absolute;top:10px;left:10px;max-width:calc(100% - 110px);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono);font-size:10.5px;color:#fff;
+  background:rgba(0,0,0,.55);padding:4px 8px;border-radius:4px;z-index:2}
+.camlabel{position:absolute;bottom:10px;left:10px;font-size:11px;font-weight:700;color:#fff;
+  background:rgba(0,0,0,.55);padding:3px 8px;border-radius:4px;z-index:2}
+.techflash{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%) scale(0.6);z-index:3;
+  font-size:30px;font-weight:800;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.6);opacity:0;
+  transition:opacity .15s ease, transform .15s ease;pointer-events:none}
+.techflash.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.legend{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;list-style:none;margin:0;padding:0}
+.legend li{font-size:12.5px;background:var(--panel2);border-radius:6px;padding:8px 9px;color:var(--ink2)}
+.legend li b{color:var(--ink);display:block;font-size:13px;margin-bottom:2px}
+.panel{display:flex;flex-direction:column;gap:14px}
+.block{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 17px}
+.block h2{font-size:13px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;
+  color:var(--muted);margin:0 0 11px;font-weight:700}
+.block h2 small{font-weight:500;text-transform:none;letter-spacing:0;font-size:11px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button{font:inherit;font-weight:600;font-size:13.5px;padding:9px 14px;border-radius:6px;
+  border:1px solid var(--line);background:var(--panel2);color:var(--ink);cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button:disabled{opacity:.45;cursor:not-allowed}
+input[type=text]{font:inherit;font-size:13.5px;padding:8px 10px;border-radius:6px;border:1px solid var(--line);
+  background:var(--panel2);color:var(--ink);width:110px}
+input[type=range]{flex:1;min-width:110px}
+label.small{font-size:12.5px;color:var(--ink2);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.val{font-family:var(--mono);font-size:12px;color:var(--muted);min-width:44px;text-align:right}
+.hint{font-size:12px;color:var(--muted);margin:8px 0 0}
+.roomcode{font-family:var(--mono);font-size:17px;font-weight:800;color:var(--accent);margin:8px 0 0;display:none}
+.timer{font-family:var(--mono);font-size:22px;font-weight:700}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat{background:var(--panel2);border-radius:6px;padding:8px 10px}
+.stat .v{font-family:var(--mono);font-size:17px;font-weight:700}
+.stat .k{font-size:11px;color:var(--muted)}
+.logwrap{max-height:170px;overflow-y:auto;border:1px solid var(--line);border-radius:6px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+th{position:sticky;top:0;background:var(--panel2);font-family:var(--mono);font-size:10px;
+  text-transform:uppercase;color:var(--muted)}
+.resetbtn{align-self:flex-start;background:transparent;color:var(--bad);border-color:var(--bad-soft)}
+.result{position:absolute;inset:0;z-index:5;display:none;align-items:center;justify-content:center;
+  flex-direction:column;gap:10px;background:rgba(0,0,0,.72);color:#fff;text-align:center;padding:20px}
+.result.show{display:flex}
+.result h3{font-size:26px;margin:0}
+footer{border-top:1px solid var(--line);padding:20px 24px;color:var(--muted);font-size:12px}
+footer a{color:inherit}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="kicker">실습4-3 · Samsung DS Computer Vision Practicum</div>
+  <h1>비전 복싱 (최대 4인 대전 + 공용 링 뷰)</h1>
+  <p class="lede">MediaPipe Pose Landmarker로 양팔·머리 관절을 추적해 잽·훅·어퍼컷과 더킹·위빙을
+  규칙 기반으로 판정한다. 최대 4명이 한 방 코드로 서로 직접(P2P) 연결해 실시간으로 겨루고, 제3자는
+  방 코드만으로 카메라 없이 전원을 동시에 보는 관전 모드로 들어갈 수 있다. 모든 참가자는 같은
+  <b>링 뷰</b>(참가자 전원이 인형으로 링 중앙을 마주 보고 서는 공용 화면)를 본다 — 실제로는 다들 자기
+  웹캠을 정면으로 보고 있지만, 인형은 링 중앙 쪽으로 몸을 틀어 상대를 보고 있는 것처럼 렌더링한다.
+  실제 카메라 영상은 그 아래에 썸네일로 함께 보인다.</p>
+  <div class="io">IN 웹캠 팔·머리 관절 시퀀스 (참가자별 로컬) → OUT 기술 판정 + P2P 메시(최대 4인) 동기화 HP/로그 + 순위</div>
+  <p class="scopenote">범위 메모: 서버 없이 브라우저끼리 직접 연결하는 WebRTC(PeerJS)를 썼다 — 영상
+  통화용 무료 공개 시그널링 서버를 빌려 쓰는 구조라, 네트워크 환경에 따라(특히 엄격한 NAT/방화벽)
+  연결이 안 될 수 있다. 4인은 전원이 서로 직접 연결되는 완전 연결(mesh) 구조다. 관전자는 호스트
+  (선수 A)에게 상태를 구독하고, 참가한 선수들의 영상은 각각 직접 연결해서 받는다. 링 뷰의 인형은
+  추적된 관절로 그린 스타일화된 형태이며, 실사 3D 얼굴 재구성은 여전히 범위 밖 — 이유는 README 참고.</p>
+</div></header>
+
+<main>
+  <section class="stage">
+    <div id="stageMain">
+    <div class="arena-wrap">
+      <canvas id="arena" width="960" height="540"></canvas>
+      <div class="arena-hud">
+        <div class="hpchips" id="hpChips"></div>
+        <div class="arena-clock"><span id="roundTimer">60</span></div>
+      </div>
+      <div class="techflash" id="techFlash"></div>
+      <div class="result" id="resultOverlay">
+        <h3 id="resultTitle"></h3>
+        <p id="resultSub" style="color:#ddd;font-size:13px"></p>
+        <button class="primary" id="btnRematch">다시 시작</button>
+      </div>
+    </div>
+    <div class="duel" id="camRow">
+      <div class="camwrap mine" id="selfCamWrap">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="overlay"></canvas>
+        <div class="camstate" id="camState">카메라 꺼짐</div>
+        <div class="camlabel" id="mineLabel">나 (실제 영상)</div>
+      </div>
+    </div>
+    <div class="toolbar-row">
+      <button id="btnFullscreen">전체화면으로 보기</button>
+      <button id="btnViewToggle">카메라 크게 보기</button>
+    </div>
+    </div>
+    <div class="block" id="legendBlock">
+      <h2>기술 · 방어</h2>
+      <ul class="legend">
+        <li><b>👊 잽 / 스트레이트</b>팔을 곧게 앞으로 뻗기</li>
+        <li><b>🥊 훅</b>팔꿈치를 구부린 채 옆으로 크게 휘두르기</li>
+        <li><b>⬆️ 어퍼컷</b>아래에서 위로 올려치기</li>
+        <li><b>↔️ 위빙</b>고개·상체를 좌우로 피하기 — 상대 훅 방어</li>
+        <li><b>⬇️ 더킹</b>고개를 아래로 숙이기 — 상대 잽·어퍼컷 방어</li>
+      </ul>
+      <p class="hint">💡 손을 평소 위치에서 <b>바깥으로 빠르게 뻗으면</b> 기술로 인식됩니다(되돌아오는
+      동작은 인식 안 됨). <b>카메라에서 한두 걸음 물러나 상반신과 양손이 다 보이게</b> 서야 손목이
+      잡힙니다 — 책상에 앉아 얼굴만 나오면 인식이 안 됩니다. 펀치는 지금 연결된 <b>모든 상대에게</b>
+      동시에 판정이 들어갑니다(특정 상대 조준은 아직 없음).</p>
+    </div>
+  </section>
+
+  <aside class="panel">
+    <div class="block">
+      <h2>모드</h2>
+      <div class="row">
+        <button class="primary" id="modeFighterBtn">선수로 참가</button>
+        <button id="modeSpectatorBtn">관전하기</button>
+      </div>
+      <p class="hint">선수는 카메라로 직접 대전한다(최대 4명, 방장이 방을 만들고 나머지가 코드로
+      참가). 관전자는 카메라 없이 방 코드만으로 참가한 선수 전원의 영상과 HP를 동시에 볼 수 있다.</p>
+    </div>
+
+    <div id="fighterPanel">
+      <div class="block">
+        <h2>1 · 카메라 · 모델 시작</h2>
+        <div class="row">
+          <button class="primary" id="btnStart">카메라 + 모델 시작</button>
+        </div>
+        <p class="hint" id="loadState">대기 중 — 시작을 누르면 카메라 권한을 요청합니다.</p>
+      </div>
+
+      <div class="block">
+        <h2>2 · 참가자와 연결 <small>(최대 4명)</small></h2>
+        <div class="row">
+          <button id="btnHost" disabled>방 만들기</button>
+          <span class="hint" style="margin:0">또는</span>
+          <input type="text" id="joinCodeInput" placeholder="방 코드" maxlength="6">
+          <button id="btnJoin" disabled>참가</button>
+        </div>
+        <p class="roomcode" id="roomCodeDisplay"></p>
+        <p class="hint" id="connState">먼저 카메라를 시작하세요.</p>
+        <p class="hint" id="specCountHint" style="display:none"></p>
+        <div class="row" style="margin-top:10px">
+          <button class="primary" id="btnRound" disabled>라운드 시작</button>
+          <div class="timer"><span id="roundTimerPanel">60</span><span style="font-size:11px;color:var(--muted);font-weight:500"> 초</span></div>
+        </div>
+      </div>
+
+      <div class="block">
+        <h2>3 · 감도 조절 · 진단</h2>
+        <label class="small">펀치 감도
+          <input type="range" id="punchSens" min="0.15" max="3" step="0.05" value="0.8">
+          <span class="val" id="punchSensVal">0.80</span></label>
+        <p class="hint" style="margin:4px 0 10px">낮출수록 약하게 쳐도 인식됩니다(오탐↑). 아래 진단줄의
+        <b>손목속도</b>가 펀치할 때 찍히는 최댓값보다 조금 낮게 맞추세요.</p>
+        <label class="small">회피 인식 거리
+          <input type="range" id="dodgeSens" min="0.03" max="0.16" step="0.005" value="0.075">
+          <span class="val" id="dodgeSensVal">0.075</span></label>
+        <p class="hint" style="margin:4px 0 10px">낮을수록 조금만 움직여도 회피로 인정됩니다. 너무 낮으면
+        상대가 항상 회피 상태가 되어 <b>아무리 때려도 HP가 안 깎입니다</b>.</p>
+        <div class="row">
+          <button class="primary" id="btnCalibrate">자동 보정 (5초)</button>
+          <button id="btnTestPunch">테스트 펀치 보내기</button>
+        </div>
+        <p class="hint">자동 보정: 누른 뒤 5초 동안 <b>평소 세기로 펀치를 3~4번</b> 날리세요. 그동안
+        측정된 최고 손목 속도의 60%로 펀치 감도를 자동 설정합니다.</p>
+        <p class="hint">자세 인식을 건너뛰고 잽 1대를 연결된 모든 상대에게 직접 보냅니다 — 이걸로
+        HP가 깎이면 네트워크는 정상이고 <b>펀치 감지</b>가 문제, 이것도 안 깎이면 <b>상대가 계속
+        회피 중</b>이거나 연결 문제입니다.</p>
+        <p class="hint" id="debugLine" style="font-family:var(--mono);font-size:11px;margin-top:10px">
+          진단 대기 중 — 카메라를 시작하세요.</p>
+      </div>
+
+      <div class="block">
+        <h2>통계 / 로그</h2>
+        <div class="stats">
+          <div class="stat"><div class="v" id="statPunches">0</div><div class="k">총 펀치</div></div>
+          <div class="stat"><div class="v" id="statHitRate">—</div><div class="k">명중률</div></div>
+          <div class="stat"><div class="v" id="statDefRate">—</div><div class="k">방어 성공률</div></div>
+          <div class="stat"><div class="v" id="statAvgSpeed">—</div><div class="k">평균 펀치 속도</div></div>
+          <div class="stat"><div class="v" id="statJab">0</div><div class="k">잽</div></div>
+          <div class="stat"><div class="v" id="statHook">0</div><div class="k">훅</div></div>
+          <div class="stat"><div class="v" id="statUpper">0</div><div class="k">어퍼컷</div></div>
+        </div>
+        <div class="logwrap">
+          <table>
+            <thead><tr><th>시간</th><th>주체</th><th>내용</th></tr></thead>
+            <tbody id="logBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <button class="resetbtn" id="btnReset">통계 · 로그 초기화</button>
+    </div>
+
+    <div id="spectatorPanel" style="display:none">
+      <div class="block">
+        <h2>경기 코드로 관전</h2>
+        <div class="row">
+          <input type="text" id="specCodeInput" placeholder="방 코드" maxlength="6">
+          <button class="primary" id="btnSpectate">관전 시작</button>
+        </div>
+        <p class="hint" id="specState">호스트(선수 A)의 방 코드를 입력하세요. 참가한 선수 전원의 영상 +
+        실시간 HP를 받습니다.</p>
+      </div>
+      <div class="block">
+        <h2>중계 로그 <small>(호스트 시점 기준)</small></h2>
+        <div class="logwrap">
+          <table>
+            <thead><tr><th>시간</th><th>주체</th><th>내용</th></tr></thead>
+            <tbody id="specLogBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<footer><div class="wrap">
+  <a href="../">← ds-practice</a> · 실습4-3 · 검증 로그·다음 단계는 README.md 참고
+</div></footer>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script type="module">
+import { PoseLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+const MODEL_URL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
+const WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
+
+const PUNCH_COOLDOWN_MS = 250;
+const PUNCH_WINDOW_MS = 260;   // look-back window used to measure outward travel
+const MIN_EXTEND_RATIO = 0.35; // hand must travel out this fraction of a shoulder-width
+const DEFENSE_WINDOW_MS = 300; // how long a duck/weave "counts" after being detected
+// Live-tunable: the first real playtest showed the original fixed values were far too strict
+// on punches and far too loose on dodges (any body sway read as a permanent dodge, so nothing
+// ever landed). These are now sliders so they can be set against a real webcam.
+let punchSpeedThreshold = 0.8;  // normalized units/sec of wrist speed to count as a punch
+let dodgeDistance = 0.075;      // normalized displacement of the head to count as a dodge
+const DODGE_SPEED = 0.30;       // head must also be MOVING this fast — stops idle sway counting
+const ROUND_SECONDS = 60;
+const DAMAGE = { straight: 4, hook: 7, uppercut: 9 };
+const ROOM_CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no 0/O/1/I
+
+const POSE_LINKS = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24]];
+const SIDES = [
+  { key: "left", shoulder: 11, elbow: 13, wrist: 15, label: "왼팔" },
+  { key: "right", shoulder: 12, elbow: 14, wrist: 16, label: "오른팔" },
+];
+const KO_LABEL = { straight: "잽", hook: "훅", uppercut: "어퍼컷" };
+
+// ---------- player identity (up to 4: host = slot "a", joiners = "b"/"c"/"d") ----------
+const SLOTS = ["a", "b", "c", "d"];
+const SLOT_LABEL = { a: "선수 A", b: "선수 B", c: "선수 C", d: "선수 D" };
+let mySlot = null;   // null until hostRoom()/joinRoom() actually claims a slot
+let isHost = false;
+let roomCode = null;
+
+function otherSlots(){ return mySlot ? SLOTS.filter(s => s !== mySlot) : []; }
+function activeSlots(){
+  if (!mySlot) return [];
+  return SLOTS.filter(s => s === mySlot || (opp[s] && opp[s].active));
+}
+function shouldInitiateTo(slot){ return mySlot < slot; }
+function slotFromPeerId(id){
+  if (id === roomCode) return "a";
+  const m = id.match(/-([bcd])$/);
+  return m ? m[1] : null;
+}
+
+// ---------- DOM ----------
+const video = document.getElementById("video");
+const canvas = document.getElementById("overlay");
+const ctx = canvas.getContext("2d");
+const camState = document.getElementById("camState");
+const loadState = document.getElementById("loadState");
+const btnStart = document.getElementById("btnStart");
+const btnHost = document.getElementById("btnHost");
+const btnJoin = document.getElementById("btnJoin");
+const joinCodeInput = document.getElementById("joinCodeInput");
+const roomCodeDisplay = document.getElementById("roomCodeDisplay");
+const connState = document.getElementById("connState");
+const specCountHint = document.getElementById("specCountHint");
+const camRow = document.getElementById("camRow");
+const arena = document.getElementById("arena");
+const arenaCtx = arena.getContext("2d");
+const btnFullscreen = document.getElementById("btnFullscreen");
+const btnViewToggle = document.getElementById("btnViewToggle");
+const stageMainEl = document.getElementById("stageMain");
+const btnRound = document.getElementById("btnRound");
+const btnRematch = document.getElementById("btnRematch");
+const btnReset = document.getElementById("btnReset");
+const hpChipsEl = document.getElementById("hpChips");
+const roundTimerEl = document.getElementById("roundTimer");
+const roundTimerPanelEl = document.getElementById("roundTimerPanel");
+const techFlash = document.getElementById("techFlash");
+const resultOverlay = document.getElementById("resultOverlay");
+const resultTitle = document.getElementById("resultTitle");
+const resultSub = document.getElementById("resultSub");
+const logBody = document.getElementById("logBody");
+const statPunches = document.getElementById("statPunches");
+const statHitRate = document.getElementById("statHitRate");
+const statDefRate = document.getElementById("statDefRate");
+const statJab = document.getElementById("statJab");
+const statHook = document.getElementById("statHook");
+const statUpper = document.getElementById("statUpper");
+const statAvgSpeed = document.getElementById("statAvgSpeed");
+
+const modeFighterBtn = document.getElementById("modeFighterBtn");
+const modeSpectatorBtn = document.getElementById("modeSpectatorBtn");
+const fighterPanel = document.getElementById("fighterPanel");
+const spectatorPanel = document.getElementById("spectatorPanel");
+const legendBlock = document.getElementById("legendBlock");
+const mineLabel = document.getElementById("mineLabel");
+const specCodeInput = document.getElementById("specCodeInput");
+const btnSpectate = document.getElementById("btnSpectate");
+const specState = document.getElementById("specState");
+const specLogBody = document.getElementById("specLogBody");
+const punchSens = document.getElementById("punchSens");
+const punchSensVal = document.getElementById("punchSensVal");
+const dodgeSens = document.getElementById("dodgeSens");
+const dodgeSensVal = document.getElementById("dodgeSensVal");
+const btnTestPunch = document.getElementById("btnTestPunch");
+const btnCalibrate = document.getElementById("btnCalibrate");
+const debugLine = document.getElementById("debugLine");
+
+// the small camera overlay canvas needs a size before video metadata exists
+canvas.width = 640; canvas.height = 480;
+
+// ---------- fullscreen / layout toggle ----------
+btnFullscreen.addEventListener("click", () => {
+  if (!document.fullscreenElement) stageMainEl.requestFullscreen().catch(() => {});
+  else document.exitFullscreen().catch(() => {});
+});
+document.addEventListener("fullscreenchange", () => {
+  btnFullscreen.textContent = document.fullscreenElement ? "전체화면 종료" : "전체화면으로 보기";
+});
+
+btnViewToggle.addEventListener("click", () => {
+  const camsLarge = document.body.classList.toggle("cams-large");
+  btnViewToggle.textContent = camsLarge ? "링 크게 보기" : "카메라 크게 보기";
+});
+
+// ---------- pose streaming (feeds the shared ring view) ----------
+const POSE_STREAM_KEYS = [0, 11, 12, 13, 14, 15, 16, 23, 24];
+const POSE_SEND_INTERVAL_MS = 120;
+let lastPoseSendAt = 0;
+let selfPose = null;          // my own latest landmarks, set every frame regardless of connection
+const poses = { a: null, b: null, c: null, d: null }; // latest known landmarks per slot
+
+function packPose(landmarks){
+  const o = {};
+  for (const i of POSE_STREAM_KEYS) {
+    const p = landmarks[i];
+    if (p) o[i] = [Math.round(p.x * 1000) / 1000, Math.round(p.y * 1000) / 1000];
+  }
+  return o;
+}
+function unpackPose(lm){
+  const o = {};
+  for (const k in lm) o[k] = { x: lm[k][0], y: lm[k][1] };
+  return o;
+}
+
+// host-only no-op elsewhere: mirrors broadcastState's fan-out, but for continuous pose data
+// instead of discrete events, so spectators can render every participant in the ring too.
+function relayPoseToSpectators(slot, lm){
+  if (!spectatorConns.length) return;
+  const payload = { type: "poseRelay", slot, lm };
+  for (const c of spectatorConns) { if (c.open) c.send(payload); }
+}
+
+// ---------- shared ring view ----------
+// One arena rendered identically for every participant (fighters AND spectators): everyone is
+// drawn as a stylized puppet facing the RING CENTER inside a perspective ring, driven by the
+// same tracked joints the game already streams. A real player always faces their own webcam
+// head-on — the ring view fakes a 3/4 turn toward the middle so puppets visibly square up to
+// whoever else is in the ring, however many that is (1-4). Fighters get this in addition to
+// (not instead of) the raw camera thumbnails.
+const RING_COLORS = {
+  a: { light: "#9fc4ff", mid: "#3f6fd6", dark: "#1c3a80" },
+  b: { light: "#ffb2a0", mid: "#d6543f", dark: "#7a2418" },
+  c: { light: "#b7f0a5", mid: "#4fae3a", dark: "#255c1c" },
+  d: { light: "#ffe08a", mid: "#d69c1f", dark: "#7a5710" },
+};
+const SRC_ASPECT = 4 / 3; // camera frames are 4:3; normalized x/y use different pixel scales
+const arenaFlashUntil = { a: 0, b: 0, c: 0, d: 0 };
+
+function flashArenaSlot(slot){ arenaFlashUntil[slot] = performance.now() + 260; }
+
+function drawRing(c, W, H){
+  const sky = c.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, "#141922"); sky.addColorStop(1, "#0a0c10");
+  c.fillStyle = sky; c.fillRect(0, 0, W, H);
+
+  // canvas floor drawn as a trapezoid so the ring reads as receding away from the viewer
+  const farY = H * 0.42, nearY = H * 0.95;
+  const farInset = W * 0.26, nearInset = W * 0.04;
+  const floor = c.createLinearGradient(0, farY, 0, nearY);
+  floor.addColorStop(0, "#2a3550"); floor.addColorStop(1, "#161d2c");
+  c.fillStyle = floor;
+  c.beginPath();
+  c.moveTo(farInset, farY); c.lineTo(W - farInset, farY);
+  c.lineTo(W - nearInset, nearY); c.lineTo(nearInset, nearY);
+  c.closePath(); c.fill();
+
+  c.strokeStyle = "rgba(255,255,255,0.14)";
+  c.lineWidth = 2;
+  c.stroke();
+
+  // ropes across the back of the ring
+  for (let i = 0; i < 3; i++) {
+    const t = 0.30 + i * 0.045;
+    c.strokeStyle = i === 1 ? "rgba(226,90,90,0.55)" : "rgba(255,255,255,0.22)";
+    c.lineWidth = 3;
+    c.beginPath();
+    c.moveTo(farInset * 0.72, H * t); c.lineTo(W - farInset * 0.72, H * t);
+    c.stroke();
+  }
+  // corner posts
+  c.fillStyle = "rgba(255,255,255,0.18)";
+  c.fillRect(farInset * 0.72 - 5, H * 0.27, 10, H * 0.17);
+  c.fillRect(W - farInset * 0.72 - 5, H * 0.27, 10, H * 0.17);
+}
+
+// Slot layouts for 1-4 puppets. 2 fighters stand left/right (the original layout); 3-4 add a
+// back row (smaller + higher on the canvas) so more bodies fit without overlapping.
+function getRingSlots(n, W, H){
+  if (n <= 1) return [{ cx: W * 0.50, baseY: H * 0.88, h: H * 0.62 }];
+  if (n === 2) return [
+    { cx: W * 0.30, baseY: H * 0.86, h: H * 0.60 },
+    { cx: W * 0.70, baseY: H * 0.86, h: H * 0.60 },
+  ];
+  if (n === 3) return [
+    { cx: W * 0.20, baseY: H * 0.90, h: H * 0.58 },
+    { cx: W * 0.80, baseY: H * 0.90, h: H * 0.58 },
+    { cx: W * 0.50, baseY: H * 0.58, h: H * 0.40 },
+  ];
+  return [
+    { cx: W * 0.22, baseY: H * 0.90, h: H * 0.56 },
+    { cx: W * 0.78, baseY: H * 0.90, h: H * 0.56 },
+    { cx: W * 0.34, baseY: H * 0.58, h: H * 0.38 },
+    { cx: W * 0.66, baseY: H * 0.58, h: H * 0.38 },
+  ];
+}
+
+// Maps one participant's normalized landmarks into a fixed slot in the ring, anchored at the
+// hips so the puppet stays put in its spot while its limbs move — otherwise a player stepping
+// sideways in front of their webcam would slide across the whole arena.
+function drawFighterInRing(c, pose, slot, color, faceDir, label, flashUntil){
+  if (!pose) {
+    c.fillStyle = "rgba(255,255,255,0.28)";
+    c.font = "600 15px sans-serif"; c.textAlign = "center";
+    c.fillText(label + " 대기 중", slot.cx, slot.baseY - slot.h * 0.45);
+    return;
+  }
+  const g = i => pose[i] || null;
+  const ls = g(11), rs = g(12);
+  if (!ls || !rs) return;
+  const lh = g(23), rh = g(24);
+  const midShoulder = { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2 };
+  const midHip = (lh && rh) ? { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2 }
+                            : { x: midShoulder.x, y: midShoulder.y + 0.25 };
+  const torsoLen = Math.max(0.06, Math.abs(midHip.y - midShoulder.y));
+  const k = (slot.h * 0.42) / torsoLen;   // scale so the torso is ~42% of the figure's height
+  const anchorY = slot.baseY - slot.h * 0.30;
+  // Every player stands square to their own webcam, so raw landmarks always look front-on.
+  // Squashing horizontally fakes a 3/4 turn and `faceDir` points that turn at the ring's
+  // center, so every figure reads as squaring up toward the middle of the fight.
+  const TURN_SQUASH = 0.68;
+  const faceLean = faceDir * slot.h * 0.025;
+  const T = p => p ? {
+    x: slot.cx + (p.x - midHip.x) * k * SRC_ASPECT * faceDir * TURN_SQUASH + faceLean,
+    y: anchorY + (p.y - midHip.y) * k,
+  } : null;
+
+  const nose = T(g(0)), Ls = T(ls), Rs = T(rs), Le = T(g(13)), Re = T(g(14)),
+        Lw = T(g(15)), Rw = T(g(16)), Hip = T(midHip), Sh = T(midShoulder);
+  const shoulderW = Math.max(8, Math.hypot(Rs.x - Ls.x, Rs.y - Ls.y));
+
+  // ground shadow grounds the figure in the ring instead of floating
+  c.fillStyle = "rgba(0,0,0,0.4)";
+  c.beginPath();
+  c.ellipse(slot.cx, slot.baseY, shoulderW * 0.85, shoulderW * 0.22, 0, 0, Math.PI * 2);
+  c.fill();
+
+  const hit = performance.now() < flashUntil;
+  c.save();
+  if (hit) { c.shadowColor = "#ff5a4a"; c.shadowBlur = 26; }
+  c.lineCap = "round"; c.lineJoin = "round";
+
+  // legs — not tracked below the hips, so they're implied as a stable stance
+  c.strokeStyle = color.dark;
+  c.lineWidth = Math.max(6, shoulderW * 0.26);
+  c.beginPath();
+  c.moveTo(Hip.x, Hip.y); c.lineTo(slot.cx - shoulderW * 0.34, slot.baseY);
+  c.moveTo(Hip.x, Hip.y); c.lineTo(slot.cx + shoulderW * 0.34, slot.baseY);
+  c.stroke();
+
+  // torso
+  const torso = c.createLinearGradient(Sh.x - shoulderW / 2, 0, Sh.x + shoulderW / 2, 0);
+  torso.addColorStop(0, color.dark); torso.addColorStop(0.5, hit ? "#ff8a72" : color.mid); torso.addColorStop(1, color.dark);
+  c.strokeStyle = torso;
+  c.lineWidth = shoulderW * 0.66;
+  c.beginPath(); c.moveTo(Sh.x, Sh.y); c.lineTo(Hip.x, Hip.y); c.stroke();
+
+  // arms + gloves
+  c.strokeStyle = hit ? "#ff8a72" : color.mid;
+  c.lineWidth = Math.max(5, shoulderW * 0.24);
+  for (const [a, b, w] of [[Ls, Le, Lw], [Rs, Re, Rw]]) {
+    if (!a || !b || !w) continue;
+    c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.lineTo(w.x, w.y); c.stroke();
+    c.fillStyle = "#c8352b";
+    c.beginPath(); c.arc(w.x, w.y, shoulderW * 0.19, 0, Math.PI * 2); c.fill();
+  }
+
+  // head — radial gradient fakes a lit sphere, and a face wedge points toward the ring center
+  // so the turn direction is unmistakable even when the player is square to their own camera
+  if (nose) {
+    const r = Math.max(9, shoulderW * 0.44);
+    const grad = c.createRadialGradient(nose.x + faceDir * r * 0.3, nose.y - r * 0.35, r * 0.15, nose.x, nose.y, r);
+    grad.addColorStop(0, color.light); grad.addColorStop(1, color.dark);
+    c.fillStyle = grad;
+    c.beginPath(); c.arc(nose.x, nose.y, r, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "rgba(255,255,255,0.82)";
+    c.beginPath();
+    c.moveTo(nose.x + faceDir * r * 0.95, nose.y);
+    c.lineTo(nose.x + faceDir * r * 0.45, nose.y - r * 0.34);
+    c.lineTo(nose.x + faceDir * r * 0.45, nose.y + r * 0.34);
+    c.closePath(); c.fill();
+  }
+  c.restore();
+
+  c.fillStyle = "rgba(255,255,255,0.75)";
+  c.font = "700 13px sans-serif"; c.textAlign = "center";
+  c.fillText(label, slot.cx, slot.baseY + 22);
+}
+
+// Which participants (and whose pose feeds which puppet) depends on the role: a fighter draws
+// itself + whoever is actively connected; a spectator draws whichever slots the host says are
+// active, using poses relayed from the host.
+function ringParticipants(){
+  const spectating = document.body.classList.contains("spectator-mode");
+  if (spectating) {
+    return SLOTS.filter(s => specActiveSlots[s]).map(s => ({ slot: s, pose: poses[s], label: SLOT_LABEL[s], color: RING_COLORS[s] }));
+  }
+  if (!mySlot) return selfPose ? [{ slot: "a", pose: selfPose, label: "나", color: RING_COLORS.a }] : [];
+  return activeSlots().map(s => ({
+    slot: s, pose: s === mySlot ? selfPose : poses[s],
+    label: s === mySlot ? "나" : SLOT_LABEL[s], color: RING_COLORS[s],
+  }));
+}
+
+function drawArena(){
+  const W = arena.width, H = arena.height;
+  drawRing(arenaCtx, W, H);
+  const participants = ringParticipants();
+  const ringSlots = getRingSlots(Math.max(participants.length, 1), W, H);
+  participants.forEach((p, i) => {
+    const rs = ringSlots[i];
+    const faceDir = Math.sign(W / 2 - rs.cx) || 1;
+    drawFighterInRing(arenaCtx, p.pose, rs, p.color, faceDir, p.label, arenaFlashUntil[p.slot] || 0);
+  });
+}
+
+function arenaLoop(){
+  requestAnimationFrame(arenaLoop);
+  drawArena();
+}
+arenaLoop();
+
+// ---------- audio (synthesized) ----------
+let actx = null;
+function ensureAudio(){
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === "suspended") actx.resume();
+  return actx;
+}
+function playThud(freq){
+  const c = ensureAudio(), t = c.currentTime;
+  const osc = c.createOscillator(), gain = c.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(freq, t);
+  osc.frequency.exponentialRampToValueAtTime(freq * 0.5, t + 0.12);
+  gain.gain.setValueAtTime(0.8, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+  osc.connect(gain).connect(c.destination);
+  osc.start(t); osc.stop(t + 0.2);
+}
+function playWhoosh(){
+  const c = ensureAudio(), t = c.currentTime;
+  const sr = c.sampleRate, buf = c.createBuffer(1, sr * 0.15, sr);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+  const src = c.createBufferSource(); src.buffer = buf;
+  const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 1200;
+  const g = c.createGain(); g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+  src.connect(bp).connect(g).connect(c.destination);
+  src.start(t);
+}
+function playBell(){
+  const c = ensureAudio(), t = c.currentTime;
+  const osc = c.createOscillator(), gain = c.createGain();
+  osc.type = "square"; osc.frequency.setValueAtTime(900, t);
+  gain.gain.setValueAtTime(0.3, t); gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+  osc.connect(gain).connect(c.destination);
+  osc.start(t); osc.stop(t + 0.5);
+}
+
+// ---------- mode toggle ----------
+function enterFighterMode(){
+  document.body.classList.remove("spectator-mode");
+  fighterPanel.style.display = "";
+  legendBlock.style.display = "";
+  spectatorPanel.style.display = "none";
+  modeFighterBtn.classList.add("primary");
+  modeSpectatorBtn.classList.remove("primary");
+}
+function enterSpectatorMode(){
+  document.body.classList.add("spectator-mode");
+  fighterPanel.style.display = "none";
+  legendBlock.style.display = "none";
+  spectatorPanel.style.display = "";
+  modeFighterBtn.classList.remove("primary");
+  modeSpectatorBtn.classList.add("primary");
+}
+modeFighterBtn.addEventListener("click", enterFighterMode);
+modeSpectatorBtn.addEventListener("click", enterSpectatorMode);
+enterFighterMode();
+
+// ---------- networking (PeerJS / WebRTC mesh, up to 4 fighters) ----------
+let peer = null;
+let localStream = null;
+let spectatorConns = [];   // host-only: data connections from spectators (one-way state feed)
+const camUIBySlot = {};    // dynamically-created camera thumbnails, keyed by slot
+
+function newSlotRec(slot){
+  return { slot, active: false, connecting: false, dataConn: null, attempts: 0, retryHandle: null };
+}
+const opp = {}; // per-slot connection bookkeeping for every slot OTHER than mySlot
+
+const hp = { a: 100, b: 100, c: 100, d: 100 };
+
+function genRoomCode(len){
+  let s = "";
+  for (let i = 0; i < len; i++) s += ROOM_CODE_CHARS[Math.floor(Math.random() * ROOM_CODE_CHARS.length)];
+  return s;
+}
+
+function ensureCamSlotUI(slot){
+  let ui = camUIBySlot[slot];
+  if (ui) return ui;
+  const wrap = document.createElement("div");
+  wrap.className = "camwrap theirs";
+  wrap.dataset.slot = slot;
+  wrap.innerHTML = `<video autoplay playsinline></video>
+    <div class="camstate">연결 중...</div>
+    <div class="camlabel">${SLOT_LABEL[slot]} (실제 영상)</div>`;
+  camRow.appendChild(wrap);
+  ui = { wrap, video: wrap.querySelector("video"), state: wrap.querySelector(".camstate") };
+  camUIBySlot[slot] = ui;
+  return ui;
+}
+
+function ensureHpChip(slot){
+  let chip = ensureHpChip._map && ensureHpChip._map[slot];
+  if (!chip) {
+    if (!ensureHpChip._map) ensureHpChip._map = {};
+    const el = document.createElement("div");
+    el.className = "hpbar";
+    el.dataset.slot = slot;
+    el.innerHTML = `<span class="hpchip-label"></span> HP <span class="hpchip-val">100</span>
+      <div class="bar"><div class="fill" style="background:var(--ok)"></div></div>`;
+    hpChipsEl.appendChild(el);
+    chip = { el, label: el.querySelector(".hpchip-label"), val: el.querySelector(".hpchip-val"), fill: el.querySelector(".fill") };
+    ensureHpChip._map[slot] = chip;
+  }
+  return chip;
+}
+function updateHpChip(slot){
+  const spectating = document.body.classList.contains("spectator-mode");
+  const chip = ensureHpChip(slot);
+  const label = spectating ? SLOT_LABEL[slot] : (slot === mySlot ? "나" : SLOT_LABEL[slot]);
+  chip.label.textContent = label;
+  const v = hp[slot];
+  chip.val.textContent = v;
+  chip.fill.style.width = v + "%";
+  chip.fill.style.background = v > 30 ? "var(--ok)" : "var(--bad)";
+}
+function setSelfHp(value){
+  hp[mySlot] = Math.max(0, Math.min(100, value));
+  updateHpChip(mySlot);
+}
+
+function updateConnUI(){
+  const n = otherSlots().filter(s => opp[s] && opp[s].active).length;
+  specCountHint.style.display = "block";
+  specCountHint.textContent = `연결된 상대 ${n}명 / 최대 3명` +
+    (spectatorConns.length ? ` · 관전자 ${spectatorConns.length}명` : "");
+}
+
+function checkReadyForRound(){
+  if (otherSlots().some(s => opp[s] && opp[s].active)) {
+    btnRound.disabled = false;
+    connState.textContent = "연결됨 — 라운드를 시작할 수 있습니다. (더 받으려면 코드를 계속 공유하세요)";
+  }
+}
+
+function wireDataConnToSlot(conn, slot){
+  const rec = opp[slot];
+  if (!rec) return;
+  conn.on("open", () => {
+    rec.dataConn = conn; rec.active = true; rec.connecting = false;
+    clearTimeout(rec.retryHandle);
+    log("시스템", `${SLOT_LABEL[slot]} 연결됨`);
+    updateHpChip(slot);
+    updateConnUI();
+    checkReadyForRound();
+  });
+  conn.on("data", msg => handleNetMessage(slot, msg));
+  conn.on("close", () => {
+    rec.active = false; rec.dataConn = null;
+    log("시스템", `${SLOT_LABEL[slot]} 연결 끊김`);
+    updateConnUI();
+  });
+}
+function wireMediaConnToSlot(call, slot){
+  call.on("stream", stream => {
+    const ui = ensureCamSlotUI(slot);
+    ui.video.srcObject = stream;
+    ui.state.textContent = "영상 연결됨";
+  });
+  call.on("close", () => {
+    const ui = ensureCamSlotUI(slot);
+    ui.video.srcObject = null;
+    ui.state.textContent = "연결 끊김";
+  });
+}
+
+function connectToSlot(slot){
+  const rec = opp[slot];
+  if (!rec || rec.active || rec.connecting) return;
+  rec.connecting = true;
+  rec.attempts++;
+  const targetId = slot === "a" ? roomCode : roomCode + "-" + slot;
+  wireDataConnToSlot(peer.connect(targetId), slot);
+  wireMediaConnToSlot(peer.call(targetId, localStream), slot);
+  clearTimeout(rec.retryHandle);
+  if (rec.attempts < 50) {
+    rec.retryHandle = setTimeout(() => {
+      rec.connecting = false;
+      if (!rec.active) connectToSlot(slot);
+    }, 3000);
+  }
+}
+
+function addSpectatorConn(conn){
+  spectatorConns.push(conn);
+  updateConnUI();
+  conn.on("close", () => {
+    spectatorConns = spectatorConns.filter(c => c !== conn);
+    updateConnUI();
+  });
+}
+
+function wirePeerCommonHandlers(){
+  peer.on("connection", conn => {
+    if (conn.metadata && conn.metadata.role === "spectator") { addSpectatorConn(conn); return; }
+    const slot = slotFromPeerId(conn.peer);
+    if (!slot || slot === mySlot || !opp[slot]) return;
+    wireDataConnToSlot(conn, slot);
+  });
+  peer.on("call", call => {
+    if (call.metadata && call.metadata.role === "spectator") { call.answer(localStream); return; }
+    call.answer(localStream);
+    const slot = slotFromPeerId(call.peer);
+    if (!slot || slot === mySlot || !opp[slot]) return;
+    wireMediaConnToSlot(call, slot);
+  });
+  peer.on("error", err => {
+    if (err.type !== "peer-unavailable") connState.textContent = "연결 오류: " + err.type;
+  });
+  for (const slot of otherSlots()) {
+    if (shouldInitiateTo(slot)) connectToSlot(slot);
+  }
+}
+
+function hostRoom(){
+  if (!localStream) return;
+  btnHost.disabled = true; btnJoin.disabled = true;
+  modeFighterBtn.disabled = true; modeSpectatorBtn.disabled = true;
+  mySlot = "a"; isHost = true;
+  roomCode = genRoomCode(5);
+  for (const s of otherSlots()) opp[s] = newSlotRec(s);
+  updateHpChip("a");
+  peer = new Peer(roomCode);
+  peer.on("open", id => {
+    roomCodeDisplay.style.display = "block";
+    roomCodeDisplay.textContent = "방 코드: " + id + " (최대 4명, 참가자에게 이 코드를 알려주세요)";
+    connState.textContent = "대기 중 — 다른 선수가 이 코드로 참가하면 자동으로 연결됩니다.";
+    wirePeerCommonHandlers();
+  });
+}
+
+function joinRoom(){
+  if (!localStream) return;
+  const code = joinCodeInput.value.trim().toUpperCase();
+  if (!code) return;
+  btnHost.disabled = true; btnJoin.disabled = true;
+  modeFighterBtn.disabled = true; modeSpectatorBtn.disabled = true;
+  roomCode = code; isHost = false;
+  connState.textContent = "빈 자리 확인 중...";
+  tryJoinSlot(["b", "c", "d"], 0);
+}
+
+function tryJoinSlot(candidates, i){
+  if (i >= candidates.length) {
+    connState.textContent = "방이 가득 찼습니다 (최대 4명).";
+    btnHost.disabled = false; btnJoin.disabled = false;
+    modeFighterBtn.disabled = false; modeSpectatorBtn.disabled = false;
+    return;
+  }
+  const slot = candidates[i];
+  const p = new Peer(roomCode + "-" + slot);
+  let settled = false;
+  p.on("open", () => {
+    settled = true;
+    mySlot = slot; peer = p;
+    for (const s of otherSlots()) opp[s] = newSlotRec(s);
+    updateHpChip(slot);
+    connState.textContent = `${SLOT_LABEL[slot]}(으)로 참가 — 연결 중...`;
+    wirePeerCommonHandlers();
+  });
+  p.on("error", err => {
+    if (settled) return;
+    if (err.type === "unavailable-id") { p.destroy(); tryJoinSlot(candidates, i + 1); }
+    else {
+      connState.textContent = "연결 오류: " + err.type;
+      btnHost.disabled = false; btnJoin.disabled = false;
+      modeFighterBtn.disabled = false; modeSpectatorBtn.disabled = false;
+    }
+  });
+}
+
+function sendMsgToAll(obj){
+  for (const s of otherSlots()) {
+    const rec = opp[s];
+    if (rec && rec.dataConn && rec.dataConn.open) rec.dataConn.send(obj);
+  }
+}
+
+// host-only: push a state snapshot to every connected spectator.
+function broadcastState(lastLog){
+  if (!spectatorConns.length) return;
+  let sendLog = null;
+  if (lastLog) {
+    const who = lastLog.who === "나" ? SLOT_LABEL[mySlot] : lastLog.who;
+    sendLog = { who, text: lastLog.text };
+  }
+  const payload = {
+    type: "state",
+    hp: { ...hp },
+    active: Object.fromEntries(SLOTS.map(s => [s, s === mySlot || (opp[s] && opp[s].active)])),
+    timeLeft: state.timeLeft,
+    roundActive: state.roundActive,
+    lastLog: sendLog,
+  };
+  for (const c of spectatorConns) { if (c.open) c.send(payload); }
+}
+
+function handleNetMessage(fromSlot, msg){
+  if (msg.type === "roundStart") {
+    beginRoundLocal();
+  } else if (msg.type === "attack") {
+    resolveIncomingAttack(fromSlot, msg.punchType, msg.damage);
+  } else if (msg.type === "combatUpdate") {
+    hp[msg.defender] = msg.hp;
+    updateHpChip(msg.defender);
+    if (msg.attacker === mySlot) {
+      if (msg.dodged) {
+        stats.evadedByOpp++;
+        log("나", `${SLOT_LABEL[msg.defender]} 회피 성공`);
+      } else {
+        stats.landed++;
+        log("나", `${KO_LABEL[msg.punchType]} 적중 → ${SLOT_LABEL[msg.defender]} (HP ${msg.hp})`);
+        flashArenaSlot(msg.defender);
+      }
+      updateStatsUI();
+    }
+    if (isHost) broadcastState({ who: SLOT_LABEL[msg.defender], text: msg.dodged ? "회피 성공" : `${KO_LABEL[msg.punchType]} 피격` });
+    checkRoundEndCondition();
+  } else if (msg.type === "roundEnd") {
+    if (state.roundActive) { Object.assign(hp, msg.hp); updateAllHpUI(); endRoundLocal(msg.reason, false); }
+  } else if (msg.type === "pose") {
+    poses[fromSlot] = unpackPose(msg.lm);
+    relayPoseToSpectators(fromSlot, msg.lm);
+  }
+}
+
+// ---------- spectator mode ----------
+let specWasActive = false;
+const specActiveSlots = { a: false, b: false, c: false, d: false };
+
+function startSpectating(){
+  const code = specCodeInput.value.trim().toUpperCase();
+  if (!code) return;
+  btnSpectate.disabled = true;
+  modeFighterBtn.disabled = true; modeSpectatorBtn.disabled = true;
+  roomCode = code;
+  peer = new Peer();
+  peer.on("open", () => {
+    specState.textContent = "연결 시도 중...";
+    const empty = new MediaStream(); // spectator sends no video, only receives
+    for (const slot of SLOTS) {
+      const targetId = slot === "a" ? code : code + "-" + slot;
+      const call = peer.call(targetId, empty, { metadata: { role: "spectator" } });
+      call.on("stream", stream => {
+        specActiveSlots[slot] = true;
+        const ui = ensureCamSlotUI(slot);
+        ui.video.srcObject = stream;
+        ui.state.textContent = SLOT_LABEL[slot] + " 영상 연결됨";
+      });
+    }
+    const dataToHost = peer.connect(code, { metadata: { role: "spectator" } });
+    dataToHost.on("open", () => { specState.textContent = "관전 연결됨 — 상태 수신 중"; });
+    dataToHost.on("data", msg => {
+      if (msg.type === "state") applySpectatorState(msg);
+      else if (msg.type === "poseRelay") applySpectatorPose(msg);
+    });
+  });
+  peer.on("error", err => {
+    if (err.type !== "peer-unavailable") specState.textContent = "연결 오류: " + err.type;
+  });
+}
+
+function computeResultTitle(slots, forSelf){
+  const ranked = slots.slice().sort((a, b) => hp[b] - hp[a]);
+  const top = hp[ranked[0]];
+  const winners = ranked.filter(s => hp[s] === top);
+  let title;
+  if (top <= 0) title = "전원 KO — 무승부";
+  else if (winners.length > 1) title = winners.map(s => SLOT_LABEL[s]).join(", ") + " 공동 승리";
+  else if (forSelf && winners[0] === mySlot) title = "승리!";
+  else title = SLOT_LABEL[winners[0]] + " 승리";
+  const sub = slots.map(s => `${forSelf && s === mySlot ? "나" : SLOT_LABEL[s]} ${hp[s]}`).join(" · ");
+  return { title, sub };
+}
+
+function applySpectatorState(msg){
+  for (const slot of SLOTS) {
+    if (!msg.active[slot]) continue;
+    if (msg.hp[slot] < hp[slot]) flashArenaSlot(slot);
+    hp[slot] = msg.hp[slot];
+    specActiveSlots[slot] = true;
+    updateHpChip(slot);
+  }
+  roundTimerEl.textContent = msg.timeLeft;
+  roundTimerPanelEl.textContent = msg.timeLeft;
+  if (msg.lastLog) log(msg.lastLog.who, msg.lastLog.text, specLogBody);
+
+  if (msg.roundActive) {
+    resultOverlay.classList.remove("show");
+  } else if (specWasActive) {
+    const { title, sub } = computeResultTitle(SLOTS.filter(s => specActiveSlots[s]), false);
+    resultTitle.textContent = title;
+    resultSub.textContent = sub;
+    resultOverlay.classList.add("show");
+  }
+  specWasActive = msg.roundActive;
+}
+
+function applySpectatorPose(msg){
+  poses[msg.slot] = unpackPose(msg.lm);
+}
+
+// ---------- state ----------
+const state = {
+  roundActive: false,
+  timeLeft: ROUND_SECONDS,
+  timerHandle: null,
+};
+const stats = {
+  punches: 0, byType: { straight: 0, hook: 0, uppercut: 0 }, speeds: [],
+  defenses: 0, defenseAttempts: 0, landed: 0, evadedByOpp: 0,
+};
+
+function newArmState(){
+  return { hist: [], rest: { x: null, y: null }, prevWristX: null, prevWristY: null,
+           prevSpeed: 0, lastPunchAt: 0, visible: false, peak: 0, extend: 0 };
+}
+const armState = { left: newArmState(), right: newArmState() };
+let calibrating = false, calibPeak = 0;
+let noseBaseline = { x: null, y: null };
+let prevNose = { x: null, y: null };
+let duckActiveUntil = 0, weaveActiveUntil = 0;
+const dbg = { duck: false, weave: false };
+let lastDbgAt = 0;
+let lastFrameTime = null;
+
+function classifyPunch(dx, dy){
+  const adx = Math.abs(dx), ady = Math.abs(dy);
+  if (ady > adx * 1.3 && dy < 0) return "uppercut";
+  if (adx > ady * 0.8) return "hook";
+  return "straight";
+}
+
+function log(who, text, targetBody){
+  const body = targetBody || logBody;
+  const tr = document.createElement("tr");
+  const time = new Date().toLocaleTimeString("ko-KR", { hour12: false });
+  tr.innerHTML = `<td>${time}</td><td>${who}</td><td>${text}</td>`;
+  body.prepend(tr);
+  while (body.children.length > 60) body.removeChild(body.lastChild);
+}
+
+function updateStatsUI(){
+  statPunches.textContent = stats.punches;
+  const resolved = stats.landed + stats.evadedByOpp;
+  statHitRate.textContent = resolved ? Math.round(100 * stats.landed / resolved) + "%" : "—";
+  statDefRate.textContent = stats.defenseAttempts ? Math.round(100 * stats.defenses / stats.defenseAttempts) + "%" : "—";
+  statJab.textContent = stats.byType.straight;
+  statHook.textContent = stats.byType.hook;
+  statUpper.textContent = stats.byType.uppercut;
+  statAvgSpeed.textContent = stats.speeds.length
+    ? (stats.speeds.reduce((a, b) => a + b, 0) / stats.speeds.length).toFixed(2) + "/s" : "—";
+}
+
+function flashTech(text){
+  techFlash.textContent = text;
+  techFlash.classList.remove("show");
+  void techFlash.offsetWidth;
+  techFlash.classList.add("show");
+  setTimeout(() => techFlash.classList.remove("show"), 500);
+}
+
+function updateAllHpUI(){ for (const s of activeSlots()) updateHpChip(s); }
+
+function checkRoundEndCondition(){
+  if (!state.roundActive || !mySlot) return;
+  const alive = activeSlots().filter(s => hp[s] > 0);
+  if (alive.length <= 1) endRoundLocal("ko", true);
+}
+
+// I threw a punch: it swings at every connected opponent at once (no per-target aiming yet).
+// Each recipient decides locally (from its own duck/weave state) whether it was hit, applies
+// damage to itself, and broadcasts the outcome mesh-wide.
+function dealPlayerDamage(type, speed){
+  const dmg = DAMAGE[type];
+  stats.punches++;
+  stats.byType[type]++;
+  stats.speeds.push(speed);
+  updateStatsUI();
+  playThud(type === "uppercut" ? 140 : type === "hook" ? 180 : 220);
+  flashTech(KO_LABEL[type] + "!");
+  log("나", `${KO_LABEL[type]} 시도`);
+  if (isHost) broadcastState({ who: SLOT_LABEL[mySlot], text: `${KO_LABEL[type]} 시도` });
+  sendMsgToAll({ type: "attack", punchType: type, damage: dmg });
+}
+
+// an attacker's punch arrived over the data channel: I am the defender, I decide using MY OWN
+// recent duck/weave state, apply damage to my own HP, and broadcast the outcome to everyone
+// (the attacker needs it to update their stats; the host needs it to relay to spectators).
+function resolveIncomingAttack(fromSlot, punchType, damage){
+  const now = performance.now();
+  const requiresDuck = punchType === "straight" || punchType === "uppercut";
+  const dodged = requiresDuck ? now < duckActiveUntil : now < weaveActiveUntil;
+  stats.defenseAttempts++;
+  let text;
+  if (dodged) {
+    stats.defenses++;
+    playWhoosh();
+    flashTech(requiresDuck ? "더킹 성공!" : "위빙 성공!");
+    text = (requiresDuck ? "더킹" : "위빙") + ` 성공 — ${SLOT_LABEL[fromSlot]} 공격 무효화`;
+    log("나", text);
+  } else {
+    setSelfHp(hp[mySlot] - damage);
+    playThud(90);
+    flashTech("맞았다!");
+    flashArenaSlot(mySlot);
+    text = `${SLOT_LABEL[fromSlot]}의 ${KO_LABEL[punchType]} 적중 (-${damage} 내 HP)`;
+    log("나", text);
+  }
+  updateStatsUI();
+  sendMsgToAll({ type: "combatUpdate", attacker: fromSlot, defender: mySlot, punchType, dodged, hp: hp[mySlot] });
+  if (isHost) broadcastState({ who: "나", text });
+  checkRoundEndCondition();
+}
+
+// ---------- round control ----------
+function startRound(){
+  sendMsgToAll({ type: "roundStart" });
+  beginRoundLocal();
+}
+
+function beginRoundLocal(){
+  if (state.roundActive) return;
+  ensureAudio();
+  state.roundActive = true;
+  for (const s of SLOTS) hp[s] = 100;
+  updateAllHpUI();
+  state.timeLeft = ROUND_SECONDS;
+  roundTimerEl.textContent = state.timeLeft;
+  roundTimerPanelEl.textContent = state.timeLeft;
+  resultOverlay.classList.remove("show");
+  playBell();
+  btnRound.disabled = true;
+  state.timerHandle = setInterval(() => {
+    state.timeLeft--;
+    roundTimerEl.textContent = state.timeLeft;
+    roundTimerPanelEl.textContent = state.timeLeft;
+    if (isHost) broadcastState();
+    if (state.timeLeft <= 0) endRoundLocal("time", true);
+  }, 1000);
+  log("시스템", "라운드 시작");
+  if (isHost) broadcastState({ who: "시스템", text: "라운드 시작" });
+}
+
+function endRoundLocal(reason, shouldBroadcast){
+  if (!state.roundActive) return;
+  state.roundActive = false;
+  clearInterval(state.timerHandle);
+  playBell();
+
+  const { title, sub } = computeResultTitle(activeSlots(), true);
+  resultTitle.textContent = title;
+  resultSub.textContent = sub;
+  resultOverlay.classList.add("show");
+  btnRound.disabled = false;
+  const logText = `라운드 종료 (${reason === "ko" ? "KO" : "시간 종료"}) — ${title}`;
+  log("시스템", logText);
+  if (isHost) broadcastState({ who: "시스템", text: logText });
+  if (shouldBroadcast) sendMsgToAll({ type: "roundEnd", reason, hp: { ...hp } });
+}
+
+// ---------- pose processing ----------
+function processPose(landmarks){
+  const now = performance.now();
+  const dt = lastFrameTime === null ? 0 : (now - lastFrameTime) / 1000;
+  lastFrameTime = now;
+
+  if (now - lastPoseSendAt > POSE_SEND_INTERVAL_MS) {
+    lastPoseSendAt = now;
+    const packed = packPose(landmarks);
+    sendMsgToAll({ type: "pose", lm: packed });
+    if (mySlot) relayPoseToSpectators(mySlot, packed);
+  }
+
+  // Punch detection. There is deliberately NO elbow-angle gate: requiring a tight guard
+  // (elbow < ~118°) meant a player whose arms read as nearly straight — which is what a
+  // seated player at a desk produces — could never fire a single punch. Instead a punch is
+  // "the hand accelerating AWAY from where it normally rests". Retraction moves back TOWARD
+  // that rest position, so it fails the outward test and no longer needs a guard state to
+  // suppress it.
+  const lsA = landmarks[11], rsA = landmarks[12];
+  const shoulderSpan = (lsA && rsA) ? Math.max(0.05, Math.hypot(rsA.x - lsA.x, rsA.y - lsA.y)) : 0.2;
+
+  for (const side of SIDES) {
+    const w = landmarks[side.wrist];
+    const as = armState[side.key];
+    if (!w) { as.visible = false; continue; }
+
+    // MediaPipe still emits a guessed position for joints it cannot see; acting on those
+    // produces phantom punches, so drop the arm until the wrist is genuinely visible.
+    const vis = (w.visibility === undefined) ? 1 : w.visibility;
+    as.visible = vis >= 0.35;
+    if (!as.visible) { as.hist.length = 0; as.prevWristX = null; as.prevSpeed = 0; continue; }
+
+    if (as.rest.x === null) as.rest = { x: w.x, y: w.y };
+
+    const speed = (dt > 0 && as.prevWristX !== null) ? Math.hypot(w.x - as.prevWristX, w.y - as.prevWristY) / dt : 0;
+    as.peak = Math.max(as.peak * 0.985, speed); // slowly-decaying peak, shown for calibration
+    if (calibrating) calibPeak = Math.max(calibPeak, speed);
+
+    as.hist.push({ t: now, x: w.x, y: w.y });
+    while (as.hist.length && now - as.hist[0].t > 600) as.hist.shift();
+    let ref = as.hist[0];
+    for (const h of as.hist) { if (now - h.t <= PUNCH_WINDOW_MS) { ref = h; break; } }
+
+    // outward travel over the look-back window, measured against the resting hand position
+    const extend = Math.hypot(w.x - as.rest.x, w.y - as.rest.y) - Math.hypot(ref.x - as.rest.x, ref.y - as.rest.y);
+    as.extend = extend;
+
+    if (speed > punchSpeedThreshold && as.prevSpeed <= punchSpeedThreshold &&
+        extend > MIN_EXTEND_RATIO * shoulderSpan && now - as.lastPunchAt > PUNCH_COOLDOWN_MS) {
+      if (state.roundActive) dealPlayerDamage(classifyPunch(w.x - ref.x, w.y - ref.y), speed);
+      as.lastPunchAt = now;
+    }
+
+    // the rest position only tracks the hand while it is calm, so a held-out punch does not
+    // slowly become the new "resting" spot and blind the next punch
+    if (speed < punchSpeedThreshold * 0.4) {
+      as.rest.x = as.rest.x * 0.97 + w.x * 0.03;
+      as.rest.y = as.rest.y * 0.97 + w.y * 0.03;
+    }
+    as.prevSpeed = speed;
+    as.prevWristX = w.x; as.prevWristY = w.y;
+  }
+
+  // Head defense tracking. A dodge needs BOTH a real displacement from the resting baseline
+  // AND the head actually moving fast in that direction — displacement alone meant ordinary
+  // body sway parked the defender in a permanent "dodging" state, so no punch ever landed.
+  const nose = landmarks[0];
+  if (nose) {
+    if (noseBaseline.x === null) { noseBaseline = { x: nose.x, y: nose.y }; }
+    else { noseBaseline.x = noseBaseline.x * 0.98 + nose.x * 0.02; noseBaseline.y = noseBaseline.y * 0.98 + nose.y * 0.02; }
+
+    const drop = nose.y - noseBaseline.y;        // positive = head moved down
+    const shift = Math.abs(nose.x - noseBaseline.x);
+    const vy = (dt > 0 && prevNose.y !== null) ? (nose.y - prevNose.y) / dt : 0;
+    const vx = (dt > 0 && prevNose.x !== null) ? Math.abs(nose.x - prevNose.x) / dt : 0;
+
+    if (drop > dodgeDistance && vy > DODGE_SPEED) duckActiveUntil = now + DEFENSE_WINDOW_MS;
+    if (shift > dodgeDistance && vx > DODGE_SPEED) weaveActiveUntil = now + DEFENSE_WINDOW_MS;
+
+    prevNose = { x: nose.x, y: nose.y };
+    dbg.duck = now < duckActiveUntil;
+    dbg.weave = now < weaveActiveUntil;
+  }
+
+  if (now - lastDbgAt > 120) { lastDbgAt = now; renderDebug(); }
+}
+
+function renderDebug(){
+  if (!debugLine) return;
+  const L = armState.left, R = armState.right;
+  const arm = (label, a) => a.visible
+    ? `${label} 속도 ${a.prevSpeed.toFixed(2)} 최고 ${a.peak.toFixed(2)}`
+    : `${label} 손목 안보임`;
+  const warn = (!L.visible && !R.visible)
+    ? " ⚠ 손목이 안 잡힙니다 — 뒤로 물러나 상반신과 양손이 화면에 들어오게 하세요"
+    : "";
+  debugLine.textContent =
+    `${arm("왼손", L)} | ${arm("오른손", R)} | 기준 ${punchSpeedThreshold.toFixed(2)}` +
+    ` | 내 회피 더킹 ${dbg.duck ? "O" : "X"} 위빙 ${dbg.weave ? "O" : "X"}` + warn;
+}
+
+// ---------- render ----------
+function render(landmarks){
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!landmarks) return;
+  ctx.strokeStyle = "rgba(255,255,255,0.85)";
+  ctx.lineWidth = Math.max(2, canvas.width / 220);
+  ctx.beginPath();
+  for (const [a, b] of POSE_LINKS) {
+    const p1 = landmarks[a], p2 = landmarks[b];
+    if (!p1 || !p2) continue;
+    ctx.moveTo(p1.x * canvas.width, p1.y * canvas.height);
+    ctx.lineTo(p2.x * canvas.width, p2.y * canvas.height);
+  }
+  ctx.stroke();
+  for (const idx of [0, 11, 12, 13, 14, 15, 16, 23, 24]) {
+    const p = landmarks[idx];
+    if (!p) continue;
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(p.x * canvas.width, p.y * canvas.height, Math.max(3, canvas.width / 160), 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// ---------- MediaPipe loop ----------
+let poseLandmarker = null;
+let lastVideoTime = -1;
+
+function loop(){
+  requestAnimationFrame(loop);
+  if (!poseLandmarker || video.readyState < 2) return;
+  if (video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  const result = poseLandmarker.detectForVideo(video, performance.now());
+  const landmarks = result.landmarks && result.landmarks[0] ? result.landmarks[0] : null;
+  render(landmarks);
+  selfPose = landmarks;
+  if (mySlot) poses[mySlot] = landmarks;
+  if (landmarks) processPose(landmarks);
+}
+
+async function startAll(){
+  btnStart.disabled = true;
+  try {
+    loadState.textContent = "카메라 권한 요청 중...";
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
+    localStream = stream;
+    video.srcObject = stream;
+    await new Promise(res => { video.onloadedmetadata = res; });
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    camState.textContent = "카메라 켜짐";
+
+    loadState.textContent = "모델 다운로드 중 (최초 1회, 네트워크 필요)...";
+    const vision = await FilesetResolver.forVisionTasks(WASM_URL);
+    try {
+      poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: MODEL_URL, delegate: "GPU" },
+        runningMode: "VIDEO",
+        numPoses: 1,
+      });
+    } catch (gpuErr) {
+      poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: MODEL_URL, delegate: "CPU" },
+        runningMode: "VIDEO",
+        numPoses: 1,
+      });
+    }
+
+    loadState.textContent = "준비 완료 — 방을 만들거나 참가하세요.";
+    btnHost.disabled = false;
+    btnJoin.disabled = false;
+    connState.textContent = "방을 만들거나, 상대의 코드로 참가하세요 (최대 4명).";
+    loop();
+  } catch (err) {
+    console.error(err);
+    loadState.textContent = "실패: " + (err && err.message ? err.message : String(err)) +
+      " — 카메라 권한과 네트워크 연결(모델·라이브러리 CDN)을 확인하세요.";
+    btnStart.disabled = false;
+  }
+}
+
+// ---------- UI wiring ----------
+btnStart.addEventListener("click", startAll);
+btnHost.addEventListener("click", hostRoom);
+btnJoin.addEventListener("click", joinRoom);
+btnSpectate.addEventListener("click", startSpectating);
+btnRound.addEventListener("click", startRound);
+punchSens.addEventListener("input", () => {
+  punchSpeedThreshold = Number(punchSens.value);
+  punchSensVal.textContent = punchSpeedThreshold.toFixed(2);
+  renderDebug();
+});
+dodgeSens.addEventListener("input", () => {
+  dodgeDistance = Number(dodgeSens.value);
+  dodgeSensVal.textContent = dodgeDistance.toFixed(3);
+});
+btnCalibrate.addEventListener("click", () => {
+  if (!poseLandmarker) { log("시스템", "자동 보정 실패 — 카메라를 먼저 시작하세요"); return; }
+  calibrating = true; calibPeak = 0;
+  btnCalibrate.disabled = true;
+  let left = 5;
+  btnCalibrate.textContent = `측정 중... ${left}`;
+  const tick = setInterval(() => {
+    left--;
+    if (left > 0) { btnCalibrate.textContent = `측정 중... ${left}`; return; }
+    clearInterval(tick);
+    calibrating = false;
+    btnCalibrate.disabled = false;
+    btnCalibrate.textContent = "자동 보정 (5초)";
+    if (calibPeak < 0.15) {
+      log("시스템", `자동 보정 실패 — 움직임이 거의 감지되지 않았습니다 (최고 ${calibPeak.toFixed(2)}). 손이 화면에 보이는지 확인하세요.`);
+      return;
+    }
+    punchSpeedThreshold = Math.min(3, Math.max(0.2, calibPeak * 0.6));
+    punchSens.value = String(punchSpeedThreshold);
+    punchSensVal.textContent = punchSpeedThreshold.toFixed(2);
+    log("시스템", `자동 보정 완료 — 최고 속도 ${calibPeak.toFixed(2)}, 펀치 감도 ${punchSpeedThreshold.toFixed(2)}로 설정`);
+    renderDebug();
+  }, 1000);
+});
+// bypasses pose detection entirely: proves whether the network path and damage rules work
+btnTestPunch.addEventListener("click", () => {
+  if (!state.roundActive) { log("시스템", "테스트 펀치 실패 — 라운드를 먼저 시작하세요"); return; }
+  if (!otherSlots().some(s => opp[s] && opp[s].active)) { log("시스템", "테스트 펀치 실패 — 연결된 상대가 없습니다"); return; }
+  dealPlayerDamage("straight", 0);
+});
+btnRematch.addEventListener("click", () => { resultOverlay.classList.remove("show"); startRound(); });
+btnReset.addEventListener("click", () => {
+  stats.punches = 0; stats.byType = { straight: 0, hook: 0, uppercut: 0 }; stats.speeds = [];
+  stats.defenses = 0; stats.defenseAttempts = 0; stats.landed = 0; stats.evadedByOpp = 0;
+  logBody.innerHTML = "";
+  updateStatsUI();
+});
+
+updateStatsUI();
+</script>
+</body>
+</html>
