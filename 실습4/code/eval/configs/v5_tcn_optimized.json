@@ -1,0 +1,18 @@
+{
+  "version": "v5_tcn_optimized",
+  "engine": "tcn",
+  "description": "Optimized Causal TCN Classifier with Tuned Confidence Threshold (0.32)",
+  "tune": {
+    "PUNCH_ARM": 1.0,
+    "PUNCH_EXTEND": 0.40,
+    "PUNCH_SPEED": 1.65,
+    "PUNCH_REACH_N": 0.88,
+    "PUNCH_GROW_N": 0.28,
+    "PUNCH_WINDOW_MS": 380,
+    "PUNCH_CD_MS": 390,
+    "PUNCH_CD_ANY_MS": 190,
+    "LOCK_MIN_MS": 190,
+    "LOCK_MAX_MS": 1100,
+    "TCN_MIN_CONF": 0.32
+  }
+}

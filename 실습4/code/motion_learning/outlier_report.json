@@ -1,0 +1,1202 @@
+[
+  {
+    "sample_id": "20260826T031913530691Z_118b59bc",
+    "label": "LEFT_JAB",
+    "distance_z": 17.729934692382812,
+    "dropped": true
+  },
+  {
+    "sample_id": "20260826T044127676603Z_c5ce9a14",
+    "label": "RIGHT_JAB",
+    "distance_z": 11.450578689575195,
+    "dropped": true
+  },
+  {
+    "sample_id": "20260826T044224408437Z_e8a872e9",
+    "label": "OTHER",
+    "distance_z": 8.135445594787598,
+    "dropped": true
+  },
+  {
+    "sample_id": "20260826T044431636408Z_1cc05338",
+    "label": "IDLE",
+    "distance_z": 7.890775203704834,
+    "dropped": true
+  },
+  {
+    "sample_id": "20260826T044422367782Z_de5b8e3d",
+    "label": "LEFT_UPPERCUT",
+    "distance_z": 6.675424098968506,
+    "dropped": true
+  },
+  {
+    "sample_id": "20260826T044146648308Z_3bb1dfb0",
+    "label": "OTHER",
+    "distance_z": 5.743454933166504,
+    "dropped": true
+  },
+  {
+    "sample_id": "20260826T044814607671Z_d6bf6b7d",
+    "label": "LEFT_JAB",
+    "distance_z": 5.712933540344238,
+    "dropped": true
+  },
+  {
+    "sample_id": "20260826T032208566526Z_7b0487c9",
+    "label": "ENERGY_WAVE",
+    "distance_z": 5.51267671585083,
+    "dropped": true
+  },
+  {
+    "sample_id": "20260826T044920733667Z_f0d707b5",
+    "label": "ENERGY_WAVE",
+    "distance_z": 5.3024163246154785,
+    "dropped": true
+  },
+  {
+    "sample_id": "20260826T044311105452Z_d45634ae",
+    "label": "RIGHT_JAB",
+    "distance_z": 4.758220195770264,
+    "dropped": true
+  },
+  {
+    "sample_id": "20260826T031904738657Z_ba611fbd",
+    "label": "ENERGY_WAVE",
+    "distance_z": 4.193877696990967,
+    "dropped": true
+  },
+  {
+    "sample_id": "20260826T031947154893Z_51057d07",
+    "label": "TWO_HAND_GUARD",
+    "distance_z": 3.611161947250366,
+    "dropped": true
+  },
+  {
+    "sample_id": "20260826T032020022643Z_7565e695",
+    "label": "LEFT_HOOK",
+    "distance_z": 3.300175905227661,
+    "dropped": true
+  },
+  {
+    "sample_id": "20260826T032034089374Z_2167e9c8",
+    "label": "ENERGY_WAVE",
+    "distance_z": 3.2123310565948486,
+    "dropped": true
+  },
+  {
+    "sample_id": "20260826T032203480797Z_e8879878",
+    "label": "OTHER",
+    "distance_z": 3.210484027862549,
+    "dropped": true
+  },
+  {
+    "sample_id": "20260826T044156134285Z_b5cf9853",
+    "label": "IDLE",
+    "distance_z": 3.207345485687256,
+    "dropped": true
+  },
+  {
+    "sample_id": "20260826T044930005527Z_7adfa293",
+    "label": "RIGHT_JAB",
+    "distance_z": 3.1263926029205322,
+    "dropped": true
+  },
+  {
+    "sample_id": "20260826T032053343575Z_5185eddb",
+    "label": "LEFT_UPPERCUT",
+    "distance_z": 2.866811990737915,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T031941929838Z_9d3366e9",
+    "label": "ENERGY_WAVE",
+    "distance_z": 2.86094331741333,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044810189304Z_11798932",
+    "label": "OTHER",
+    "distance_z": 2.3219876289367676,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044123288024Z_43d4f063",
+    "label": "OTHER",
+    "distance_z": 2.142347574234009,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044229277968Z_b65e25a1",
+    "label": "TWO_HAND_GUARD",
+    "distance_z": 2.0644776821136475,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044054925565Z_dd32a26e",
+    "label": "TWO_HAND_GUARD",
+    "distance_z": 2.0178866386413574,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044059501009Z_89f7a85e",
+    "label": "RIGHT_HOOK",
+    "distance_z": 1.9970183372497559,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044644856585Z_2706eb3c",
+    "label": "RIGHT_JAB",
+    "distance_z": 1.9621011018753052,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032112822265Z_78b2c140",
+    "label": "LEFT_HOOK",
+    "distance_z": 1.8145155906677246,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043641052029Z_95585bd2",
+    "label": "LEFT_JAB",
+    "distance_z": 1.7414660453796387,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044219508046Z_c5d9ffd8",
+    "label": "TWO_HAND_GUARD",
+    "distance_z": 1.6721845865249634,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032144720725Z_20f0d927",
+    "label": "RIGHT_HOOK",
+    "distance_z": 1.6488628387451172,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043636646444Z_17d01122",
+    "label": "RIGHT_JAB",
+    "distance_z": 1.6171352863311768,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032015434390Z_ddb98145",
+    "label": "LEFT_UPPERCUT",
+    "distance_z": 1.5432872772216797,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T031952045443Z_1bb6e595",
+    "label": "IDLE",
+    "distance_z": 1.5373867750167847,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T031859356752Z_d1f524af",
+    "label": "LEFT_UPPERCUT",
+    "distance_z": 1.4759210348129272,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044727207926Z_44ca9735",
+    "label": "RIGHT_HOOK",
+    "distance_z": 1.4125182628631592,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T031936852181Z_645e46c1",
+    "label": "RIGHT_HOOK",
+    "distance_z": 1.2854270935058594,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044201217148Z_3e41f8d3",
+    "label": "ENERGY_WAVE",
+    "distance_z": 1.1727702617645264,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032001329124Z_3bc9ecaf",
+    "label": "LEFT_JAB",
+    "distance_z": 1.1523456573486328,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043603279340Z_8d9e82d4",
+    "label": "IDLE",
+    "distance_z": 1.0688966512680054,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043632237612Z_d8c38680",
+    "label": "RIGHT_HOOK",
+    "distance_z": 1.0668896436691284,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044412880512Z_ce39025a",
+    "label": "RIGHT_UPPERCUT",
+    "distance_z": 1.0015279054641724,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032024611284Z_8bd0986e",
+    "label": "RIGHT_HOOK",
+    "distance_z": 0.9892957210540771,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043714639066Z_35e87ccf",
+    "label": "OTHER",
+    "distance_z": 0.9870180487632751,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032135713818Z_609c27fd",
+    "label": "LEFT_HOOK",
+    "distance_z": 0.972166895866394,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044856703139Z_9abe587e",
+    "label": "RIGHT_UPPERCUT",
+    "distance_z": 0.949598491191864,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032108222796Z_bee90bed",
+    "label": "ENERGY_WAVE",
+    "distance_z": 0.8657889366149902,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043704887512Z_a2b77331",
+    "label": "LEFT_HOOK",
+    "distance_z": 0.8560908436775208,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043723632831Z_dcba6980",
+    "label": "RIGHT_UPPERCUT",
+    "distance_z": 0.849782407283783,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T031918408809Z_b4b67202",
+    "label": "OTHER",
+    "distance_z": 0.8348714709281921,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043622247575Z_beeb26a3",
+    "label": "TWO_HAND_GUARD",
+    "distance_z": 0.830446183681488,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044315694925Z_698a01e7",
+    "label": "RIGHT_HOOK",
+    "distance_z": 0.8017051219940186,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043801834916Z_cd283f4b",
+    "label": "IDLE",
+    "distance_z": 0.7913311123847961,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044703619222Z_deba2347",
+    "label": "OTHER",
+    "distance_z": 0.7857424020767212,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T031923036829Z_5f9192c7",
+    "label": "RIGHT_UPPERCUT",
+    "distance_z": 0.7725297212600708,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044934593779Z_8a8047ed",
+    "label": "LEFT_UPPERCUT",
+    "distance_z": 0.7700499296188354,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044408288081Z_e854f92b",
+    "label": "TWO_HAND_GUARD",
+    "distance_z": 0.7224935293197632,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032038974269Z_314a7ecb",
+    "label": "IDLE",
+    "distance_z": 0.6946358680725098,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044925609723Z_37f84180",
+    "label": "OTHER",
+    "distance_z": 0.675474226474762,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T031932246680Z_de3784b2",
+    "label": "LEFT_UPPERCUT",
+    "distance_z": 0.6672592163085938,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043709772084Z_5760af56",
+    "label": "TWO_HAND_GUARD",
+    "distance_z": 0.6367108821868896,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044436226002Z_a4a1f1ab",
+    "label": "RIGHT_HOOK",
+    "distance_z": 0.6346915364265442,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T031840735191Z_003defc3",
+    "label": "RIGHT_UPPERCUT",
+    "distance_z": 0.5764509439468384,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032005936420Z_41fb0356",
+    "label": "RIGHT_UPPERCUT",
+    "distance_z": 0.5751142501831055,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043810859891Z_4e86ef40",
+    "label": "LEFT_JAB",
+    "distance_z": 0.5719102025032043,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044440816748Z_ec0568d5",
+    "label": "LEFT_HOOK",
+    "distance_z": 0.5451428294181824,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044349241430Z_991a3e78",
+    "label": "RIGHT_UPPERCUT",
+    "distance_z": 0.5299316048622131,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044837472231Z_2bbc5474",
+    "label": "LEFT_UPPERCUT",
+    "distance_z": 0.5289899110794067,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043617354083Z_964160bd",
+    "label": "RIGHT_UPPERCUT",
+    "distance_z": 0.5285117030143738,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043824644199Z_b45ef518",
+    "label": "LEFT_HOOK",
+    "distance_z": 0.5147618055343628,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T031909133249Z_434af6c8",
+    "label": "RIGHT_JAB",
+    "distance_z": 0.4959520399570465,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043756960913Z_8d732121",
+    "label": "RIGHT_JAB",
+    "distance_z": 0.44322580099105835,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043655404804Z_604178b7",
+    "label": "IDLE",
+    "distance_z": 0.42095887660980225,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044602621878Z_ee0636c2",
+    "label": "LEFT_HOOK",
+    "distance_z": 0.4190517067909241,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032154011800Z_5b5a5580",
+    "label": "RIGHT_JAB",
+    "distance_z": 0.4013896584510803,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043526202517Z_6e5f99af",
+    "label": "TWO_HAND_GUARD",
+    "distance_z": 0.39823853969573975,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044109454798Z_233c8a3a",
+    "label": "LEFT_UPPERCUT",
+    "distance_z": 0.39520564675331116,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043650525903Z_e6b9e487",
+    "label": "LEFT_HOOK",
+    "distance_z": 0.38966870307922363,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044233676562Z_32c577c2",
+    "label": "RIGHT_JAB",
+    "distance_z": 0.3830011487007141,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T031822045302Z_5f007d30",
+    "label": "LEFT_JAB",
+    "distance_z": 0.33619874715805054,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043627630626Z_b29e4060",
+    "label": "ENERGY_WAVE",
+    "distance_z": 0.3117428123950958,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044302105565Z_3265f867",
+    "label": "IDLE",
+    "distance_z": 0.2774856686592102,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044050072720Z_7bc0141e",
+    "label": "LEFT_HOOK",
+    "distance_z": 0.25380614399909973,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044306709133Z_684853bf",
+    "label": "LEFT_UPPERCUT",
+    "distance_z": 0.22485482692718506,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044320566845Z_063a4c3f",
+    "label": "TWO_HAND_GUARD",
+    "distance_z": 0.219858780503273,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032102840775Z_ac8627ac",
+    "label": "RIGHT_UPPERCUT",
+    "distance_z": 0.20975391566753387,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043858531360Z_bfa8cde1",
+    "label": "LEFT_JAB",
+    "distance_z": 0.2027706503868103,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043530588158Z_895d82ee",
+    "label": "LEFT_JAB",
+    "distance_z": 0.16112223267555237,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044823390114Z_268ac494",
+    "label": "RIGHT_JAB",
+    "distance_z": 0.141935333609581,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044722607640Z_86de5c9f",
+    "label": "RIGHT_UPPERCUT",
+    "distance_z": 0.12286142259836197,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032048746563Z_bf7e701c",
+    "label": "OTHER",
+    "distance_z": 0.11464586853981018,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044658743842Z_e9cef3ae",
+    "label": "TWO_HAND_GUARD",
+    "distance_z": 0.09529708325862885,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032126209575Z_df89ef68",
+    "label": "RIGHT_HOOK",
+    "distance_z": 0.07494346052408218,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043844663198Z_ea881219",
+    "label": "ENERGY_WAVE",
+    "distance_z": 0.07215409725904465,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044607704735Z_4c15b01a",
+    "label": "ENERGY_WAVE",
+    "distance_z": 0.07200072705745697,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044113837890Z_7e30bfc2",
+    "label": "LEFT_JAB",
+    "distance_z": 0.06996343284845352,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032140104994Z_45c25100",
+    "label": "LEFT_JAB",
+    "distance_z": 0.05506795272231102,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032131101563Z_1ebd44b5",
+    "label": "IDLE",
+    "distance_z": 0.04093613103032112,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044214607891Z_37abcf50",
+    "label": "RIGHT_HOOK",
+    "distance_z": 0.039344172924757004,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043839288937Z_8cf8fd1a",
+    "label": "IDLE",
+    "distance_z": 0.03910064697265625,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T031927642141Z_7e6b2932",
+    "label": "LEFT_HOOK",
+    "distance_z": 0.016925420612096786,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044626145849Z_83b0aa91",
+    "label": "LEFT_UPPERCUT",
+    "distance_z": 0.0029963734559714794,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044141742480Z_6948bd4e",
+    "label": "LEFT_UPPERCUT",
+    "distance_z": -0.002996057039126754,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T031845314708Z_a2620d0b",
+    "label": "LEFT_HOOK",
+    "distance_z": -0.016925668343901634,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043700299087Z_265fd0dc",
+    "label": "IDLE",
+    "distance_z": -0.03910091891884804,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043806453222Z_73333695",
+    "label": "RIGHT_HOOK",
+    "distance_z": -0.03934431076049805,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043553814797Z_270f1a83",
+    "label": "LEFT_UPPERCUT",
+    "distance_z": -0.042297445237636566,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044358021783Z_9e57337c",
+    "label": "LEFT_JAB",
+    "distance_z": -0.05506795272231102,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044635591434Z_0f222745",
+    "label": "RIGHT_HOOK",
+    "distance_z": -0.05558498948812485,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043540044352Z_69aee6f6",
+    "label": "ENERGY_WAVE",
+    "distance_z": -0.07200072705745697,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T031850189255Z_214e87a0",
+    "label": "TWO_HAND_GUARD",
+    "distance_z": -0.09529708325862885,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043815458652Z_8cd6eae8",
+    "label": "LEFT_UPPERCUT",
+    "distance_z": -0.10942614078521729,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044417759054Z_9e3ab24b",
+    "label": "OTHER",
+    "distance_z": -0.11464620381593704,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044151252407Z_4e173350",
+    "label": "RIGHT_UPPERCUT",
+    "distance_z": -0.12286142259836197,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043549220745Z_2e598e0b",
+    "label": "RIGHT_UPPERCUT",
+    "distance_z": -0.12660756707191467,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T031956939675Z_c58d06d4",
+    "label": "OTHER",
+    "distance_z": -0.12736593186855316,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044948522196Z_82deda88",
+    "label": "RIGHT_UPPERCUT",
+    "distance_z": -0.1319616734981537,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T031831284038Z_872db81c",
+    "label": "RIGHT_JAB",
+    "distance_z": -0.141935333609581,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T031826904633Z_3c9b4b88",
+    "label": "IDLE",
+    "distance_z": -0.14671741425991058,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044939190836Z_5bed9557",
+    "label": "RIGHT_HOOK",
+    "distance_z": -0.16408774256706238,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044403390439Z_e39808ff",
+    "label": "ENERGY_WAVE",
+    "distance_z": -0.1705179512500763,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044325471039Z_e88e14ac",
+    "label": "IDLE",
+    "distance_z": -0.18044331669807434,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044755632422Z_5d2e4df2",
+    "label": "TWO_HAND_GUARD",
+    "distance_z": -0.21339352428913116,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044426770208Z_6101f14f",
+    "label": "RIGHT_JAB",
+    "distance_z": -0.21466369926929474,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043544623078Z_f3d89837",
+    "label": "LEFT_HOOK",
+    "distance_z": -0.22065746784210205,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043608162724Z_2f53a883",
+    "label": "OTHER",
+    "distance_z": -0.2363797128200531,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044718002857Z_602bfad7",
+    "label": "ENERGY_WAVE",
+    "distance_z": -0.2438918501138687,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044631007118Z_f83c64ad",
+    "label": "OTHER",
+    "distance_z": -0.2448333501815796,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044847232200Z_1393dd54",
+    "label": "ENERGY_WAVE",
+    "distance_z": -0.2552468180656433,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T031854775867Z_a24d0c64",
+    "label": "RIGHT_HOOK",
+    "distance_z": -0.2877350151538849,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043742591943Z_1a919f20",
+    "label": "RIGHT_HOOK",
+    "distance_z": -0.29140692949295044,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043733408076Z_034eb634",
+    "label": "ENERGY_WAVE",
+    "distance_z": -0.2924172878265381,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032117215306Z_53e731a7",
+    "label": "LEFT_JAB",
+    "distance_z": -0.32874253392219543,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043752568280Z_283d6b02",
+    "label": "ENERGY_WAVE",
+    "distance_z": -0.34910476207733154,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043645925958Z_e3340ec4",
+    "label": "OTHER",
+    "distance_z": -0.3542954623699188,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044247254384Z_679c5d1e",
+    "label": "LEFT_JAB",
+    "distance_z": -0.3602309823036194,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032121622628Z_3f730c22",
+    "label": "RIGHT_JAB",
+    "distance_z": -0.3649030923843384,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032029012368Z_cf73b618",
+    "label": "RIGHT_JAB",
+    "distance_z": -0.37559786438941956,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043829518602Z_9f6cb1df",
+    "label": "OTHER",
+    "distance_z": -0.4160483181476593,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044353630982Z_0f866462",
+    "label": "LEFT_JAB",
+    "distance_z": -0.43055757880210876,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044612287788Z_88dfd203",
+    "label": "RIGHT_UPPERCUT",
+    "distance_z": -0.43722003698349,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044238273623Z_6e99c062",
+    "label": "RIGHT_HOOK",
+    "distance_z": -0.4461155831813812,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032043843475Z_9c65ca22",
+    "label": "TWO_HAND_GUARD",
+    "distance_z": -0.45586276054382324,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043558419415Z_3448df24",
+    "label": "RIGHT_HOOK",
+    "distance_z": -0.4785892963409424,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044736687435Z_a098587b",
+    "label": "LEFT_UPPERCUT",
+    "distance_z": -0.4902973175048828,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043738001416Z_e85b5e3a",
+    "label": "LEFT_UPPERCUT",
+    "distance_z": -0.4919460713863373,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044828276494Z_ba657b21",
+    "label": "TWO_HAND_GUARD",
+    "distance_z": -0.49919700622558594,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043728026055Z_81d99f04",
+    "label": "RIGHT_JAB",
+    "distance_z": -0.5127355456352234,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044732083969Z_bc0013f8",
+    "label": "IDLE",
+    "distance_z": -0.5230847597122192,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043854135727Z_130fb68f",
+    "label": "OTHER",
+    "distance_z": -0.537880539894104,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044621543952Z_6e1d524b",
+    "label": "TWO_HAND_GUARD",
+    "distance_z": -0.5400537252426147,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044137140146Z_59155d01",
+    "label": "LEFT_HOOK",
+    "distance_z": -0.5477493405342102,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044334955268Z_6bfd5376",
+    "label": "OTHER",
+    "distance_z": -0.555874764919281,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043747471642Z_4e273671",
+    "label": "TWO_HAND_GUARD",
+    "distance_z": -0.5852396488189697,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044746160340Z_00f77c94",
+    "label": "IDLE",
+    "distance_z": -0.6174517273902893,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043916757585Z_6405a654",
+    "label": "LEFT_HOOK",
+    "distance_z": -0.6335858106613159,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044132544374Z_22f2b440",
+    "label": "IDLE",
+    "distance_z": -0.654344916343689,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044257226766Z_241caf74",
+    "label": "ENERGY_WAVE",
+    "distance_z": -0.6721159219741821,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T031836146250Z_88d920f6",
+    "label": "OTHER",
+    "distance_z": -0.6735068559646606,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044805318273Z_7714bfcf",
+    "label": "ENERGY_WAVE",
+    "distance_z": -0.6768652200698853,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044708217903Z_10dee1f6",
+    "label": "LEFT_UPPERCUT",
+    "distance_z": -0.6817214488983154,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044915658179Z_f0c2917a",
+    "label": "TWO_HAND_GUARD",
+    "distance_z": -0.7122700810432434,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043903118815Z_98be7e1e",
+    "label": "RIGHT_HOOK",
+    "distance_z": -0.714289665222168,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044344639252Z_f789d7fe",
+    "label": "LEFT_HOOK",
+    "distance_z": -0.7153953909873962,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032010812939Z_9b039bda",
+    "label": "TWO_HAND_GUARD",
+    "distance_z": -0.7225396037101746,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032213165985Z_8fd65fe8",
+    "label": "LEFT_UPPERCUT",
+    "distance_z": -0.7516193985939026,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044943597236Z_119665ea",
+    "label": "LEFT_JAB",
+    "distance_z": -0.7770707011222839,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044330086329Z_b4f113e4",
+    "label": "LEFT_UPPERCUT",
+    "distance_z": -0.7990262508392334,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043612753961Z_188244ef",
+    "label": "LEFT_UPPERCUT",
+    "distance_z": -0.8082579374313354,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044653867466Z_530babef",
+    "label": "LEFT_HOOK",
+    "distance_z": -0.8097744584083557,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044242864325Z_f3743c67",
+    "label": "LEFT_HOOK",
+    "distance_z": -0.8212431073188782,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044818997498Z_3bba9b37",
+    "label": "RIGHT_JAB",
+    "distance_z": -0.8362455368041992,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044118419476Z_3c124b1d",
+    "label": "RIGHT_UPPERCUT",
+    "distance_z": -0.8712490797042847,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043834418068Z_7612dfa7",
+    "label": "TWO_HAND_GUARD",
+    "distance_z": -0.8926209807395935,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044741283894Z_d2244804",
+    "label": "RIGHT_HOOK",
+    "distance_z": -0.9074754118919373,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044800222665Z_d78c0586",
+    "label": "LEFT_HOOK",
+    "distance_z": -0.9216554760932922,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043534980380Z_b0753683",
+    "label": "RIGHT_JAB",
+    "distance_z": -0.9284036159515381,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044104867102Z_2923fb6c",
+    "label": "ENERGY_WAVE",
+    "distance_z": -0.9329944252967834,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032058224525Z_d6e1ba50",
+    "label": "IDLE",
+    "distance_z": -0.9342109560966492,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043907527157Z_2205b053",
+    "label": "RIGHT_JAB",
+    "distance_z": -0.9478607177734375,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044712627354Z_c33aa457",
+    "label": "LEFT_JAB",
+    "distance_z": -0.9482312798500061,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044910779966Z_a07bb9e9",
+    "label": "LEFT_HOOK",
+    "distance_z": -0.960939884185791,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044340035723Z_9031d6ef",
+    "label": "ENERGY_WAVE",
+    "distance_z": -0.9923585057258606,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043912135130Z_4e3680cd",
+    "label": "RIGHT_UPPERCUT",
+    "distance_z": -1.0098872184753418,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044832884580Z_7302bc4d",
+    "label": "RIGHT_HOOK",
+    "distance_z": -1.0160611867904663,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044251855097Z_ac12ebf1",
+    "label": "RIGHT_UPPERCUT",
+    "distance_z": -1.0312820672988892,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044210010959Z_eb8c1c8e",
+    "label": "LEFT_JAB",
+    "distance_z": -1.0443392992019653,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044901590817Z_8f0cd551",
+    "label": "IDLE",
+    "distance_z": -1.0546932220458984,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044205610316Z_099ee474",
+    "label": "RIGHT_JAB",
+    "distance_z": -1.0731825828552246,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044649273658Z_00587ad9",
+    "label": "RIGHT_JAB",
+    "distance_z": -1.0984842777252197,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032149603354Z_1af65996",
+    "label": "TWO_HAND_GUARD",
+    "distance_z": -1.1045087575912476,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044852108490Z_65fc1e10",
+    "label": "OTHER",
+    "distance_z": -1.1091251373291016,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044906192272Z_91e9bcb9",
+    "label": "LEFT_HOOK",
+    "distance_z": -1.116368293762207,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043719033288Z_8202ef58",
+    "label": "LEFT_JAB",
+    "distance_z": -1.1313695907592773,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043849263949Z_7f801368",
+    "label": "LEFT_UPPERCUT",
+    "distance_z": -1.158312439918518,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044616681313Z_cfff8a36",
+    "label": "LEFT_JAB",
+    "distance_z": -1.159372329711914,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044841858703Z_9d55b47b",
+    "label": "LEFT_JAB",
+    "distance_z": -1.172873616218567,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044640467469Z_8fbe8704",
+    "label": "IDLE",
+    "distance_z": -1.26857590675354,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T032158604048Z_b6101e73",
+    "label": "RIGHT_UPPERCUT",
+    "distance_z": -1.780329704284668,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044953411214Z_72d8d1af",
+    "label": "IDLE",
+    "distance_z": -1.8643637895584106,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T044750754165Z_2f7cdf07",
+    "label": "RIGHT_UPPERCUT",
+    "distance_z": -2.297577381134033,
+    "dropped": false
+  },
+  {
+    "sample_id": "20260826T043820054173Z_5f28b1e6",
+    "label": "RIGHT_UPPERCUT",
+    "distance_z": -2.440317153930664,
+    "dropped": false
+  }
+]

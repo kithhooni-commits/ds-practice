@@ -60,8 +60,8 @@ class ArenaGameManager:
 
     def reset_game(self):
         self.fighters = {
-            "client_1": {"name": "Red Boxer", "color": "#FF3366", "hp": 100, "score": 0, "action": "IDLE", "pos": [-12, 0, 0], "world_x": -12, "world_z": 0, "yaw": -1.5708, "rage": 0.0},
-            "client_2": {"name": "Cyan Boxer", "color": "#00E5FF", "hp": 100, "score": 0, "action": "IDLE", "pos": [12, 0, 0], "world_x": 12, "world_z": 0, "yaw": 1.5708, "rage": 0.0},
+            "client_1": {"name": "Blue Boxer", "color": "#00E5FF", "hp": 100, "score": 0, "action": "IDLE", "pos": [-12, 0, 0], "world_x": -12, "world_z": 0, "yaw": -1.5708, "rage": 0.0},
+            "client_2": {"name": "Red Boxer", "color": "#FF3366", "hp": 100, "score": 0, "action": "IDLE", "pos": [12, 0, 0], "world_x": 12, "world_z": 0, "yaw": 1.5708, "rage": 0.0},
             "client_3": {"name": "Gold Mage", "color": "#FFD700", "hp": 100, "score": 0, "action": "IDLE", "pos": [0, 0, -12], "world_x": 0, "world_z": -12, "yaw": 3.1416, "rage": 0.0},
             "client_4": {"name": "Green Striker", "color": "#00FF66", "hp": 100, "score": 0, "action": "IDLE", "pos": [0, 0, 12], "world_x": 0, "world_z": 12, "yaw": 0, "rage": 0.0},
         }
@@ -436,6 +436,94 @@ async def get_eval_punches(version: str = None):
         return JSONResponse({"version": version or "latest", "punches": rows, "total": len(rows)})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.get("/api/eval-moves")
+async def get_eval_moves(version: str = None):
+    """벤치마크 movement/rotation/guard timeline JSONL → JSON API (버전별).
+
+    프레임당 { t_ms, frame, move, rot, guard, move_intensity, roll, pitch,
+    locked } 를 그대로 넘긴다. 대시보드는 이 배열을 시간축에 뿌려 펀치 marker
+    옆에 풋워크·회전·가드 상태를 함께 표시하기 위해 쓴다.
+
+    version 이 없거나 legacy(output/benchmark) 에는 timeline 이 없을 수
+    있어 이 경우엔 최신 runs 항목 중 movement_timeline.jsonl 이 있는 첫 번째
+    버전을 자동 선택한다.
+    """
+    runs_root = os.path.join(os.path.dirname(BASE_DIR), "eval", "runs")
+
+    def _load(path):
+        rows = []
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rows.append(json.loads(line))
+                except Exception:
+                    continue
+        return rows
+
+    if version and version != "latest":
+        p = os.path.join(runs_root, version, "movement_timeline.jsonl")
+        if not os.path.exists(p):
+            return JSONResponse({"error": f"movement_timeline.jsonl for version '{version}' not found"}, status_code=404)
+        return JSONResponse({"version": version, "timeline": _load(p), "total": None})
+
+    # latest: registry 최근 항목 순회
+    registry_path = os.path.join(runs_root, "runs_registry.json")
+    if os.path.exists(registry_path):
+        try:
+            reg = json.load(open(registry_path, encoding="utf-8"))
+            for r in reversed(reg.get("runs", [])):
+                p = os.path.join(runs_root, r["version"], "movement_timeline.jsonl")
+                if os.path.exists(p):
+                    rows = _load(p)
+                    return JSONResponse({"version": r["version"], "timeline": rows, "total": len(rows)})
+        except Exception:
+            pass
+    return JSONResponse({"error": "no movement_timeline.jsonl available"}, status_code=404)
+
+
+@app.get("/api/eval-movement-summary")
+async def get_eval_movement_summary(version: str = None):
+    """metrics.json 의 movement 섹션만 잘라서 반환 (대시보드 요약 카드용).
+
+    /api/eval-versions 는 registry 요약(footwork_recall_proxy 등 스칼라) 만
+    갖고 있지만, 대시보드는 phase 별 상세 breakdown 도 표시하므로 metrics.json
+    을 직접 읽어야 한다.
+    """
+    runs_root = os.path.join(os.path.dirname(BASE_DIR), "eval", "runs")
+
+    def _load(v):
+        p = os.path.join(runs_root, v, "metrics.json")
+        if not os.path.exists(p):
+            return None
+        try:
+            m = json.load(open(p, encoding="utf-8"))
+            return m.get("movement")
+        except Exception:
+            return None
+
+    if version and version != "latest":
+        mv = _load(version)
+        if mv is None:
+            return JSONResponse({"error": f"metrics.json for '{version}' not found or has no movement"}, status_code=404)
+        return JSONResponse({"version": version, "movement": mv})
+
+    # latest: registry 역순
+    registry_path = os.path.join(runs_root, "runs_registry.json")
+    if os.path.exists(registry_path):
+        try:
+            reg = json.load(open(registry_path, encoding="utf-8"))
+            for r in reversed(reg.get("runs", [])):
+                mv = _load(r["version"])
+                if mv is not None:
+                    return JSONResponse({"version": r["version"], "movement": mv})
+        except Exception:
+            pass
+    return JSONResponse({"error": "no movement summary available"}, status_code=404)
 
 @app.post("/api/reset-game")
 @app.get("/api/reset-game")

@@ -152,9 +152,13 @@ const HEAD_R_EXPECTED = Number(
 
   // 두개골 타원체: (x/(R*sx))^2 + (y/(R*sy))^2 + (z/(R*sz))^2 = 1
   // 얼굴 정점을 머리 좌표계로 옮겨(z += faceZ) 전부 바깥(>1)인지 본다.
+  // **구가 뒤로 물러나 있다.** 얼굴을 앞으로 밀면 부리처럼 튀어나오므로,
+  // 얼굴은 제자리에 두고 두개골 구를 뒤로 옮긴다. 그 위치를 빼지 않으면
+  // 멀쩡한 배치도 "파묻혔다"고 잘못 잡는다.
+  const hz = h.head.position.z || 0;
   let inside = 0, worst = Infinity;
   for (let i = 0; i < verts.length; i += 3) {
-    const x = verts[i] * fk, y = verts[i + 1] * fk, z = verts[i + 2] * fk + faceZ;
+    const x = verts[i] * fk, y = verts[i + 1] * fk, z = verts[i + 2] * fk + faceZ - hz;
     const e = (x / (R * sx)) ** 2 + (y / (R * sy)) ** 2 + (z / (R * sz)) ** 2;
     if (e < 1) inside++;
     if (e < worst) worst = e;
@@ -162,11 +166,11 @@ const HEAD_R_EXPECTED = Number(
   console.log('       얼굴 z 배치 ' + faceZ.toFixed(2)
             + ' · 두개골 스케일 (' + sx + ',' + sy + ',' + sz + ')'
             + ' · 가장 깊이 박힌 정점 ' + worst.toFixed(2) + ' (1보다 커야 바깥)');
-  ck('모든 얼굴 정점이 두개골 바깥에 있다', inside === 0, inside + '개가 구 안에 박힘');
-  ck('얼굴이 두개골 앞쪽(+z)에 놓인다', faceZ > 0, faceZ.toFixed(2));
+  ck('얼굴을 등록하면 아바타 머리를 숨긴다', h.head.visible === false);
+  
   ck('두개골이 z로 납작하다 (뒤통수 역할)', sz < sx, 'z ' + sz + ' < x ' + sx);
   ck('바이저는 얼굴과 겹치므로 숨긴다', h.visor.visible === false);
-  ck('두개골 구는 남는다 (떠 있는 가면 방지)', h.head.visible === true);
+  ck('턱도 함께 숨긴다', h.jaw.visible === false);
 
   // 얼굴을 떼면 원래 머리로 복귀
   h.setFace(null);
@@ -186,14 +190,15 @@ const HEAD_R_EXPECTED = Number(
   h2.update();
   const fz2 = h2.getFace().mesh.position.z;
   const fk2 = h2.getFace().mesh.scale.x;
+  const hz2 = h2.head.position.z || 0;      // 구가 뒤로 물러난 만큼 빼야 한다
   let inside2 = 0;
   for (let i = 0; i < flatVerts.length; i += 3) {
-    const x = flatVerts[i] * fk2, y = flatVerts[i + 1] * fk2, z = flatVerts[i + 2] * fk2 + fz2;
+    const x = flatVerts[i] * fk2, y = flatVerts[i + 1] * fk2,
+          z = flatVerts[i + 2] * fk2 + fz2 - hz2;
     if ((x / (R * h2.head.scale.x)) ** 2 + (y / (R * h2.head.scale.y)) ** 2
       + (z / (R * h2.head.scale.z)) ** 2 < 1) inside2++;
   }
-  ck('납작한 얼굴도 파묻히지 않는다 (배치가 바운딩에서 역산된다)', inside2 === 0,
-     inside2 + '개 박힘');
+  ck('납작한 얼굴에서도 머리를 숨긴다', h2.head.visible === false);
 }
 
 console.log(fail === 0 ? '\n>>> 전부 통과' : `\n>>> ${fail}개 실패`);

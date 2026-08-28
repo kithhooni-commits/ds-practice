@@ -1,0 +1,12 @@
+{
+  "version": "v6c_ablation_gate_only",
+  "engine": "tcn_hybrid",
+  "description": "v6c 순수 ablation: v6b와 정확히 같은 confirm_frames/cooldown(2/350ms)에 물리 AND-게이트만 추가. v6c_tcn_hybrid_gate(v5c와 동일 튠, confirm=3/cooldown=600)와 비교해 '게이트 자체의 효과'와 '추가 재튜닝의 효과'를 분리해서 본다.",
+  "tune": {
+    "TCN_TRIGGER_CONFIRM_FRAMES": 2,
+    "TCN_TRIGGER_MIN_CONF": 0.5,
+    "TCN_TRIGGER_COOLDOWN_MS": 350,
+    "TCN_HYBRID_ARM_GATE": 1.0,
+    "TCN_HYBRID_EXTEND_GATE": 0.40
+  }
+}

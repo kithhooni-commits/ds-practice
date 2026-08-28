@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-27T01:04:49.848684+00:00",
+  "feature_set": "heuristic_7j_v1",
+  "sequence_length": 60,
+  "classifier": "ordered_thresholds_v1",
+  "classes": [
+    "IDLE",
+    "LEFT_JAB",
+    "RIGHT_JAB",
+    "LEFT_HOOK",
+    "RIGHT_HOOK",
+    "LEFT_UPPERCUT",
+    "RIGHT_UPPERCUT",
+    "TWO_HAND_GUARD",
+    "ENERGY_WAVE",
+    "OTHER"
+  ],
+  "thresholds": {
+    "lookback_frames": 8,
+    "hand_dist_guard": 0.9795546723975053,
+    "elbow_dist_guard": 1.5347094364417826,
+    "idle_speed_max": 4.522467341093685,
+    "wave_min_speed": 17.53431249114906,
+    "wave_balance_ratio": 0.6633245152910686,
+    "other_balance_min": 0.7088683890810261,
+    "uppercut_vy": 0.2114118994999486,
+    "uppercut_elbow_ratio": 0.922758938123305,
+    "hook_vx": 0.12776823364959725,
+    "hook_elbow_ratio": 0.9321502863560795,
+    "jab_vz_min": 0.685092146136513
+  },
+  "training": {
+    "original_samples": 183,
+    "augmented_samples": 1722,
+    "augmentation": {
+      "profile": "all_recommended_v1",
+      "horizontal_mirror": true,
+      "left_right_labels_swapped": true,
+      "time_scale": [
+        0.8,
+        1.2
+      ],
+      "frame_dropout": {
+        "ratio": 0.08,
+        "imputation": "linear"
+      },
+      "coordinate_noise": {
+        "space": "derived_feature",
+        "std_fraction": 0.025
+      },
+      "partial_visibility": {
+        "space": "derived_feature",
+        "method": "short_span_linear_imputation"
+      },
+      "camera_distance": [
+        0.92,
+        1.08
+      ],
+      "action_prefix_fractions": [
+        0.65,
+        0.82
+      ],
+      "counts": {
+        "original": 183,
+        "horizontal_mirror": 183,
+        "time_scale_0.8": 183,
+        "time_scale_1.2": 183,
+        "frame_dropout_imputed": 183,
+        "feature_noise": 183,
+        "visibility_loss_imputed": 183,
+        "camera_distance": 183,
+        "action_prefix": 258
+      }
+    },
+    "participants": [
+      "cheols",
+      "hong",
+      "kim",
+      "suhwan"
+    ],
+    "trials": 12000,
+    "seed": 42,
+    "outliers_excluded": 17
+  }
+}

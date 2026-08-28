@@ -1,7 +1,7 @@
 {
   "case": "benchmark_90s_protocol",
   "description": "Standard 90-Second Boxing Protocol Benchmark Video Ground Truth",
-  "source": "iter3/eval/video/benchmark.mp4",
+  "source": "iter4/eval/video/benchmark.mp4",
   "tolerance_ms": 400,
   "punches": [
     { "t_ms": 7500, "side": "L", "kind": "STRAIGHT", "desc": "Jab 1" },

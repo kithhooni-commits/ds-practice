@@ -46,7 +46,7 @@
 ## 3. 💾 파일 저장 위치
 
 촬영 완료된 영상을 아래 경로에 저장합니다:
-* **경로**: `iter3/eval/video/benchmark.mp4`
+* **경로**: `iter4/eval/video/benchmark.mp4`
 
 ---
 
@@ -54,7 +54,7 @@
 
 영상 내에서 주먹이 **가장 앞/위/옆으로 뻗어나간 정점(Strike peak) 시점**의 밀리초(`t_ms`)와 동작 종류를 기록합니다.
 
-* **저장 위치**: `iter3/eval/video/benchmark_labels.json`
+* **저장 위치**: `iter4/eval/video/benchmark_labels.json`
 * **JSON 형식 예시**:
 
 ```json

@@ -1,0 +1,2741 @@
+{
+  "summary": {
+    "video_duration_s": 88.43,
+    "pose_coverage_pct": 100.0,
+    "pose_fps_mean": 30.0,
+    "total_punches": 242,
+    "by_side": {
+      "L": 236,
+      "R": 6
+    },
+    "scoring": {
+      "tolerance_ms": 400,
+      "ground_truth": 29,
+      "predicted": 242,
+      "tp": 29,
+      "fp": 213,
+      "fn": 0,
+      "precision": 0.1198,
+      "recall": 1.0,
+      "f1": 0.214,
+      "kind_accuracy": 0.4138,
+      "side_accuracy": 0.5172,
+      "timing_error_ms_mean": 101.2,
+      "timing_error_ms_max": 167,
+      "confusion": {
+        "STRAIGHT->STRAIGHT": 10,
+        "UPPERCUT->STRAIGHT": 5,
+        "STRAIGHT->HOOK": 6,
+        "HOOK->STRAIGHT": 5,
+        "HOOK->HOOK": 2,
+        "UPPERCUT->HOOK": 1
+      },
+      "matches": [
+        {
+          "pred_index": 50,
+          "pred_t_ms": 18400,
+          "label_t_ms": 18400,
+          "dt_ms": 0
+        },
+        {
+          "pred_index": 113,
+          "pred_t_ms": 41500,
+          "label_t_ms": 41500,
+          "dt_ms": 0
+        },
+        {
+          "pred_index": 218,
+          "pred_t_ms": 80000,
+          "label_t_ms": 80000,
+          "dt_ms": 0
+        },
+        {
+          "pred_index": 215,
+          "pred_t_ms": 78900,
+          "label_t_ms": 78900,
+          "dt_ms": 0
+        },
+        {
+          "pred_index": 223,
+          "pred_t_ms": 81833,
+          "label_t_ms": 81800,
+          "dt_ms": 33
+        },
+        {
+          "pred_index": 124,
+          "pred_t_ms": 45533,
+          "label_t_ms": 45500,
+          "dt_ms": 33
+        },
+        {
+          "pred_index": 213,
+          "pred_t_ms": 78166,
+          "label_t_ms": 78200,
+          "dt_ms": 34
+        },
+        {
+          "pred_index": 87,
+          "pred_t_ms": 31966,
+          "label_t_ms": 32000,
+          "dt_ms": 34
+        },
+        {
+          "pred_index": 135,
+          "pred_t_ms": 49566,
+          "label_t_ms": 49500,
+          "dt_ms": 66
+        },
+        {
+          "pred_index": 226,
+          "pred_t_ms": 82933,
+          "label_t_ms": 83000,
+          "dt_ms": 67
+        },
+        {
+          "pred_index": 30,
+          "pred_t_ms": 11033,
+          "label_t_ms": 11133,
+          "dt_ms": 100
+        },
+        {
+          "pred_index": 36,
+          "pred_t_ms": 13233,
+          "label_t_ms": 13133,
+          "dt_ms": 100
+        },
+        {
+          "pred_index": 47,
+          "pred_t_ms": 17300,
+          "label_t_ms": 17200,
+          "dt_ms": 100
+        },
+        {
+          "pred_index": 140,
+          "pred_t_ms": 51400,
+          "label_t_ms": 51500,
+          "dt_ms": 100
+        },
+        {
+          "pred_index": 219,
+          "pred_t_ms": 80366,
+          "label_t_ms": 80466,
+          "dt_ms": 100
+        },
+        {
+          "pred_index": 67,
+          "pred_t_ms": 24633,
+          "label_t_ms": 24500,
+          "dt_ms": 133
+        },
+        {
+          "pred_index": 210,
+          "pred_t_ms": 77066,
+          "label_t_ms": 76933,
+          "dt_ms": 133
+        },
+        {
+          "pred_index": 82,
+          "pred_t_ms": 30133,
+          "label_t_ms": 30000,
+          "dt_ms": 133
+        },
+        {
+          "pred_index": 20,
+          "pred_t_ms": 7366,
+          "label_t_ms": 7500,
+          "dt_ms": 134
+        },
+        {
+          "pred_index": 129,
+          "pred_t_ms": 47366,
+          "label_t_ms": 47500,
+          "dt_ms": 134
+        },
+        {
+          "pred_index": 78,
+          "pred_t_ms": 28666,
+          "label_t_ms": 28500,
+          "dt_ms": 166
+        },
+        {
+          "pred_index": 93,
+          "pred_t_ms": 34166,
+          "label_t_ms": 34000,
+          "dt_ms": 166
+        },
+        {
+          "pred_index": 224,
+          "pred_t_ms": 82200,
+          "label_t_ms": 82366,
+          "dt_ms": 166
+        },
+        {
+          "pred_index": 73,
+          "pred_t_ms": 26833,
+          "label_t_ms": 26666,
+          "dt_ms": 167
+        },
+        {
+          "pred_index": 208,
+          "pred_t_ms": 76333,
+          "label_t_ms": 76500,
+          "dt_ms": 167
+        },
+        {
+          "pred_index": 39,
+          "pred_t_ms": 14333,
+          "label_t_ms": 14500,
+          "dt_ms": 167
+        },
+        {
+          "pred_index": 24,
+          "pred_t_ms": 8833,
+          "label_t_ms": 9000,
+          "dt_ms": 167
+        },
+        {
+          "pred_index": 118,
+          "pred_t_ms": 43333,
+          "label_t_ms": 43500,
+          "dt_ms": 167
+        },
+        {
+          "pred_index": 43,
+          "pred_t_ms": 15833,
+          "label_t_ms": 16000,
+          "dt_ms": 167
+        }
+      ],
+      "version": "v0_iter2_hands",
+      "source_video": "C:\\hong\\project-4\\iter4\\eval\\video\\benchmark_landmarks.jsonl",
+      "phase_analysis": {
+        "rest_fp": 79,
+        "footwork_fp": 35,
+        "non_action_fp_total": 114,
+        "phases": [
+          {
+            "phase": "1. 준비 (Calibration)",
+            "range": "00~06s",
+            "is_action": false,
+            "detected": 17,
+            "fp": 17,
+            "punches": [
+              "LEFT_JAB",
+              "RIGHT_UPPERCUT",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_HOOK",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB"
+            ]
+          },
+          {
+            "phase": "2. 직선 펀치 (Straight)",
+            "range": "06~19s",
+            "is_action": true,
+            "detected": 35,
+            "fp": 0,
+            "punches": [
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB"
+            ]
+          },
+          {
+            "phase": "⏸ 숨고르기 (Rest 1)",
+            "range": "19~23s",
+            "is_action": false,
+            "detected": 11,
+            "fp": 11,
+            "punches": [
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "RIGHT_CROSS",
+              "LEFT_JAB"
+            ]
+          },
+          {
+            "phase": "3. 훅 펀치 (Hook)",
+            "range": "23~35s",
+            "is_action": true,
+            "detected": 33,
+            "fp": 0,
+            "punches": [
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_HOOK",
+              "RIGHT_CROSS",
+              "LEFT_HOOK",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "RIGHT_CROSS",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB"
+            ]
+          },
+          {
+            "phase": "⏸ 숨고르기 (Rest 2)",
+            "range": "35~40s",
+            "is_action": false,
+            "detected": 13,
+            "fp": 13,
+            "punches": [
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "RIGHT_CROSS",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB"
+            ]
+          },
+          {
+            "phase": "4. 어퍼컷 (Uppercut)",
+            "range": "40~52s",
+            "is_action": true,
+            "detected": 33,
+            "fp": 0,
+            "punches": [
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB"
+            ]
+          },
+          {
+            "phase": "⏸ 숨고르기 (Rest 3)",
+            "range": "52~57s",
+            "is_action": false,
+            "detected": 14,
+            "fp": 14,
+            "punches": [
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB"
+            ]
+          },
+          {
+            "phase": "5. 풋워크 (Footwork)",
+            "range": "57~70s",
+            "is_action": false,
+            "detected": 35,
+            "fp": 35,
+            "punches": [
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB"
+            ]
+          },
+          {
+            "phase": "⏸ 숨고르기 (Rest 4)",
+            "range": "70~75s",
+            "is_action": false,
+            "detected": 14,
+            "fp": 14,
+            "punches": [
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "RIGHT_CROSS",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK"
+            ]
+          },
+          {
+            "phase": "6. 실전 콤보 (Combos)",
+            "range": "75~85s",
+            "is_action": true,
+            "detected": 27,
+            "fp": 0,
+            "punches": [
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_HOOK",
+              "LEFT_HOOK",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB"
+            ]
+          },
+          {
+            "phase": "7. 마무리 (Cooldown)",
+            "range": "85~90s",
+            "is_action": false,
+            "detected": 10,
+            "fp": 10,
+            "punches": [
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_HOOK",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_JAB",
+              "LEFT_HOOK",
+              "LEFT_HOOK",
+              "LEFT_HOOK"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "punches": [
+    {
+      "t_ms": 33,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 86.97,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 400,
+      "side": "R",
+      "action": "RIGHT_UPPERCUT",
+      "kind": "UPPERCUT",
+      "speed_kmh": 42.49,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 766,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 22.34,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 1133,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 184.09,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 1500,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 138.74,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 1866,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 593.59,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 2233,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 186.55,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 2600,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 205.04,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 2966,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 55.23,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 3333,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 899.02,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 3699,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 734.65,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 4066,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 158.32,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 4433,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 668.78,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 4800,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 649.51,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 5166,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 180.82,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 5533,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 91.88,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 5900,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 321.38,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 6266,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 486.49,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 6633,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 285.55,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 7000,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 356.64,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 7366,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 212.07,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 7733,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 124.29,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 8100,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 340.99,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 8466,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 427.17,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 8833,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 677.21,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 9200,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 102.3,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 9566,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 423.08,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 9933,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 204.14,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 10300,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 1318.55,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 10666,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 359.43,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 11033,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 125.67,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 11400,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 1408.93,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 11766,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 674.84,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 12133,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 125.17,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 12500,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 90.07,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 12866,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 1224.16,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 13233,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 660.1,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 13600,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 569.15,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 13966,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 188.94,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 14333,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 127.14,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 14733,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 46.97,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 15100,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 210.36,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 15466,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 426.35,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 15833,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 684.53,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 16200,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 1516.69,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 16566,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 719.67,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 16933,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 907.36,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 17300,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 528.17,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 17666,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 706.34,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 18033,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 143.43,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 18400,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 275.4,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 18766,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 396.49,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 19133,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 304.53,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 19500,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 718.91,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 19866,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 103.42,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 20233,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 887.73,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 20600,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 123.09,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 20966,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 1098.65,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 21333,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 47.87,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 21700,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 698.43,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 22066,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 74.79,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 22433,
+      "side": "R",
+      "action": "RIGHT_CROSS",
+      "kind": "STRAIGHT",
+      "speed_kmh": 76.58,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 22800,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 102.52,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 23166,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 431.02,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 23533,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 48.52,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 23900,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 239.11,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 24266,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 1058.66,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 24633,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 433.56,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 25000,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 423.5,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 25366,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 105.31,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 25733,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 647.18,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 26099,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 756.9,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 26466,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 78.63,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 26833,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 626.28,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 27200,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 2150.32,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 27566,
+      "side": "R",
+      "action": "RIGHT_CROSS",
+      "kind": "STRAIGHT",
+      "speed_kmh": 123.59,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 27933,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 1198.74,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 28300,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 117.09,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 28666,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 69.72,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 29033,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 18.74,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 29400,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 857.36,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 29766,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 1005.63,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 30133,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 792.45,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 30500,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 182.25,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 30866,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 190.23,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 31233,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 497.54,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 31599,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 142.53,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 31966,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 207.9,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 32333,
+      "side": "R",
+      "action": "RIGHT_CROSS",
+      "kind": "STRAIGHT",
+      "speed_kmh": 34.07,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 32700,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 564.38,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 33066,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 193.09,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 33433,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 372.52,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 33800,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 258.17,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 34166,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 982.96,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 34533,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 761.56,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 34900,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 963.42,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 35266,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 85.01,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 35633,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 21.68,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 36000,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 355.53,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 36366,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 355.42,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 36733,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 314.67,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 37100,
+      "side": "R",
+      "action": "RIGHT_CROSS",
+      "kind": "STRAIGHT",
+      "speed_kmh": 402.14,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 37466,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 54.17,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 37833,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 1569.03,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 38200,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 586.61,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 38566,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 847.15,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 38933,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 85.09,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 39300,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 562.24,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 39666,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 593.43,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 40033,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 282.76,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 40400,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 80.6,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 40766,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 219.28,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 41133,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 477.82,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 41500,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 542.86,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 41866,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 759.11,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 42233,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 337.66,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 42600,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 43.92,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 42966,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 1291.75,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 43333,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 1182.19,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 43700,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 91.01,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 44066,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 779.2,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 44433,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 1555.62,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 44800,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 1731.42,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 45166,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 38.32,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 45533,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 1429.33,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 45900,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 651.1,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 46266,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 1474.02,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 46633,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 9741.73,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 47000,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 31.39,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 47366,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 801.49,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 47733,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 132.46,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 48100,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 86.4,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 48466,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 2357.35,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 48833,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 61.06,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 49200,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 273.81,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 49566,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 1074.85,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 49933,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 1450.88,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 50300,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 1043.15,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 50666,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 963.74,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 51033,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 981.74,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 51400,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 34.39,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 51766,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 699.71,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 52133,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 625.42,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 52500,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 1047.44,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 52866,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 150.63,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 53233,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 399.44,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 53600,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 138.02,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 53966,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 451.64,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 54333,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 439.77,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 54699,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 107.59,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 55066,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 373.01,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 55433,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 961.53,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 55800,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 246.42,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 56166,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 52.53,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 56533,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 549.25,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 56900,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 937.69,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 57266,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 755.27,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 57633,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 1234.31,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 58000,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 337.51,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 58366,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 4352.81,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 58733,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 1254.15,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 59100,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 1535.75,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 59466,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 2453.32,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 59833,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 1822.83,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 60199,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 276.64,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 60566,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 717.14,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 60933,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 741.19,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 61300,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 318.2,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 61666,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 527.73,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 62033,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 41.07,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 62400,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 417.86,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 62766,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 1171.23,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 63133,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 195.3,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 63500,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 281.36,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 63866,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 518.97,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 64233,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 54.25,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 64599,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 256.42,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 64966,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 347.41,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 65333,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 91.18,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 65700,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 318.04,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 66066,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 101.02,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 66433,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 722.21,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 66800,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 89.38,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 67166,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 161.62,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 67533,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 29.54,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 67900,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 47.32,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 68266,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 431.6,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 68633,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 75.9,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 69000,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 2534.96,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 69366,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 164.47,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 69733,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 776.95,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 70100,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 1422.98,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 70466,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 28.91,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 70833,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 27.31,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 71200,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 501.26,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 71566,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 1369.31,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 71933,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 242.59,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 72300,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 64.57,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 72666,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 973.39,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 73033,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 52.61,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 73400,
+      "side": "R",
+      "action": "RIGHT_CROSS",
+      "kind": "STRAIGHT",
+      "speed_kmh": 135.4,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 73766,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 549.82,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 74133,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 335.05,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 74500,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 19.93,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 74866,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 161.18,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 75233,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 159.95,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 75600,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 515.14,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 75966,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 95.97,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 76333,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 453.28,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 76700,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 425.09,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 77066,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 514.48,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 77433,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 479.79,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 77800,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 226.64,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 78166,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 1208.46,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 78533,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 30.07,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 78900,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 233.34,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 79266,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 384.45,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 79633,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 25.76,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 80000,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 702.4,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 80366,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 4052.58,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 80733,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 42.22,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 81100,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 284.87,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 81466,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 309.52,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 81833,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 3182.81,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 82200,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 5339.22,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 82566,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 1654.86,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 82933,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 452.14,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 83300,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 135.4,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 83666,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 400.01,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 84033,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 459.66,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 84400,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 19.78,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 84766,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 521.67,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 85133,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 1181.29,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 85500,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 53.29,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 85866,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 222.63,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 86233,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 283.26,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 86600,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 20.02,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 86966,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 342.25,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 87333,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_kmh": 122.07,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 87700,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 285.72,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 88066,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 193.5,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    },
+    {
+      "t_ms": 88433,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_kmh": 183.19,
+      "elbow_deg": 0.0,
+      "conf_margin": 0.0
+    }
+  ]
+}

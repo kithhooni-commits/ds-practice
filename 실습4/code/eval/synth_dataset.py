@@ -9,8 +9,8 @@ via the law of cosines - exactly what the runtime kinematics measure.
 Labels come from the program itself, so auto-grading needs no manual work.
 
 Usage:
-  python iter3/eval/synth_dataset.py                 # generate all cases
-  python iter3/eval/synth_dataset.py --cases clean_hook_L,too_slow
+  python iter4/eval/synth_dataset.py                 # generate all cases
+  python iter4/eval/synth_dataset.py --cases clean_hook_L,too_slow
 """
 import argparse
 import json

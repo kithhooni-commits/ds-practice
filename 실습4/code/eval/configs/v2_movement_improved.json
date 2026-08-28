@@ -1,0 +1,10 @@
+{
+  "version": "v2_movement_improved",
+  "description": "Movement/rotation tuning targeted at benchmark_movement_fixed.mp4 failure modes, with PUNCH_LOCK/PUNCH_LOCK_MAX left untouched by design. Three changes, each aimed at one confirmed root cause from the confusion-matrix diagnosis: (1) ROT_ROLL_FLAT relaxed 8->20 deg — the two-fist sweep gesture naturally carries ~13 deg of incidental shoulder tilt, which was breaking the 'shoulders level' precondition for rotation and reclassifying it as a LEFT/RIGHT step instead (observed: shift=-0.70, already well past SHIFT_ON=0.40, but roll=13.3 blocked it). (2) GUARD_WFACE lowered 0.70->0.50 — the guard-active face-weight boost was amplifying small idle chin dips into false FORWARD triggers (observed FP rate 72.5% during the dual-guard negative window). (3) AMBIG_PITCH_OVERRIDE_RATIO 999->2.5 — lets an overwhelming pitch signal (>=2.5x PITCH_ON/PITCH_BACK_ON) override the roll-ambiguous-zone hold, so a punch's incidental ~11 deg torso twist no longer suppresses an otherwise-obvious FORWARD/BACK confirmation (observed: pitch=+0.36, over 3x threshold, still read as NONE).",
+  "tune": {
+    "ROT_ROLL_FLAT": 20.0,
+    "GUARD_WFACE": 0.50,
+    "GUARD_WFIST": 0.00,
+    "AMBIG_PITCH_OVERRIDE_RATIO": 2.5
+  }
+}

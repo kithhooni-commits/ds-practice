@@ -482,7 +482,7 @@ iter2/
 
 ```
 # 저장소 루트에서 (--video/--labels 기본값이 이미 벤치마크 파일을 가리킨다)
-python iter3/eval/run_pipeline.py --version <태그이름>
+python iter4/eval/run_pipeline.py --version <태그이름>
 ```
 
 `--version` 을 생략하면 `v1_baseline` 을 **덮어씁니다.** 새 실험은 반드시 태그를 주세요.
@@ -504,28 +504,6 @@ python iter3/eval/run_pipeline.py --version <태그이름>
 | 기술 종류 정확도 | 0.235 |
 | 좌우 정확도 | 0.471 |
 | 타이밍 오차(평균) | 111.9 ms |
-
-### 합성 데이터는 만점이 나옵니다
-
-같은 판정기를 합성 궤적 11케이스(`eval/datasets/`)에 돌리면 이렇습니다.
-
-```
-python iter3/eval/run_suite.py
-```
-
-| | 합성 11케이스 | 실영상 90초 |
-| :--- | ---: | ---: |
-| 정답 / 검출 | 68 / **68** | 29 / **59** |
-| 정밀도 | **1.000** | 0.288 |
-| 재현율 | **1.000** | 0.586 |
-| F1 | **1.000** | 0.386 |
-| 기술 종류 정확도 | **1.000** | 0.235 |
-
-**합성 궤적을 넣으면 그 궤적에 맞춰 만든 임계값이 당연히 맞습니다.** 회귀 검사로는 쓸모가
-있지만(튜닝을 바꿔 뭔가 깨지면 여기서 먼저 걸립니다) 정확도의 근거로는 쓸 수 없습니다.
-실제 사람의 영상이 필요했던 이유입니다.
-
-### 실영상에서 무엇이 문제인가
 
 **정밀도가 문제입니다** — 29개를 맞히려고 59개를 쏘고 있습니다. 구간별로 보면 원인이 뚜렷합니다.
 
@@ -552,73 +530,3 @@ python iter3/eval/run_suite.py
 근본 해법은 평가기가 Node 로 `punch_core.js` 를 직접 실행하는 것입니다. 그러면 런타임 튜닝을
 고치는 순간 점수가 따라 움직입니다. `punch_core.js` 를 브라우저·Node 공용으로 만들어 둔 이유가
 이것입니다.
-
----
-
-## 🌐 9. 웹에서 이어서 작업할 때
-
-클라우드 샌드박스(웹 Claude Code)에는 **웹캠도, GPU도, 디스플레이도, 같은 네트워크의 다른
-랩탑도 없습니다.** 그런데 이 프로젝트는 그 넷을 다 쓰는 게임입니다. 그래서 되는 것과 안 되는
-것이 갈립니다 — **분석·판정·검증은 되고, 실제 플레이와 재학습은 안 됩니다.**
-
-다행히 **판정·채점 경로는 저장소만으로 전부 돌아갑니다.** 벤치마크 영상·정답 라벨·랜드마크
-캐시·포즈 모델이 모두 저장소에 들어 있고(`eval/video/`, `eval/models/`, `eval/datasets/`),
-채점 코드는 **Python 표준 라이브러리만** 씁니다. `pip install` 이 필요 없습니다.
-
-| 대상 | 저장소만으로 | 필요한 것 |
-| :--- | :---: | :--- |
-| 로직 하니스 7종 197개 | ✅ | Node 22 (THREE 스텁 내장, npm 설치 없음) |
-| `doc_harness.js` — README ↔ 코드 대조 | ✅ | 위와 동일 |
-| `eval/run_suite.py` — 합성 11케이스 | ✅ | **표준 라이브러리만** |
-| `eval/run_pipeline.py` — 실영상 채점 | ✅ | 랜드마크 캐시가 저장소에 있음 |
-| `eval/compare_versions.py` — 버전 비교 | ✅ | `eval/runs/` 아카이브 |
-| 브라우저 하니스 4종 | ⚠️ | Chrome/Chromium. 없으면 `CHROME_PATH` 로 지정 |
-| 서버 실행 (`run_arena_server.py`) | ⚠️ | `fastapi uvicorn jinja2 cryptography`. 뜨긴 뜨지만 붙을 웹캠이 없음 |
-| 랜드마크 **재추출** (`--force-extract`) | ❌ | `opencv-python` + `mediapipe` (3.13 휠 없음 → 3.11 필요) |
-| 실제 플레이 · 얼굴 촬영 | ❌ | 웹캠 + HTTPS + 같은 네트워크의 브라우저 |
-| `motion_learning/` 재학습 | ❌ | torch + GPU |
-
-### 바로 돌려볼 것
-
-```bash
-# 1) 로직 하니스 — 서버도 브라우저도 필요 없다 (약 3초)
-cd iter3/tests
-node pose_harness.js && node effects_harness.js && node aim_harness.js
-node move_harness.js && node face_harness.js && node punch_harness.js && node doc_harness.js
-cd ../..
-
-# 2) 합성 케이스 채점 — pip install 없이 돈다 (저장소 루트에서)
-python iter3/eval/run_suite.py
-
-# 3) 실영상 채점 — 랜드마크 캐시를 쓰므로 opencv/mediapipe 불필요
-python iter3/eval/run_pipeline.py --version <태그이름>
-```
-
-### 웹에서 하기 좋은 일
-
-- **판정 튜닝과 채점** — 상수를 바꾸고 `run_suite.py` / `run_pipeline.py` 로 점수를 재는
-  루프가 전부 로컬 파일만으로 돌아갑니다. 지금 가장 시급한 과제(정밀도 0.288, 풋워크 오검출
-  9건)가 정확히 이 루프 안에 있습니다.
-- **평가기를 `punch_core.js` 실행으로 바꾸기** — 8장에서 적은 이중 유지보수 제거.
-  Node 와 Python 만 있으면 되고 웹캠이 필요 없습니다.
-- **문서** — `doc_harness.js` 가 README 수치와 코드를 대조하므로 문서 작업도 검증됩니다.
-
-### 브라우저 하니스가 안 돌 때
-
-`tests/_cdp.js` 는 **환경변수 → 플랫폼별 표준 경로 → `PATH` 탐색** 순으로 브라우저를 찾습니다.
-Windows·macOS·Linux 경로가 모두 들어 있지만, 컨테이너는 설치 위치가 제각각입니다.
-
-```bash
-CHROME_PATH=/usr/bin/chromium node page_harness.js
-```
-
-브라우저가 아예 없으면 **로직 하니스 7종만 돌리면 됩니다.** 다만 그 7종이 전부 통과해도
-페이지가 검은 화면일 수 있다는 점은 기억해야 합니다 — 실제로 `fx` 이름 충돌이 그랬습니다.
-브라우저를 못 쓰는 환경에서 렌더 경로를 건드렸다면, **머지 전에 로컬에서 4종을 한 번 돌리세요.**
-
-### 서버는 뜨지만 플레이는 안 됩니다
-
-`getUserMedia` 는 웹캠을 요구하고, 브라우저가 카메라를 열지 못하면 파이터 화면은 보정
-마법사에서 멈춥니다. 웹에서 렌더 쪽을 확인하고 싶다면 브라우저 하니스가 쓰는 방식을 그대로
-쓰면 됩니다 — Chrome 의 `--use-fake-device-for-media-stream` 으로 가짜 카메라를 물립니다
-(`tests/_cdp.js` 의 `fakeMedia` 옵션).

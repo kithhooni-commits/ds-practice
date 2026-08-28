@@ -3,92 +3,153 @@
     "video_duration_s": 88.43,
     "pose_coverage_pct": 100.0,
     "pose_fps_mean": 30.0,
-    "total_punches": 59,
-    "windows_opened": 201,
-    "windows_expired_without_fire": 52,
+    "total_punches": 31,
+    "windows_opened": 72,
+    "windows_expired_without_fire": 28,
     "by_action": {
       "RIGHT_CROSS": {
-        "count": 17,
-        "speed_kmh_mean": 10.3,
-        "reach_n_mean": 1.147,
-        "elbow_deg_mean": 105.5
+        "count": 9,
+        "speed_kmh_mean": 11.59,
+        "reach_n_mean": 1.104,
+        "elbow_deg_mean": 104.9
       },
       "LEFT_JAB": {
-        "count": 25,
-        "speed_kmh_mean": 8.76,
-        "reach_n_mean": 1.129,
-        "elbow_deg_mean": 98.7
+        "count": 15,
+        "speed_kmh_mean": 9.31,
+        "reach_n_mean": 1.109,
+        "elbow_deg_mean": 94.6
       },
       "RIGHT_HOOK": {
-        "count": 7,
-        "speed_kmh_mean": 8.68,
-        "reach_n_mean": 1.103,
-        "elbow_deg_mean": 102.0
+        "count": 4,
+        "speed_kmh_mean": 9.53,
+        "reach_n_mean": 1.077,
+        "elbow_deg_mean": 107.5
       },
       "LEFT_HOOK": {
-        "count": 7,
-        "speed_kmh_mean": 7.7,
-        "reach_n_mean": 0.999,
-        "elbow_deg_mean": 84.3
+        "count": 2,
+        "speed_kmh_mean": 6.67,
+        "reach_n_mean": 0.915,
+        "elbow_deg_mean": 70.4
       },
       "RIGHT_UPPERCUT": {
-        "count": 2,
-        "speed_kmh_mean": 8.82,
-        "reach_n_mean": 0.969,
-        "elbow_deg_mean": 82.3
-      },
-      "LEFT_UPPERCUT": {
         "count": 1,
-        "speed_kmh_mean": 6.29,
-        "reach_n_mean": 1.122,
-        "elbow_deg_mean": 97.2
+        "speed_kmh_mean": 8.27,
+        "reach_n_mean": 0.941,
+        "elbow_deg_mean": 87.9
       }
     },
     "by_side": {
-      "L": 33,
-      "R": 26
+      "L": 17,
+      "R": 14
     },
     "speed_kmh": {
-      "mean": 9.03,
-      "median": 7.69,
+      "mean": 9.79,
+      "median": 6.97,
       "max": 41.48,
       "min": 5.77
     },
     "cadence_ms": {
-      "mean": 1283.3,
-      "median": 534.0,
-      "min": 200
+      "mean": 2457.8,
+      "median": 1283.5,
+      "min": 567
     },
-    "ppm": 40.0,
+    "ppm": 21.0,
     "form_checks_pct": {
-      "straight_full_extension(elbow>150)": 11.9,
+      "straight_full_extension(elbow>150)": 4.2,
       "hook_low_elbow(<=165)": 100.0,
       "uppercut_low_elbow(<=155)": 100.0,
-      "fired_at_or_beyond_095_reach": 98.3,
-      "confident_classification(margin>=0.15)": 74.6
+      "fired_at_or_beyond_095_reach": 100.0,
+      "confident_classification(margin>=0.15)": 83.9
     },
     "scoring": {
       "tolerance_ms": 400,
       "ground_truth": 29,
-      "predicted": 59,
-      "tp": 17,
-      "fp": 42,
-      "fn": 12,
-      "precision": 0.2881,
-      "recall": 0.5862,
-      "f1": 0.3863,
-      "kind_accuracy": 0.5294,
-      "side_accuracy": 0.4706,
-      "timing_error_ms_mean": 111.9,
-      "timing_error_ms_max": 300,
+      "predicted": 31,
+      "tp": 11,
+      "fp": 20,
+      "fn": 18,
+      "precision": 0.3548,
+      "recall": 0.3793,
+      "f1": 0.3666,
+      "kind_accuracy": 0.3636,
+      "side_accuracy": 0.3636,
+      "timing_error_ms_mean": 169.7,
+      "timing_error_ms_max": 333,
       "confusion": {
-        "STRAIGHT->STRAIGHT": 5,
-        "HOOK->HOOK": 3,
-        "UPPERCUT->UPPERCUT": 1,
+        "STRAIGHT->STRAIGHT": 4,
+        "STRAIGHT->HOOK": 2,
+        "STRAIGHT->UPPERCUT": 1,
         "UPPERCUT->STRAIGHT": 3,
-        "STRAIGHT->HOOK": 3,
-        "STRAIGHT->UPPERCUT": 2
-      }
+        "HOOK->STRAIGHT": 1
+      },
+      "matches": [
+        {
+          "pred_index": 2,
+          "pred_t_ms": 13133,
+          "label_t_ms": 13133,
+          "dt_ms": 0
+        },
+        {
+          "pred_index": 1,
+          "pred_t_ms": 11166,
+          "label_t_ms": 11133,
+          "dt_ms": 33
+        },
+        {
+          "pred_index": 29,
+          "pred_t_ms": 79966,
+          "label_t_ms": 80000,
+          "dt_ms": 34
+        },
+        {
+          "pred_index": 26,
+          "pred_t_ms": 76433,
+          "label_t_ms": 76500,
+          "dt_ms": 67
+        },
+        {
+          "pred_index": 28,
+          "pred_t_ms": 78800,
+          "label_t_ms": 78900,
+          "dt_ms": 100
+        },
+        {
+          "pred_index": 30,
+          "pred_t_ms": 81666,
+          "label_t_ms": 81800,
+          "dt_ms": 134
+        },
+        {
+          "pred_index": 17,
+          "pred_t_ms": 47766,
+          "label_t_ms": 47500,
+          "dt_ms": 266
+        },
+        {
+          "pred_index": 4,
+          "pred_t_ms": 16900,
+          "label_t_ms": 17200,
+          "dt_ms": 300
+        },
+        {
+          "pred_index": 13,
+          "pred_t_ms": 43200,
+          "label_t_ms": 43500,
+          "dt_ms": 300
+        },
+        {
+          "pred_index": 16,
+          "pred_t_ms": 45800,
+          "label_t_ms": 45500,
+          "dt_ms": 300
+        },
+        {
+          "pred_index": 7,
+          "pred_t_ms": 24833,
+          "label_t_ms": 24500,
+          "dt_ms": 333
+        }
+      ]
     }
   },
   "punches": [
@@ -191,34 +252,6 @@
       "conf_margin": 1.499
     },
     {
-      "t_ms": 24033,
-      "frame": 722,
-      "side": "L",
-      "action": "LEFT_JAB",
-      "kind": "STRAIGHT",
-      "speed_ms": 1.639,
-      "speed_kmh": 5.9,
-      "reach_n": 0.936,
-      "elbow_deg": 48.3,
-      "vx": -0.121,
-      "vy": -0.462,
-      "conf_margin": 0.206
-    },
-    {
-      "t_ms": 24433,
-      "frame": 734,
-      "side": "R",
-      "action": "RIGHT_HOOK",
-      "kind": "HOOK",
-      "speed_ms": 2.597,
-      "speed_kmh": 9.35,
-      "reach_n": 1.06,
-      "elbow_deg": 82.6,
-      "vx": -1.464,
-      "vy": 1.374,
-      "conf_margin": 0.57
-    },
-    {
       "t_ms": 24833,
       "frame": 746,
       "side": "R",
@@ -231,62 +264,6 @@
       "vx": 0.036,
       "vy": -1.12,
       "conf_margin": -0.221
-    },
-    {
-      "t_ms": 25200,
-      "frame": 757,
-      "side": "L",
-      "action": "LEFT_JAB",
-      "kind": "STRAIGHT",
-      "speed_ms": 1.997,
-      "speed_kmh": 7.19,
-      "reach_n": 1.077,
-      "elbow_deg": 99.7,
-      "vx": -0.265,
-      "vy": 0.126,
-      "conf_margin": 0.63
-    },
-    {
-      "t_ms": 25466,
-      "frame": 765,
-      "side": "R",
-      "action": "RIGHT_CROSS",
-      "kind": "STRAIGHT",
-      "speed_ms": 2.352,
-      "speed_kmh": 8.47,
-      "reach_n": 1.065,
-      "elbow_deg": 87.2,
-      "vx": -1.125,
-      "vy": 1.128,
-      "conf_margin": -0.332
-    },
-    {
-      "t_ms": 25666,
-      "frame": 771,
-      "side": "L",
-      "action": "LEFT_JAB",
-      "kind": "STRAIGHT",
-      "speed_ms": 1.626,
-      "speed_kmh": 5.86,
-      "reach_n": 1.314,
-      "elbow_deg": 91.6,
-      "vx": -0.403,
-      "vy": 0.012,
-      "conf_margin": 0.31
-    },
-    {
-      "t_ms": 25866,
-      "frame": 777,
-      "side": "R",
-      "action": "RIGHT_CROSS",
-      "kind": "STRAIGHT",
-      "speed_ms": 3.243,
-      "speed_kmh": 11.68,
-      "reach_n": 1.634,
-      "elbow_deg": 151.5,
-      "vx": 0.217,
-      "vy": -1.348,
-      "conf_margin": -0.172
     },
     {
       "t_ms": 26133,
@@ -303,34 +280,6 @@
       "conf_margin": 0.943
     },
     {
-      "t_ms": 26666,
-      "frame": 801,
-      "side": "L",
-      "action": "LEFT_HOOK",
-      "kind": "HOOK",
-      "speed_ms": 1.945,
-      "speed_kmh": 7.0,
-      "reach_n": 1.086,
-      "elbow_deg": 99.2,
-      "vx": 1.106,
-      "vy": 1.6,
-      "conf_margin": 0.584
-    },
-    {
-      "t_ms": 26866,
-      "frame": 807,
-      "side": "R",
-      "action": "RIGHT_CROSS",
-      "kind": "STRAIGHT",
-      "speed_ms": 1.757,
-      "speed_kmh": 6.33,
-      "reach_n": 1.223,
-      "elbow_deg": 97.8,
-      "vx": -0.087,
-      "vy": -0.008,
-      "conf_margin": 0.862
-    },
-    {
       "t_ms": 27466,
       "frame": 825,
       "side": "L",
@@ -343,34 +292,6 @@
       "vx": 1.444,
       "vy": 1.157,
       "conf_margin": 1.173
-    },
-    {
-      "t_ms": 27933,
-      "frame": 839,
-      "side": "L",
-      "action": "LEFT_HOOK",
-      "kind": "HOOK",
-      "speed_ms": 1.622,
-      "speed_kmh": 5.84,
-      "reach_n": 0.991,
-      "elbow_deg": 94.5,
-      "vx": 1.379,
-      "vy": 0.49,
-      "conf_margin": 1.35
-    },
-    {
-      "t_ms": 28500,
-      "frame": 856,
-      "side": "L",
-      "action": "LEFT_HOOK",
-      "kind": "HOOK",
-      "speed_ms": 2.409,
-      "speed_kmh": 8.67,
-      "reach_n": 0.907,
-      "elbow_deg": 56.6,
-      "vx": -2.302,
-      "vy": -0.709,
-      "conf_margin": 0.965
     },
     {
       "t_ms": 29000,
@@ -387,34 +308,6 @@
       "conf_margin": -0.002
     },
     {
-      "t_ms": 29233,
-      "frame": 878,
-      "side": "R",
-      "action": "RIGHT_CROSS",
-      "kind": "STRAIGHT",
-      "speed_ms": 2.39,
-      "speed_kmh": 8.6,
-      "reach_n": 1.038,
-      "elbow_deg": 93.1,
-      "vx": -0.994,
-      "vy": -0.024,
-      "conf_margin": -0.159
-    },
-    {
-      "t_ms": 29433,
-      "frame": 884,
-      "side": "L",
-      "action": "LEFT_HOOK",
-      "kind": "HOOK",
-      "speed_ms": 3.022,
-      "speed_kmh": 10.88,
-      "reach_n": 0.922,
-      "elbow_deg": 64.6,
-      "vx": -2.942,
-      "vy": 0.27,
-      "conf_margin": 1.474
-    },
-    {
       "t_ms": 40833,
       "frame": 1226,
       "side": "R",
@@ -429,74 +322,32 @@
       "conf_margin": 1.138
     },
     {
-      "t_ms": 41266,
-      "frame": 1239,
-      "side": "R",
-      "action": "RIGHT_UPPERCUT",
-      "kind": "UPPERCUT",
-      "speed_ms": 2.606,
-      "speed_kmh": 9.38,
-      "reach_n": 0.997,
-      "elbow_deg": 76.7,
-      "vx": 0.642,
-      "vy": -2.386,
-      "conf_margin": 1.06
-    },
-    {
-      "t_ms": 41800,
-      "frame": 1255,
-      "side": "R",
-      "action": "RIGHT_HOOK",
-      "kind": "HOOK",
-      "speed_ms": 1.799,
-      "speed_kmh": 6.47,
-      "reach_n": 1.074,
-      "elbow_deg": 91.3,
-      "vx": -1.756,
-      "vy": 0.297,
-      "conf_margin": 1.477
-    },
-    {
-      "t_ms": 42233,
-      "frame": 1268,
+      "t_ms": 42000,
+      "frame": 1261,
       "side": "R",
       "action": "RIGHT_CROSS",
       "kind": "STRAIGHT",
-      "speed_ms": 4.446,
-      "speed_kmh": 16.0,
-      "reach_n": 1.442,
-      "elbow_deg": 158.6,
-      "vx": 0.128,
-      "vy": 0.671,
-      "conf_margin": 0.919
+      "speed_ms": 9.994,
+      "speed_kmh": 35.98,
+      "reach_n": 1.065,
+      "elbow_deg": 140.3,
+      "vx": -0.825,
+      "vy": 0.397,
+      "conf_margin": 0.77
     },
     {
-      "t_ms": 42966,
-      "frame": 1290,
-      "side": "R",
-      "action": "RIGHT_HOOK",
-      "kind": "HOOK",
-      "speed_ms": 1.894,
-      "speed_kmh": 6.82,
-      "reach_n": 1.281,
-      "elbow_deg": 109.7,
-      "vx": -1.233,
-      "vy": 0.861,
-      "conf_margin": 0.813
-    },
-    {
-      "t_ms": 43366,
-      "frame": 1302,
+      "t_ms": 43200,
+      "frame": 1297,
       "side": "R",
       "action": "RIGHT_CROSS",
       "kind": "STRAIGHT",
-      "speed_ms": 2.91,
-      "speed_kmh": 10.48,
-      "reach_n": 1.37,
-      "elbow_deg": 160.7,
-      "vx": 0.196,
-      "vy": 0.821,
-      "conf_margin": 0.812
+      "speed_ms": 2.373,
+      "speed_kmh": 8.54,
+      "reach_n": 1.287,
+      "elbow_deg": 147.7,
+      "vx": 0.547,
+      "vy": 1.015,
+      "conf_margin": 0.358
     },
     {
       "t_ms": 43966,
@@ -518,55 +369,13 @@
       "side": "R",
       "action": "RIGHT_CROSS",
       "kind": "STRAIGHT",
-      "speed_ms": 5.378,
-      "speed_kmh": 19.36,
+      "speed_ms": 1.661,
+      "speed_kmh": 5.98,
       "reach_n": 0.885,
-      "elbow_deg": 49.9,
-      "vx": 0.198,
-      "vy": -0.349,
-      "conf_margin": 0.817
-    },
-    {
-      "t_ms": 44766,
-      "frame": 1344,
-      "side": "L",
-      "action": "LEFT_JAB",
-      "kind": "STRAIGHT",
-      "speed_ms": 2.194,
-      "speed_kmh": 7.9,
-      "reach_n": 1.251,
-      "elbow_deg": 91.2,
-      "vx": 0.062,
-      "vy": 0.032,
-      "conf_margin": 0.921
-    },
-    {
-      "t_ms": 45033,
-      "frame": 1352,
-      "side": "R",
-      "action": "RIGHT_CROSS",
-      "kind": "STRAIGHT",
-      "speed_ms": 1.619,
-      "speed_kmh": 5.83,
-      "reach_n": 1.047,
-      "elbow_deg": 87.4,
-      "vx": 0.534,
-      "vy": -0.081,
-      "conf_margin": 0.081
-    },
-    {
-      "t_ms": 45266,
-      "frame": 1359,
-      "side": "L",
-      "action": "LEFT_JAB",
-      "kind": "STRAIGHT",
-      "speed_ms": 1.897,
-      "speed_kmh": 6.83,
-      "reach_n": 1.376,
-      "elbow_deg": 149.9,
-      "vx": 0.113,
-      "vy": 1.809,
-      "conf_margin": 0.834
+      "elbow_deg": 84.1,
+      "vx": -0.174,
+      "vy": 0.795,
+      "conf_margin": 0.709
     },
     {
       "t_ms": 45800,
@@ -581,34 +390,6 @@
       "vx": 0.061,
       "vy": 1.849,
       "conf_margin": 0.921
-    },
-    {
-      "t_ms": 46000,
-      "frame": 1381,
-      "side": "L",
-      "action": "LEFT_JAB",
-      "kind": "STRAIGHT",
-      "speed_ms": 2.735,
-      "speed_kmh": 9.84,
-      "reach_n": 1.077,
-      "elbow_deg": 139.7,
-      "vx": -0.999,
-      "vy": -0.25,
-      "conf_margin": -0.018
-    },
-    {
-      "t_ms": 46566,
-      "frame": 1398,
-      "side": "L",
-      "action": "LEFT_JAB",
-      "kind": "STRAIGHT",
-      "speed_ms": 3.196,
-      "speed_kmh": 11.51,
-      "reach_n": 1.252,
-      "elbow_deg": 160.2,
-      "vx": -0.81,
-      "vy": 0.737,
-      "conf_margin": 0.294
     },
     {
       "t_ms": 47766,
@@ -639,32 +420,18 @@
       "conf_margin": 0.759
     },
     {
-      "t_ms": 57699,
-      "frame": 1732,
-      "side": "R",
-      "action": "RIGHT_CROSS",
-      "kind": "STRAIGHT",
-      "speed_ms": 2.08,
-      "speed_kmh": 7.49,
-      "reach_n": 0.919,
-      "elbow_deg": 76.3,
-      "vx": -0.026,
-      "vy": -0.5,
-      "conf_margin": 0.322
-    },
-    {
-      "t_ms": 58233,
-      "frame": 1748,
+      "t_ms": 58566,
+      "frame": 1758,
       "side": "L",
       "action": "LEFT_JAB",
       "kind": "STRAIGHT",
-      "speed_ms": 1.778,
-      "speed_kmh": 6.4,
-      "reach_n": 1.196,
-      "elbow_deg": 91.1,
-      "vx": 0.01,
-      "vy": -0.735,
-      "conf_margin": -0.165
+      "speed_ms": 1.646,
+      "speed_kmh": 5.92,
+      "reach_n": 1.155,
+      "elbow_deg": 88.2,
+      "vx": 0.475,
+      "vy": 0.163,
+      "conf_margin": 0.196
     },
     {
       "t_ms": 59433,
@@ -709,18 +476,18 @@
       "conf_margin": 0.981
     },
     {
-      "t_ms": 67666,
-      "frame": 2031,
+      "t_ms": 67766,
+      "frame": 2034,
       "side": "R",
       "action": "RIGHT_CROSS",
       "kind": "STRAIGHT",
-      "speed_ms": 4.492,
-      "speed_kmh": 16.17,
-      "reach_n": 0.816,
-      "elbow_deg": 37.6,
-      "vx": 0.029,
-      "vy": -0.494,
-      "conf_margin": 0.69
+      "speed_ms": 3.491,
+      "speed_kmh": 12.57,
+      "reach_n": 0.917,
+      "elbow_deg": 57.9,
+      "vx": 1.028,
+      "vy": 0.29,
+      "conf_margin": 0.18
     },
     {
       "t_ms": 69000,
@@ -735,20 +502,6 @@
       "vx": -0.028,
       "vy": 0.166,
       "conf_margin": 0.975
-    },
-    {
-      "t_ms": 69900,
-      "frame": 2098,
-      "side": "L",
-      "action": "LEFT_JAB",
-      "kind": "STRAIGHT",
-      "speed_ms": 1.66,
-      "speed_kmh": 5.98,
-      "reach_n": 1.088,
-      "elbow_deg": 79.8,
-      "vx": 0.225,
-      "vy": 0.148,
-      "conf_margin": 0.623
     },
     {
       "t_ms": 71233,
@@ -779,20 +532,6 @@
       "conf_margin": 0.643
     },
     {
-      "t_ms": 76833,
-      "frame": 2306,
-      "side": "L",
-      "action": "LEFT_UPPERCUT",
-      "kind": "UPPERCUT",
-      "speed_ms": 1.746,
-      "speed_kmh": 6.29,
-      "reach_n": 1.122,
-      "elbow_deg": 97.2,
-      "vx": -1.274,
-      "vy": -1.054,
-      "conf_margin": -0.205
-    },
-    {
       "t_ms": 77666,
       "frame": 2331,
       "side": "R",
@@ -821,20 +560,6 @@
       "conf_margin": -0.359
     },
     {
-      "t_ms": 79000,
-      "frame": 2371,
-      "side": "L",
-      "action": "LEFT_JAB",
-      "kind": "STRAIGHT",
-      "speed_ms": 2.215,
-      "speed_kmh": 7.97,
-      "reach_n": 1.279,
-      "elbow_deg": 99.9,
-      "vx": 0.884,
-      "vy": 0.48,
-      "conf_margin": -0.111
-    },
-    {
       "t_ms": 79966,
       "frame": 2400,
       "side": "R",
@@ -849,34 +574,6 @@
       "conf_margin": 0.693
     },
     {
-      "t_ms": 80266,
-      "frame": 2409,
-      "side": "L",
-      "action": "LEFT_HOOK",
-      "kind": "HOOK",
-      "speed_ms": 2.27,
-      "speed_kmh": 8.17,
-      "reach_n": 1.261,
-      "elbow_deg": 134.2,
-      "vx": 1.972,
-      "vy": -1.092,
-      "conf_margin": 0.626
-    },
-    {
-      "t_ms": 80633,
-      "frame": 2420,
-      "side": "R",
-      "action": "RIGHT_CROSS",
-      "kind": "STRAIGHT",
-      "speed_ms": 2.135,
-      "speed_kmh": 7.69,
-      "reach_n": 1.145,
-      "elbow_deg": 136.9,
-      "vx": 0.044,
-      "vy": -0.296,
-      "conf_margin": 0.609
-    },
-    {
       "t_ms": 81666,
       "frame": 2451,
       "side": "R",
@@ -889,34 +586,6 @@
       "vx": 0.555,
       "vy": -2.23,
       "conf_margin": 1.069
-    },
-    {
-      "t_ms": 81900,
-      "frame": 2458,
-      "side": "L",
-      "action": "LEFT_JAB",
-      "kind": "STRAIGHT",
-      "speed_ms": 2.775,
-      "speed_kmh": 9.99,
-      "reach_n": 0.909,
-      "elbow_deg": 84.6,
-      "vx": 1.433,
-      "vy": 1.196,
-      "conf_margin": -0.439
-    },
-    {
-      "t_ms": 82366,
-      "frame": 2472,
-      "side": "R",
-      "action": "RIGHT_CROSS",
-      "kind": "STRAIGHT",
-      "speed_ms": 4.407,
-      "speed_kmh": 15.86,
-      "reach_n": 1.138,
-      "elbow_deg": 141.7,
-      "vx": -0.681,
-      "vy": -1.348,
-      "conf_margin": 0.138
     }
   ]
 }

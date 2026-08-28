@@ -323,5 +323,90 @@ console.log('--- 직렬화 (네트워크 전송) ---');
   ck('텍스처가 data URL', /^data:image\/jpeg;base64,/.test(blob.tex));
 }
 
+
+console.log('');
+console.log('--- 눈·입 구멍 메우기 ---');
+{
+  /**
+   * 실제 FACEMESH_TESSELATION 은 눈꺼풀·입술 **둘레만** 덮고 안쪽은 비워 둔다.
+   * 그래서 눈 자리에 그릴 면이 없어 머리 안쪽이 들여다보였다 — "눈이 사라진다"의 정체.
+   * (실측: 852 삼각형 중 눈 윤곽 정점만으로 된 삼각형 0개.
+   *  구멍 3개 = 입 20점 · 양눈 16점씩. 메우면 852 → 904)
+   *
+   * 여기서는 구멍이 뚫린 토폴로지를 합성해 face3d 가 그것을 메우는지 본다.
+   * 도넛(annulus)을 만들면 안쪽 경계가 곧 "눈구멍" 역할을 한다.
+   */
+  const RING = 12;
+
+  /** 안쪽 링과 바깥 링을 잇는 띠. 안쪽은 뚫려 있다. */
+  function annulusTessellation(ring) {
+    const E = [];
+    const IN = i => i % ring;
+    const OUT = i => ring + (i % ring);
+    for (let i = 0; i < ring; i++) {
+      E.push([IN(i), OUT(i)], [OUT(i), IN(i + 1)], [IN(i + 1), IN(i)]);
+      E.push([OUT(i), OUT(i + 1)], [OUT(i + 1), IN(i + 1)], [IN(i + 1), OUT(i)]);
+    }
+    return E;
+  }
+
+  /** 지오메트리에서 경계 루프 수를 세되 가장 바깥 테두리 하나는 정상이므로 뺀다 */
+  function countHoles(f) {
+    const idx = f.mesh.geometry.index;
+    const arr = idx && idx.array ? idx.array : idx;
+    if (!arr) return -1;
+    const cnt = new Map();
+    const key = (a, b) => (a < b ? a + '_' + b : b + '_' + a);
+    for (let t = 0; t + 2 < arr.length; t += 3) {
+      const a = arr[t], b = arr[t + 1], c = arr[t + 2];
+      for (const pq of [[a, b], [b, c], [c, a]]) {
+        const k = key(pq[0], pq[1]);
+        cnt.set(k, (cnt.get(k) || 0) + 1);
+      }
+    }
+    const adj = new Map();
+    for (const entry of cnt) {
+      if (entry[1] !== 1) continue;
+      const ab = entry[0].split('_').map(Number);
+      if (!adj.has(ab[0])) adj.set(ab[0], []);
+      if (!adj.has(ab[1])) adj.set(ab[1], []);
+      adj.get(ab[0]).push(ab[1]);
+      adj.get(ab[1]).push(ab[0]);
+    }
+    const seen = new Set();
+    let loops = 0;
+    for (const st of adj.keys()) {
+      if (seen.has(st)) continue;
+      seen.add(st);
+      let cur = st, len = 0;
+      for (;;) {
+        const nx = (adj.get(cur) || []).find(x => !seen.has(x));
+        if (nx === undefined) break;
+        seen.add(nx); cur = nx; len++;
+      }
+      if (len >= 2) loops++;
+    }
+    return Math.max(0, loops - 1);
+  }
+
+  global.FACEMESH_TESSELATION = annulusTessellation(RING);
+  delete require.cache[require.resolve('../server/static/face3d.js')];
+  require('../server/static/face3d.js');
+
+  const lm = [];
+  for (let i = 0; i < 468; i++) {
+    const t = (i % RING) / RING * Math.PI * 2;
+    const r = i < RING ? 0.06 : 0.16;          // 안쪽 링 / 바깥 링
+    lm.push({ x: 0.5 + Math.cos(t) * r, y: 0.5 + Math.sin(t) * r, z: 0 });
+  }
+  const face = window.createFace3D({ landmarks: lm, image: null, width: 2.6, aspect: 1 });
+
+  ck('안쪽 구멍이 부채꼴로 메워진다', face.triangleCount >= 2 * RING + RING,
+     `${face.triangleCount} 삼각형 (띠 ${2 * RING} + 메움 ${RING} 이상)`);
+
+  const left = countHoles(face);
+  ck('메운 뒤 남은 구멍 0개 (바깥 테두리만)', left === 0, `${left}개`);
+}
+
 console.log(fail === 0 ? '\n>>> 전부 통과' : `\n>>> ${fail}개 실패`);
 process.exit(fail ? 1 : 0);

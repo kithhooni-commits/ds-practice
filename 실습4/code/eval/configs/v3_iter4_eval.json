@@ -1,0 +1,21 @@
+{
+  "version": "v3_iter4_eval",
+  "description": "Iter4 Balanced Kinematics Tune with Arena 3D Integration",
+  "tune": {
+    "PUNCH_ARM": 1.05,
+    "PUNCH_EXTEND": 0.42,
+    "PUNCH_SPEED": 1.75,
+    "PUNCH_REACH_N": 0.90,
+    "PUNCH_GROW_N": 0.30,
+    "PUNCH_WINDOW_MS": 360,
+    "PUNCH_CD_MS": 390,
+    "PUNCH_CD_ANY_MS": 190,
+    "UPPERCUT_VY": 0.55,
+    "UPPERCUT_ELBOW": 150,
+    "HOOK_VX": 0.56,
+    "HOOK_ELBOW": 158,
+    "LOCK_MIN_MS": 200,
+    "LOCK_MAX_MS": 1100,
+    "TILT_LOCK_DEG": 18.0
+  }
+}

@@ -134,6 +134,129 @@
   }
 
   /**
+   * 메시의 **구멍**을 찾는다.
+   *
+   * FACEMESH_TESSELATION 은 눈꺼풀·입술의 *둘레*만 덮고 **그 안쪽은 비워 둔다.**
+   * 실측하면 852개 삼각형 중 눈 윤곽 정점만으로 이뤄진 삼각형이 **0개**다.
+   * 그래서 눈·입 자리에는 그릴 면이 아예 없고, 뚫린 구멍으로 머리 안쪽이 들여다보인다.
+   * "눈이 사라진다"의 정체가 이것이다 — 텍스처에 눈이 찍혀 있어도 붙일 면이 없다.
+   *
+   * 경계 간선(삼각형 **하나에만** 속하는 간선)을 이어 붙이면 닫힌 루프가 나온다.
+   * 실측 결과 4개다 — 얼굴 바깥 테두리(36점) · 입(20점) · 양눈(16점씩).
+   * 가장 큰 루프는 얼굴 바깥선이므로 제외하고 나머지를 구멍으로 본다.
+   *
+   * 인덱스를 하드코딩하지 않는다. 토폴로지가 바뀌어도(라이브러리 버전 차이) 따라간다.
+   *
+   * @param {number[]} tris 삼각형 인덱스 배열 (3개씩)
+   * @returns {number[][]} 구멍 루프들 (각각 순서 있는 정점 인덱스)
+   */
+  /**
+   * 3D 얼굴 좌표 -> 어떤 view 의 사진 좌표로 가는 **아핀 투영**을 최소자승으로 구한다.
+   *
+   * Face Mesh 는 어느 각도에서든 같은 468개 정점을 돌려주므로 대응점이 이미 짝지어져 있다.
+   * 그래서 정합(registration) 없이 바로 풀 수 있다 — 같은 번호가 같은 지점이다.
+   *
+   * 구하는 것: u = a0*x + a1*y + a2*z + a3,  v = b0*x + b1*y + b2*z + b3
+   * 미지수 8개에 대응점 468개이므로 과결정이고, 정규방정식 4x4 를 두 번 풀면 된다.
+   *
+   * 이걸 쓰면 두개골 정점(사진에 랜드마크가 없는 자리)도 **옆사진의 어디를 봐야 하는지**
+   * 계산할 수 있다. 관자놀이·귀·귀 뒤 머리카락의 실제 픽셀이 거기 있다.
+   *
+   * @param {Float32Array} pos3  기준 3D 좌표 (x,y,z 반복)
+   * @param {Array} lm2          그 view 의 랜드마크 (정규화 0..1)
+   * @param {number} n           대응점 수
+   * @returns {{a:number[], b:number[]}|null}
+   */
+  function fitProjection(pos3, lm2, n) {
+    if (!lm2 || lm2.length < n) return null;
+    // 정규방정식 M(4x4) * c = r(4)  — u 와 v 가 M 을 공유한다
+    const M = new Float64Array(16);
+    const ru = new Float64Array(4), rv = new Float64Array(4);
+    for (let i = 0; i < n; i++) {
+      const q = [pos3[i * 3], pos3[i * 3 + 1], pos3[i * 3 + 2], 1];
+      const u = lm2[i].x, v = lm2[i].y;
+      for (let a = 0; a < 4; a++) {
+        for (let b = 0; b < 4; b++) M[a * 4 + b] += q[a] * q[b];
+        ru[a] += q[a] * u;
+        rv[a] += q[a] * v;
+      }
+    }
+    // 정규방정식이 거의 특이해질 수 있다(정면 view 는 z 분산이 작다) — 약한 릿지를 넣는다
+    for (let a = 0; a < 4; a++) M[a * 4 + a] += 1e-6 * (M[0] + M[5] + M[10] + M[15]) / 4;
+
+    const solve = (rhs) => {
+      const A = Array.from(M);
+      const x = Array.from(rhs);
+      for (let c = 0; c < 4; c++) {
+        let piv = c;
+        for (let r = c + 1; r < 4; r++) if (Math.abs(A[r * 4 + c]) > Math.abs(A[piv * 4 + c])) piv = r;
+        if (Math.abs(A[piv * 4 + c]) < 1e-12) return null;
+        if (piv !== c) {
+          for (let k = 0; k < 4; k++) { const t = A[c * 4 + k]; A[c * 4 + k] = A[piv * 4 + k]; A[piv * 4 + k] = t; }
+          const t = x[c]; x[c] = x[piv]; x[piv] = t;
+        }
+        for (let r = c + 1; r < 4; r++) {
+          const f = A[r * 4 + c] / A[c * 4 + c];
+          if (!f) continue;
+          for (let k = c; k < 4; k++) A[r * 4 + k] -= f * A[c * 4 + k];
+          x[r] -= f * x[c];
+        }
+      }
+      for (let r = 3; r >= 0; r--) {
+        let sum = x[r];
+        for (let k = r + 1; k < 4; k++) sum -= A[r * 4 + k] * x[k];
+        x[r] = sum / A[r * 4 + r];
+      }
+      return x;
+    };
+
+    const a = solve(ru), b = solve(rv);
+    return (a && b) ? { a, b } : null;
+  }
+
+  function findHoles(tris) {
+    const count = new Map();
+    const key = (a, b) => (a < b ? a + '_' + b : b + '_' + a);
+    for (let t = 0; t < tris.length; t += 3) {
+      const a = tris[t], b = tris[t + 1], c = tris[t + 2];
+      for (const [p, q] of [[a, b], [b, c], [c, a]]) {
+        const k = key(p, q);
+        count.set(k, (count.get(k) || 0) + 1);
+      }
+    }
+    // 경계 간선만 남긴다
+    const adj = new Map();
+    for (const [k, c] of count) {
+      if (c !== 1) continue;
+      const [a, b] = k.split('_').map(Number);
+      if (!adj.has(a)) adj.set(a, []);
+      if (!adj.has(b)) adj.set(b, []);
+      adj.get(a).push(b);
+      adj.get(b).push(a);
+    }
+    // 이어 붙여 루프로
+    const seen = new Set(), loops = [];
+    for (const start of adj.keys()) {
+      if (seen.has(start)) continue;
+      const loop = [start];
+      seen.add(start);
+      let cur = start;
+      for (;;) {
+        const nxt = (adj.get(cur) || []).find(x => !seen.has(x));
+        if (nxt === undefined) break;
+        seen.add(nxt);
+        loop.push(nxt);
+        cur = nxt;
+      }
+      if (loop.length >= 3) loops.push(loop);
+    }
+    if (!loops.length) return [];
+    // 가장 큰 루프 = 얼굴 바깥 테두리. 이건 뒤통수를 붙일 자리이므로 메우면 안 된다.
+    loops.sort((a, b) => b.length - a.length);
+    return loops.slice(1);
+  }
+
+  /**
    * FACEMESH_FACE_OVAL 에서 **순서 있는 테두리 루프**를 뽑는다.
    * 간선 목록은 [a,b] 쌍이고 닫힌 고리를 이룬다(36개). 이어 붙여 정점 순서를 복원한다.
    * 이 고리가 "얼굴이 끝나는 선"이고, 여기서 뒤통수를 만들어 붙인다.
@@ -238,7 +361,89 @@
    * 가운데(볼·코 주변)만 표본으로 쓴다 — 가장자리는 머리카락·배경이 섞여 톤을 흐린다.
    * 너무 어둡거나(그림자) 너무 밝은(하이라이트) 픽셀도 뺀다.
    */
-  function sampleSkinTone(image) {
+  /**
+   * 사진에서 **머리 바깥을 머리카락색으로 덮는다.**
+   *
+   * 두개골 정점은 사진에 랜드마크가 없어 아핀 투영으로 위치를 추정하는데, 얼굴로 맞춘
+   * 투영을 머리 뒤로 외삽하면 얼마든지 멀리 날아간다. 실제로 **천장과 벽이 뒤통수에 발렸다.**
+   *
+   * 투영을 정교하게 만드는 대신 **사진 쪽을 고친다** — 머리 실루엣 밖을 미리 머리카락색으로
+   * 칠해 두면 어디를 찍든 배경이 나올 수 없다. UV 를 보간하다 그 위를 지나가도 마찬가지다.
+   * "없는 데이터를 정확히 찍으려" 하는 대신 "없는 자리는 무난한 색"으로 만드는 쪽이 튼튼하다.
+   *
+   * @param {Image} image     아틀라스(또는 단일 사진)
+   * @param {object} regions  { key: {x,y,w,h} } 정규화된 칸. null 이면 전체를 한 칸으로 본다.
+   * @param {object} lmByKey  칸별 랜드마크 (그 칸에서 머리가 어디인지 재는 데 쓴다)
+   * @returns {{canvas:HTMLCanvasElement, hair:number}|null}
+   */
+  function paintOutsideHead(image, regions, lmByKey, expand) {
+    try {
+      const W = image.naturalWidth || image.width;
+      const H = image.naturalHeight || image.height;
+      if (!W || !H) return null;
+      const c = document.createElement('canvas');
+      c.width = W; c.height = H;
+      const g = c.getContext('2d');
+      g.drawImage(image, 0, 0);
+
+      // 머리카락 색 — 이마 바로 위 띠에서 딴다. 헤어라인 바로 위라 대부분 머리카락이고,
+      // 머리가 없는 사람이면 이마 피부색이 나오는데 그것도 맞는 답이다.
+      const fr = regions.front, flm = lmByKey.front;
+      let hair = 0x3a2a20;
+      if (fr && flm) {
+        let mu = 0, mv = 0, ru = 0, rv = 0;
+        for (let i = 0; i < flm.length; i++) { mu += flm[i].x; mv += flm[i].y; }
+        mu /= flm.length; mv /= flm.length;
+        for (let i = 0; i < flm.length; i++) {
+          ru = Math.max(ru, Math.abs(flm[i].x - mu));
+          rv = Math.max(rv, Math.abs(flm[i].y - mv));
+        }
+        // 이마 위쪽(정규화 v 가 작은 쪽) 띠
+        const sx = (fr.x + (mu - ru * 0.55) * fr.w) * W;
+        const sw = Math.max(2, ru * 1.10 * fr.w * W);
+        // 랜드마크의 맨 위(= 헤어라인 근처)보다 **확실히 위**를 본다.
+        // rv 는 중심에서 가장 먼 랜드마크까지의 거리이므로 mv - rv 가 곧 얼굴 꼭대기다.
+        // 1.10~1.45 배 구간이면 얼굴을 벗어나 머리카락에 놓인다 — 얼굴에 걸치면
+        // 머리카락색으로 피부색을 뽑게 되고, 그러면 뒤통수가 살색이 된다(실제로 그랬다).
+        const sy = (fr.y + Math.max(0, mv - rv * 1.45) * fr.h) * H;
+        const sh = Math.max(2, rv * 0.35 * fr.h * H);
+        const d = g.getImageData(Math.max(0, sx | 0), Math.max(0, sy | 0),
+                                 Math.min(W - (sx | 0), sw | 0), Math.min(H - (sy | 0), sh | 0)).data;
+        let r = 0, gg = 0, b = 0, n = 0;
+        for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; n++; }
+        if (n > 4) hair = ((Math.round(r / n) << 16) | (Math.round(gg / n) << 8) | Math.round(b / n));
+      }
+      const hs = '#' + ('000000' + hair.toString(16)).slice(-6);
+
+      // 칸마다 머리 타원 **밖**을 머리카락색으로 채운다
+      for (const key of Object.keys(regions)) {
+        const R = regions[key], L = lmByKey[key];
+        if (!R || !L) continue;
+        let mu = 0, mv = 0, ru = 0, rv = 0;
+        for (let i = 0; i < L.length; i++) { mu += L[i].x; mv += L[i].y; }
+        mu /= L.length; mv /= L.length;
+        for (let i = 0; i < L.length; i++) {
+          ru = Math.max(ru, Math.abs(L[i].x - mu));
+          rv = Math.max(rv, Math.abs(L[i].y - mv));
+        }
+        const ex = expand || 1.30;
+        g.save();
+        g.beginPath();
+        g.rect(R.x * W, R.y * H, R.w * W, R.h * H);
+        g.ellipse((R.x + mu * R.w) * W, (R.y + mv * R.h) * H,
+                  ru * ex * R.w * W, rv * ex * R.h * H, 0, 0, Math.PI * 2);
+        g.clip('evenodd');
+        g.fillStyle = hs;
+        g.fillRect(R.x * W, R.y * H, R.w * W, R.h * H);
+        g.restore();
+      }
+      return { canvas: c, hair };
+    } catch (e) {
+      return null;      // 다른 출처 이미지 등으로 캔버스가 오염되면 읽을 수 없다
+    }
+  }
+
+  function sampleSkinTone(image, frontRegion) {
     try {
       const W = image.naturalWidth || image.width;
       const H = image.naturalHeight || image.height;
@@ -247,7 +452,14 @@
       const N = 48;                       // 축소해서 읽는다 — 정밀도가 필요 없다
       c.width = N; c.height = N;
       const g = c.getContext('2d');
-      g.drawImage(image, 0, 0, N, N);
+      // 3장 촬영이면 텍스처가 아틀라스다. 가운데를 그냥 읽으면 앞면/옆면 **경계**를
+      // 읽게 되어 피부톤이 엉뚱해진다. 앞면 칸만 잘라서 본다.
+      if (frontRegion) {
+        g.drawImage(image, frontRegion.x * W, frontRegion.y * H,
+                    frontRegion.w * W, frontRegion.h * H, 0, 0, N, N);
+      } else {
+        g.drawImage(image, 0, 0, N, N);
+      }
       const d = g.getImageData(0, 0, N, N).data;
       let r = 0, gg = 0, b = 0, n = 0;
       for (let y = Math.floor(N * 0.30); y < N * 0.72; y++) {
@@ -283,6 +495,9 @@
     const basePos = normalizeLandmarks(lm, width, opts.aspect || 1);
     const index = fixWinding(basePos, tris.slice());
 
+    // 눈·입은 테셀레이션에 **구멍**으로 남아 있다. 여기서 찾아 두고 아래에서 메운다.
+    const holeLoops = findHoles(index);
+
     // UV = 랜드마크의 2D 화면 좌표. 사진과 랜드마크가 **같은 프레임**에서 나왔으므로
     // 이 매핑이 곧 정확한 텍스처 정합이 된다 (얼굴 정렬 과정이 따로 필요 없다).
     //
@@ -303,6 +518,15 @@
       }
       uv[i * 2] = u;
       uv[i * 2 + 1] = 1 - v;
+    }
+    // 3장 촬영이면 텍스처가 아틀라스다 — 앞면 UV 를 front 칸 안으로 접어 넣는다.
+    // (1장 촬영일 때는 atlas 가 없고 텍스처 전체가 앞면이라 그대로 둔다.)
+    if (opts.atlas && opts.atlas.front) {
+      const R = opts.atlas.front;
+      for (let i = 0; i < lm.length; i++) {
+        uv[i * 2] = R.x + uv[i * 2] * R.w;
+        uv[i * 2 + 1] = 1 - (R.y + (1 - uv[i * 2 + 1]) * R.h);
+      }
     }
 
     // 얼굴의 실제 크기·깊이. 머리에 붙일 때 "구 안에 파묻히지 않게" 배치하려면
@@ -327,9 +551,29 @@
     // 그래서 얼굴 테두리(FACE_OVAL 36점)에서 출발해 **뒤로 쓸어 넘겨 두개골을 만든다.**
     // 테두리를 적도로 보고 뒤쪽 극점까지 위도를 나눠 링을 쌓으면 닫힌 반구가 된다.
     // 테두리에서 시작하므로 이음매가 정확히 맞고, 사람마다 다른 얼굴 윤곽을 그대로 따라간다.
-    const oval = getFaceOval();
-    const RINGS = 7;                       // 적도 → 극점 사이 링 개수
-    const BACK_DEPTH = 1.05;               // 뒤통수 깊이 (테두리 반지름 대비)
+    // **뒤통수를 만들지 않는다.**
+    //
+    // 얼굴 테두리(FACE_OVAL)에서 두개골을 쓸어 만들어 봤지만, 실제 얼굴에서는
+    // 뒤로 뾰족한 혹처럼 튀어나왔다. 테두리 모양·깊이가 사람마다 크게 달라
+    // 상수 몇 개로 맞출 수 있는 문제가 아니다. 사진에 없는 것을 지어내는 일이라
+    // 어느 각도에서는 반드시 티가 난다.
+    //
+    // 대신 humanoid 의 **구형 두개골**을 그대로 두고 얼굴만 앞면에 얹는다.
+    // 머리 모양이 평범해서 어색하지 않고, 얼굴은 사진 그대로 나온다.
+    //
+    // 생성 코드는 아래에 그대로 남겨 둔다 — 되살리려면 이 상수만 true 로 바꾸면 된다.
+    const BUILD_CRANIUM = false;
+    const oval = BUILD_CRANIUM ? getFaceOval() : null;
+    const RINGS = 9;                       // 적도 → 극점 사이 링 개수
+    const BACK_DEPTH = 1.76;               // 뒤통수 깊이 (테두리 반지름 대비)
+    // 정수리 높이. FACE_OVAL 의 맨 위는 이마 헤어라인이라 그 위 두개골이 통째로 없다.
+    // 극점을 위로도 보내야 머리가 납작해지지 않는다.
+    const VAULT_UP = 0.92;
+    // 옆사진에서 머리(머리카락 포함)가 얼굴 랜드마크 범위보다 얼마나 더 넓은가
+    const HEAD_EXPAND = 1.30;
+    // 옆사진이 실제로 담고 있는 범위. 이보다 뒤는 어느 사진에도 안 찍혀 있으므로
+    // 투영을 시도하지 않고 머리카락 색으로 채운다.
+    const SIDE_MAX_T = 0.55;
     const craniumPos = [];                 // 추가 정점 (x,y,z ...)
     const craniumUV = [];
     const craniumCol = [];
@@ -344,51 +588,160 @@
       }
       cx /= n; cy /= n; cz /= n;
 
-      // 얼굴 안쪽 평균 UV — 뒤통수 색을 여기로 수렴시킨다 (테두리 줄무늬 방지)
+      // 테두리 평균 반지름 — 두개골 크기의 기준
+      let radMean = 0;
+      for (const idx of oval) {
+        radMean += Math.hypot(basePos[idx * 3] - cx, basePos[idx * 3 + 1] - cy);
+      }
+      radMean /= n;
+
+      // **머리카락 UV.** FACE_OVAL 의 맨 위는 이마 헤어라인이다. 그 위쪽 픽셀이 머리카락이고
+      // 촬영 크롭에 얼굴 높이의 18% 여백이 들어 있으므로 텍스처 안에 실제로 존재한다.
+      // 뒤통수 색을 여기로 수렴시킨다 — 얼굴 안쪽(피부)으로 수렴시키면 뒤통수가
+      // "민머리에 살색"이 되어 사람으로 안 보인다.
+      let topIdx = oval[0], topY = Infinity;
+      for (const idx of oval) {
+        if (basePos[idx * 3 + 1] > topY) continue;      // y 는 위가 +
+        // Three 좌표에서 위쪽 = y 큰 쪽
+      }
+      topY = -Infinity;
+      for (const idx of oval) {
+        if (basePos[idx * 3 + 1] > topY) { topY = basePos[idx * 3 + 1]; topIdx = idx; }
+      }
+      // 텍스처에서 이마 위쪽으로 조금 더 올라간 지점 (uv.y 는 뒤집혀 있어 위가 큰 값)
       let midU = 0, midV = 0;
       for (let i = 0; i < lm.length; i++) { midU += uv[i * 2]; midV += uv[i * 2 + 1]; }
       midU /= lm.length; midV /= lm.length;
+      const hairU = uv[topIdx * 2];
+      const hairV = Math.min(0.99, uv[topIdx * 2 + 1] + (uv[topIdx * 2 + 1] - midV) * 0.55);
 
-      // 링별 정점 생성. t=0 은 테두리(이미 존재), t=1 은 뒤쪽 극점.
+      // ── 옆모습 3장 촬영이 있으면 두개골 UV 를 거기서 가져온다 ──────────
+      //
+      // 정면 1장뿐이면 뒤통수에 붙일 픽셀이 아예 없어 이마 위 머리카락을 늘여 붙이게 되고,
+      // 그래서 모자를 쓴 것처럼 보인다. 옆모습에는 관자놀이·귀·귀 뒤 머리카락이 실제로 찍혀 있다.
+      //
+      // 두개골 정점은 사진에 랜드마크가 없다. 대신 **같은 얼굴의 468개 대응점**으로
+      // 3D -> 옆사진 투영을 역산해 두면, 그 자리의 픽셀을 계산해 찍을 수 있다.
+      const atlas = opts.atlas || null;
+      const sv = opts.sideViews || null;
+      const sideProj = { neg: null, pos: null };
+      if (atlas && sv) {
+        for (const key of ['neg', 'pos']) {
+          const view = sv[key];
+          const reg = atlas[key === 'neg' ? 'sideNeg' : 'sidePos'];
+          if (!view || !view.lm || !reg) continue;
+          const fit = fitProjection(basePos, view.lm, Math.min(lm.length, view.lm.length));
+          if (!fit) continue;
+          const vIW = view.imageW || 1, vIH = view.imageH || 1, vc = view.crop;
+
+          // **그 사진에서 머리가 차지하는 타원**을 재 둔다.
+          //
+          // 아핀 투영은 얼굴 랜드마크로 맞춘 것이라 두개골(랜드마크가 없는 자리)로
+          // 외삽하면 얼마든지 멀리 날아간다. 실제로 천장과 벽이 뒤통수에 발렸다.
+          // 랜드마크 범위를 머리카락만큼 넓힌 타원 밖은 **사진에 머리가 없는 자리**이므로
+          // 쓰지 않는다.
+          let mu = 0, mv = 0;
+          const M = Math.min(lm.length, view.lm.length);
+          for (let i = 0; i < M; i++) { mu += view.lm[i].x; mv += view.lm[i].y; }
+          mu /= M; mv /= M;
+          let ru = 0, rv = 0;
+          for (let i = 0; i < M; i++) {
+            ru = Math.max(ru, Math.abs(view.lm[i].x - mu));
+            rv = Math.max(rv, Math.abs(view.lm[i].y - mv));
+          }
+          sideProj[key] = { fit, reg, vIW, vIH, vc, mu, mv, ru, rv };
+        }
+      }
+
+      /** 3D 점을 옆사진 아틀라스 UV 로. 범위를 벗어나면 null (그 view 로는 안 보이는 자리) */
+      function sideUV(key, x, y, z) {
+        const P = sideProj[key];
+        if (!P) return null;
+        const { a, b } = P.fit;
+        let u = a[0] * x + a[1] * y + a[2] * z + a[3];
+        let v = b[0] * x + b[1] * y + b[2] * z + b[3];
+
+        // **머리 실루엣 안인가.** 밖이면 그 자리에 찍힌 것은 천장·벽이다.
+        // 머리카락이 얼굴 랜드마크보다 바깥으로 나오므로 HEAD_EXPAND 만큼 넓혀 본다.
+        const du = (u - P.mu) / (P.ru * HEAD_EXPAND);
+        const dv = (v - P.mv) / (P.rv * HEAD_EXPAND);
+        if (du * du + dv * dv > 1) return null;
+
+        if (P.vc) {          // 사진 전체 -> 잘라낸 사각형 기준
+          u = (u * P.vIW - P.vc.x0) / P.vc.w;
+          v = (v * P.vIH - P.vc.y0) / P.vc.h;
+        }
+        if (u < 0.02 || u > 0.98 || v < 0.02 || v > 0.98) return null;
+        // 아틀라스 안 그 view 의 칸으로 (uv.y 는 뒤집혀 있다)
+        return [P.reg.x + u * P.reg.w, 1 - (P.reg.y + v * P.reg.h)];
+      }
+
+      // 링별 정점 생성. t=0 은 테두리(이미 존재), t=1 은 극점.
+      //
+      // 극점을 **뒤쪽만이 아니라 위쪽으로도** 보낸다. FACE_OVAL 의 맨 위가 헤어라인이라
+      // 뒤로만 쓸어 넘기면 정수리가 통째로 없는 납작한 머리가 된다(실측 높이/폭 0.97,
+      // 사람은 약 1.25). 극점을 위·뒤로 두면 이마 위로 두개골이 솟는다.
+      // t 가 1 에 닿으면 shrink = cos(pi/2) = 0 이라 링 전체가 극점으로 뭉쳐
+      // 면적 0 인 삼각형이 한 밴드(2 x n) 통째로 생긴다. 극점은 따로 두고
+      // 링은 그 앞까지만 만든다.
       for (let r = 1; r <= RINGS; r++) {
-        const t = r / RINGS;
-        // 위도를 사인으로 나눠 극점 근처가 촘촘해지게 (구처럼 매끄럽다)
+        const t = r / (RINGS + 1);
         const shrink = Math.cos(t * Math.PI / 2);          // 1 → 0
-        const back = Math.sin(t * Math.PI / 2);            // 0 → 1
+        const sweep = Math.sin(t * Math.PI / 2);           // 0 → 1
+        // 링 중심이 위·뒤로 이동한다.
+        //
+        // 뒤로는 단조롭게 가지만 **위로는 중간에서 가장 높고 그 뒤로 살짝 내려온다.**
+        // 단조 상승으로 두면 머리의 최고점이 뒤통수 극점이 되어 뒤로 뾰족한 원뿔이
+        // 된다. 사람은 정수리가 귀 위쯤에서 가장 높고 뒤통수는 그보다 낮다.
+        const ringY = cy + VAULT_UP * radMean * Math.sin(t * Math.PI * 0.80);
+        const ringZ = cz - BACK_DEPTH * radMean * sweep;
         for (let i = 0; i < n; i++) {
           const idx = oval[i];
           const ox = basePos[idx * 3] - cx;
           const oy = basePos[idx * 3 + 1] - cy;
-          const rad = Math.hypot(ox, oy);
-          craniumPos.push(
-            cx + ox * shrink,
-            cy + oy * shrink,
-            cz - back * rad * BACK_DEPTH
-          );
-          // UV: 이음매(t=0)에서는 테두리 픽셀을 그대로 쓰고, 뒤로 갈수록 **얼굴 안쪽 평균 색**
-          // 으로 수렴시킨다. 테두리 UV 를 그대로 늘이면 윤곽선·머리카락 경계가 뒤통수에
-          // 줄무늬로 번진다. 안쪽으로 수렴시키면 균일한 피부색이 된다.
-          const w = Math.pow(t, 0.7);
-          craniumUV.push(uv[idx * 2] * (1 - w) + midU * w,
-                         uv[idx * 2 + 1] * (1 - w) + midV * w);
+          craniumPos.push(cx + ox * shrink, ringY + oy * shrink, ringZ);
+          // UV — 옆모습이 있으면 그쪽 실제 픽셀을 쓰고, 없으면 이마 위 머리카락으로 수렴시킨다.
+          // 좌우는 정점의 x 부호로 가른다 (얼굴 중심 기준).
+          const px = cx + ox * shrink, py = ringY + oy * shrink, pz = ringZ;
+          const key = (px < cx) ? 'neg' : 'pos';
+          // 뒤통수 깊숙한 곳은 어느 사진에도 안 찍혀 있다 — 시도조차 하지 않는다
+          let su = (t <= SIDE_MAX_T) ? sideUV(key, px, py, pz) : null;
+          if (!su && t <= SIDE_MAX_T) su = sideUV(key === 'neg' ? 'pos' : 'neg', px, py, pz);
+          if (su) {
+            // 이음매(t 가 작을 때)에서는 앞면 UV 와 섞어 경계가 튀지 않게 한다
+            const bw = Math.min(1, t * 2.2);
+            craniumUV.push(uv[idx * 2] * (1 - bw) + su[0] * bw,
+                           uv[idx * 2 + 1] * (1 - bw) + su[1] * bw);
+          } else {
+            // 옆사진이 못 미치는 자리 — 머리카락 색으로 수렴시킨다.
+            // 옆사진 범위(SIDE_MAX_T)를 넘어가면 **완전히** 머리카락색으로 간다.
+            // 조금이라도 테두리 UV 가 섞여 있으면 얼굴 가장자리(피부색)가 뒤통수까지
+            // 끌려와 "살색 뒤통수"가 된다.
+            const w = (t > SIDE_MAX_T) ? 1 : Math.min(1, t / SIDE_MAX_T);
+            craniumUV.push(uv[idx * 2] * (1 - w) + hairU * w,
+                           uv[idx * 2 + 1] * (1 - w) + hairV * w);
+          }
           // 뒤로 갈수록 살짝 어둡게 — 빛이 덜 드는 자리라 이게 있어야 구형으로 읽힌다
-          const sh = 1 - t * 0.30;
+          const sh = 1 - t * 0.26;
           craniumCol.push(sh, sh, sh);
         }
       }
-      // 마지막 극점 하나
-      craniumPos.push(cx, cy, cz - BACK_DEPTH * 0.92 *
-        (() => { let m = 0; for (let i = 0; i < n; i++) {
-          const ox = basePos[oval[i] * 3] - cx, oy = basePos[oval[i] * 3 + 1] - cy;
-          m += Math.hypot(ox, oy); } return m / n; })());
-      craniumUV.push(midU, midV);
-      craniumCol.push(0.66, 0.66, 0.66);
+      // 마지막 극점 하나 — 위·뒤로
+      // 극점 — 정수리 곡선의 끝(중간보다 낮다)이자 가장 뒤
+      craniumPos.push(cx,
+                      cy + VAULT_UP * radMean * Math.sin(Math.PI * 0.80),
+                      cz - BACK_DEPTH * radMean);
+      // 극점(뒤통수 한가운데)은 어느 사진에도 안 찍혀 있다 — 머리카락 색으로 채운다
+      craniumUV.push(hairU, hairV);
+      craniumCol.push(0.70, 0.70, 0.70);
     }
 
     const geo = new THREE.BufferGeometry();
     const livePos = new Float32Array(basePos);          // 변형이 적용된 실제 정점
     // 얼굴 + 두개골을 하나의 버퍼로 합친다.
-    const totalV = lm.length + craniumPos.length / 3;
+    // 구멍마다 중심 정점을 하나씩 추가해 부채꼴로 메운다.
+    const holeStart = lm.length + craniumPos.length / 3;
+    const totalV = holeStart + holeLoops.length;
     const allPos = new Float32Array(totalV * 3);
     const allUV = new Float32Array(totalV * 2);
     allPos.set(livePos, 0);
@@ -397,6 +750,7 @@
     for (let i = 0; i < craniumUV.length; i++) allUV[lm.length * 2 + i] = craniumUV[i];
 
     // 두개골 삼각형 — 링과 링 사이를 사각형으로 잇고 둘로 쪼갠다
+    const craniumTriStart = index.length;
     if (oval) {
       const n = oval.length;
       const ringIdx = (r, i) => craniumStart + (r - 1) * n + (i % n);   // r >= 1
@@ -416,6 +770,69 @@
       }
     }
 
+    // ── 눈·입 구멍 메우기 ────────────────────────────────────────────
+    //
+    // 각 루프의 중심에 정점을 하나 놓고 부채꼴로 잇는다. 중심은 **살짝 안쪽**으로
+    // 밀어 넣는다 — 평면으로 메우면 눈이 스티커처럼 붙지만, 안으로 들어가면
+    // 눈두덩 그늘이 생겨 안구가 들어앉은 것처럼 읽힌다. 입도 같은 이유로 오목하게.
+    //
+    // UV 는 루프 UV 의 평균이다. 그 자리가 사진에서 정확히 눈동자·입 안쪽이므로
+    // 텍스처가 그대로 얹힌다. (z 는 카메라 쪽이 +. 안쪽 = 더 작은 z)
+    const HOLE_SINK = 0.30;         // 중심을 얼마나 밀어 넣을지 (구멍 반지름 대비)
+    const holeInfo = [];            // update() 가 변형을 따라가게 하려고 보관
+    holeLoops.forEach((loop, h) => {
+      const vi = holeStart + h;
+      let cx = 0, cy = 0, cz = 0, cu = 0, cv = 0;
+      for (const idx of loop) {
+        cx += allPos[idx * 3]; cy += allPos[idx * 3 + 1]; cz += allPos[idx * 3 + 2];
+        cu += allUV[idx * 2];  cv += allUV[idx * 2 + 1];
+      }
+      const n = loop.length;
+      cx /= n; cy /= n; cz /= n; cu /= n; cv /= n;
+      // 구멍 반지름 = 중심에서 테두리까지 평균 거리
+      let rad = 0;
+      for (const idx of loop) {
+        rad += Math.hypot(allPos[idx * 3] - cx, allPos[idx * 3 + 1] - cy);
+      }
+      rad /= n;
+      const sink = rad * HOLE_SINK;
+      allPos[vi * 3] = cx; allPos[vi * 3 + 1] = cy; allPos[vi * 3 + 2] = cz - sink;
+      allUV[vi * 2] = cu;  allUV[vi * 2 + 1] = cv;
+      holeInfo.push({ loop, sink, vi });
+
+      // 부채꼴. 감기 방향은 얼굴 나머지와 맞춰야 앞면이 뒤집히지 않는다.
+      const fan = [];
+      for (let i = 0; i < n; i++) fan.push(vi, loop[i], loop[(i + 1) % n]);
+      fixWinding(allPos, fan);
+      for (const t of fan) index.push(t);
+    });
+
+    // ── 두개골 감기 방향 ──────────────────────────────────────────────
+    //
+    // fixWinding 은 **법선의 z 성분**으로 판단한다. 얼굴 앞면에는 맞지만 뒤통수는
+    // 법선이 -z 라 그 기준을 그대로 쓰면 통째로 뒤집힌다. 실제로 그랬다 —
+    // 뒤쪽 삼각형 468개 중 450개가 안쪽을 향했고, FrontSide 라 뒤통수가
+    // 아예 안 그려졌다("뒤가 뚫려 보인다"의 정체).
+    //
+    // 닫힌 볼록면이므로 **머리 중심에서 바깥으로** 향하는지로 판단한다.
+    if (oval && craniumTriStart < index.length) {
+      let hx = 0, hy = 0, hz = 0;
+      const nv = holeStart;                       // 얼굴 + 두개골 정점
+      for (let i = 0; i < nv; i++) { hx += allPos[i*3]; hy += allPos[i*3+1]; hz += allPos[i*3+2]; }
+      hx /= nv; hy /= nv; hz /= nv;
+      for (let t = craniumTriStart; t + 2 < index.length; t += 3) {
+        const i = index[t], j = index[t+1], k = index[t+2];
+        const ax = allPos[i*3], ay = allPos[i*3+1], az = allPos[i*3+2];
+        const bx = allPos[j*3], by = allPos[j*3+1], bz = allPos[j*3+2];
+        const kx = allPos[k*3], ky = allPos[k*3+1], kz = allPos[k*3+2];
+        const ux = bx-ax, uy = by-ay, uz = bz-az;
+        const vx = kx-ax, vy = ky-ay, vz = kz-az;
+        const nx = uy*vz - uz*vy, ny = uz*vx - ux*vz, nz = ux*vy - uy*vx;
+        const gx = (ax+bx+kx)/3 - hx, gy = (ay+by+ky)/3 - hy, gz = (az+bz+kz)/3 - hz;
+        if (nx*gx + ny*gy + nz*gz < 0) { index[t+1] = k; index[t+2] = j; }
+      }
+    }
+
     geo.setAttribute('position', new THREE.BufferAttribute(allPos, 3));
     geo.setAttribute('uv', new THREE.BufferAttribute(allUV, 2));
     // 멍/홍조를 정점 색으로 누적한다 — 텍스처를 다시 그리지 않아도 손상이 보인다
@@ -428,10 +845,36 @@
     let tex = null;
     let skinTone = null;
     if (opts.image) {
-      tex = new THREE.CanvasTexture(opts.image);
+      // **머리 바깥을 머리카락색으로 덮은 사본**을 텍스처로 쓴다.
+      // 그러지 않으면 두개골 UV 가 천장·벽을 찍는다(실제로 그랬다).
+      const regions = opts.atlas || { front: { x: 0, y: 0, w: 1, h: 1 } };
+      // **좌표계를 맞춘다.**
+      //
+      // 랜드마크는 카메라 **전체 프레임** 기준 0~1 인데, 텍스처는 얼굴만 잘라낸 사진이다.
+      // 그대로 넘기면 머리 타원이 엉뚱한 자리에 그려져 **얼굴 대부분을 머리카락색으로
+      // 덮어버린다** — 실제로 눈·코만 남고 나머지가 까맣게 나왔다.
+      // UV 를 계산할 때와 똑같이 crop 을 통과시켜 잘라낸 사진 기준으로 바꿔 준다.
+      const toCropSpace = (arr, cp, iw, ih) => {
+        if (!arr) return null;
+        if (!cp) return arr;
+        return arr.map(q => ({
+          x: (q.x * iw - cp.x0) / cp.w,
+          y: (q.y * ih - cp.y0) / cp.h,
+        }));
+      };
+      const sn = opts.sideViews && opts.sideViews.neg;
+      const sp = opts.sideViews && opts.sideViews.pos;
+      const lmByKey = {
+        front: toCropSpace(opts.uvLandmarks || lm, crop, IW, IH),
+        sideNeg: sn ? toCropSpace(sn.lm, sn.crop, sn.imageW || 1, sn.imageH || 1) : null,
+        sidePos: sp ? toCropSpace(sp.lm, sp.crop, sp.imageW || 1, sp.imageH || 1) : null,
+      };
+      const painted = paintOutsideHead(opts.image, regions, lmByKey, HEAD_EXPAND);
+      const src = painted ? painted.canvas : opts.image;
+      tex = new THREE.CanvasTexture(src);
       tex.flipY = true;
       tex.needsUpdate = true;
-      skinTone = sampleSkinTone(opts.image);
+      skinTone = sampleSkinTone(src, opts.atlas && opts.atlas.front);
     }
 
     const mat = new THREE.MeshStandardMaterial({
@@ -615,6 +1058,18 @@
         pos[i3] = x; pos[i3 + 1] = y; pos[i3 + 2] = z;
       }
 
+      // 눈·입 구멍의 중심 정점은 테두리를 따라간다. 고정해 두면 얼굴이 눌릴 때
+      // 눈만 제자리에 남아 구멍 밖으로 삐져나온다.
+      for (const h of holeInfo) {
+        let cx = 0, cy = 0, cz = 0;
+        for (const idx of h.loop) {
+          cx += pos[idx * 3]; cy += pos[idx * 3 + 1]; cz += pos[idx * 3 + 2];
+        }
+        const k = h.loop.length;
+        const v3 = h.vi * 3;
+        pos[v3] = cx / k; pos[v3 + 1] = cy / k; pos[v3 + 2] = cz / k - h.sink;
+      }
+
       geo.attributes.position.needsUpdate = true;
       // 법선은 매 프레임 다시 계산하면 비싸다. 변형이 있을 때만.
       if (S.impacts.length || S.swell > 1e-4 || S.exprNow > 1e-3) geo.computeVertexNormals();
@@ -640,7 +1095,15 @@
       blood.geometry.dispose();
     }
 
-    // 두개골까지 포함한 실제 바운딩 (배치·스케일 계산에 쓴다)
+    // **얼굴만의 바운딩** — 아바타에 붙일 때 이걸 기준으로 정렬한다.
+    // 두개골까지 포함한 바운딩으로 중심을 맞추면, 정수리를 세운 만큼 중심이 위로
+    // 올라가 얼굴이 아래로 처진다(턱이 가슴에 파묻힌다). 보는 사람이 위치를
+    // 판단하는 기준은 **얼굴**이므로 얼굴을 머리 자리에 놓고 두개골은 뒤로 뻗게 둔다.
+    const faceBounds = { xMin: bounds.xMin, xMax: bounds.xMax,
+                         yMin: bounds.yMin, yMax: bounds.yMax,
+                         zMin: bounds.zMin, zMax: bounds.zMax };
+
+    // 두개골까지 포함한 실제 바운딩 (전체 크기 판단용)
     for (let i = 0; i < totalV; i++) {
       const x = allPos[i * 3], y = allPos[i * 3 + 1], z = allPos[i * 3 + 2];
       if (x < bounds.xMin) bounds.xMin = x;
@@ -651,7 +1114,7 @@
       if (z > bounds.zMax) bounds.zMax = z;
     }
 
-    return { mesh, hit, setHp, update, dispose, state: S, bounds, skinTone,
+    return { mesh, hit, setHp, update, dispose, state: S, bounds, faceBounds, skinTone,
              // 뒤통수까지 닫힌 머리인가 — 호출부가 구 머리를 숨길지 판단한다
              isFullHead: !!oval,
              triangleCount: index.length / 3 };
@@ -683,6 +1146,15 @@
       crop: m.crop || null,
       imageW: m.imageW || 1,
       imageH: m.imageH || 1,
+      // 3장 촬영: 텍스처가 아틀라스이고, 옆모습 랜드마크로 두개골 UV 를 계산한다.
+      // 1장 촬영이면 둘 다 없고 기존 경로가 그대로 돈다.
+      atlas: m.atlas || null,
+      sideViews: m.sideViews ? {
+        neg: m.sideViews.neg ? { lm: flatten(m.sideViews.neg.lm), crop: m.sideViews.neg.crop,
+                                 imageW: m.sideViews.neg.imageW, imageH: m.sideViews.neg.imageH } : null,
+        pos: m.sideViews.pos ? { lm: flatten(m.sideViews.pos.lm), crop: m.sideViews.pos.crop,
+                                 imageW: m.sideViews.pos.imageW, imageH: m.sideViews.pos.imageH } : null,
+      } : null,
     };
   };
 
@@ -697,9 +1169,16 @@
       };
       const landmarks = unflatten(blob.lm);
       const uvLandmarks = blob.uvLm ? unflatten(blob.uvLm) : null;
+      const sv = blob.sideViews ? {
+        neg: blob.sideViews.neg ? Object.assign({}, blob.sideViews.neg,
+               { lm: unflatten(blob.sideViews.neg.lm) }) : null,
+        pos: blob.sideViews.pos ? Object.assign({}, blob.sideViews.pos,
+               { lm: unflatten(blob.sideViews.pos.lm) }) : null,
+      } : null;
       const mk = (image) => window.createFace3D({
         landmarks, uvLandmarks, image, color, width,
         aspect: blob.aspect, crop: blob.crop, imageW: blob.imageW, imageH: blob.imageH,
+        atlas: blob.atlas, sideViews: sv,
       });
       const img = new Image();
       img.onload = () => resolve(mk(img));

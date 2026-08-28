@@ -1,0 +1,12 @@
+{
+  "version": "v5c_tcn_hybrid_gate",
+  "engine": "tcn_hybrid",
+  "description": "Hybrid trigger: fires ONLY when TCN confidence (edge+confirm+cooldown, same as v6b tcn_trigger) AND rule-base physics gate (instantaneous wrist speed/reach past PUNCH_ARM/PUNCH_EXTEND) are BOTH true. Uses the leakage-safe model trained in motion_learning/v6b_tcn_trigger (TEST_GT 15 events excluded from training, see eval/runs/v5b_tcn_trigger/EXPERIMENT_REPORT.md).",
+  "tune": {
+    "TCN_TRIGGER_CONFIRM_FRAMES": 3,
+    "TCN_TRIGGER_MIN_CONF": 0.5,
+    "TCN_TRIGGER_COOLDOWN_MS": 600,
+    "TCN_HYBRID_ARM_GATE": 1.0,
+    "TCN_HYBRID_EXTEND_GATE": 0.40
+  }
+}

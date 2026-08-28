@@ -1,79 +1,92 @@
 # 🥊 Iter2 개발/변경 이력 (DEVLOG)
 
 > **프로젝트**: 4인 실시간 AR 섀도우 복싱 & 배틀 아레나
-> **최종 갱신**: 2026-08-27 (목) 21:20
+> **최종 갱신**: 2026-08-27 (목) 18:40
 > **작성 규칙**: 최신 변경이 위. 각 항목은 `날짜 — 변경 내용 / 이유 / 영향 범위` 형식.
 
 ---
 
-## 2026-08-27 (목) — [iter3] 19차: 웹에서 이어서 작업할 수 있게
+## 2026-08-26 (수) — [iter3] 19차: 동작 인식 rule-base → 학습 모델(TCN) 전환, UI에서 엔진 선택
 
-### [21:20] 클라우드 샌드박스에는 웹캠도 GPU도 없다
+### 배경
 
-웹 Claude Code 에서 이 프로젝트를 이어서 작업하려면, **저장소만으로 무엇이 돌아가는지**가
-명확해야 한다. 실습3 때 배운 것과 같다 — 원본 프로젝트 경로를 하드코딩한 스크립트는
-저장소 레이아웃에서 조용히 실패한다.
+`motion_learning/collected_pose`에 4명(cheols·hong·kim·suhwan) × 10라벨 × 5회 = 200개의
+실측 포즈 샘플이 있었지만, 학습 스크립트(`train_gpu_motion.py`)는 실제로는 이 데이터를 쓰지
+않고 synthetic 데이터로만 학습하고 있었다. 게임의 펀치 인식(`punch_core.js`)도 순수
+rule-base(손목 속도벡터 방향 + 팔꿈치 각도 임계값)였다.
 
-먼저 전수 조사했다. **절대경로 하드코딩은 없었다.** 대신 두 가지가 걸렸다.
+### 한 일
 
-### [21:20] `_cdp.js` 가 Windows 경로만 봤다
+1. **outlier 제거** (`outlier_filter.py`) — 라벨과 실제 동작이 어긋난 샘플을 클래스 내부
+   robust z-score(median/MAD)로 탐지, 200개 중 17개 제외 (`outlier_report.json`).
+2. **causal TCN 학습** (`tcn_model.py`, `train_tcn_real.py`) — 참가자 단위 LOSO 교차검증으로
+   rule-base와 정면 비교. 첫 시도(관절 절대좌표 70차원)는 참가자별 카메라 거리가 사람 지문으로
+   학습돼 rule-base보다 낮게 나왔고, 상대값뿐인 `heuristic_7j_v1`(17차원)로 바꿔 해결.
+   **결과: rule-base 33.3% → TCN 49.2% 정확도(LOSO), macro-F1 0.29 → 0.49**
+   (`eval_results_real.json`). 특히 rule-base가 아예 못 잡는 `TWO_HAND_GUARD`(F1 0.48→0.74)에서
+   격차가 크다. (ENERGY_WAVE 비교는 이 LOSO 실험 당시엔 rule-base에 그 개념 자체가 없어 F1이
+   0으로 나왔는데, 이후 별도로 `tryUltimate` 트리거가 rule-base에도 생겨 이 비교는 지금은 낡았다 —
+   아래 "병합" 절 참고.)
+3. **실시간 통합** — `boxing_tcn.onnx` + `boxing_tcn_scaler.json`을 `server/static/models/`에 배치,
+   `motion_features.js`(브라우저에서 heuristic_7j_v1 근사 피처 추출)와 `tcn_engine.js`
+   (onnxruntime-web 추론)를 신설. `fighter_client.html`의 `action-hud`에 **Rule-base / TCN
+   드롭다운**을 추가해 플레이어가 실시간으로 전환 가능(선택은 `localStorage`에 저장).
 
-```js
-const BROWSERS = [
-  'C:/Program Files/Google/Chrome/Application/chrome.exe',
-  ...
-];
-```
+### 설계 결정 — 무엇을 바꾸고 무엇을 안 바꿨나
 
-리눅스 컨테이너에서는 **브라우저 하니스 4종이 통째로 못 돈다.** 그리고 이 4종이야말로
-로직 하니스가 못 잡는 것(1인칭 화면이 검은 화면이던 `fx` 이름 충돌)을 잡는 계층이다.
+- **펀치가 나가는지·언제·어느 팔인지(트리거)와 이동·회전·가드는 모드와 무관하게 항상
+  rule-base(`punchCore.tryPunch` + 자세 로직) 하나만 담당한다.** 두 모드가 갈리는 지점은
+  딱 하나, **"이미 확정된 일반 펀치의 종류를 무엇으로 판단하는가"** 뿐이다. (아래 실측 피드백
+  두 건 모두 이 원칙을 어겼던 것이 원인이었다 — 처음엔 TCN이 트리거까지 가져갔었다.)
+- **라벨 표기 불일치**: 수집 데이터·모델은 오른손 스트레이트를 `RIGHT_JAB`으로 부르지만
+  게임 전역(app.py/humanoid.js/arena.html)은 `RIGHT_CROSS`로 부른다. `tcn_engine.js`가
+  게임에 내보내는 순간에만 변환한다(`ACTION_ALIAS`).
+- 실시간 속도·가속도 피처는 원본 수집 파이프라인(이 저장소엔 소스가 없음)의 정확한 평활 방식을
+  못 찾아 backward-difference로 근사했다 — 각도·거리·비율 9개 채널은 실측 데이터와 소수점까지
+  일치를 확인했지만, 속도 8개 채널은 스케일만 맞춘 근사치다. 실제 웹캠 스모크 테스트로
+  재확인 필요(이 세션엔 브라우저·웹캠이 없어 못 함).
 
-- 환경변수(`CHROME_PATH` / `CHROME_BIN` / `BROWSER_PATH`) → 플랫폼별 표준 경로
-  (win32 / darwin / linux) → `PATH` 탐색 순으로 찾는다.
-- 컨테이너는 배포판마다 설치 위치가 달라 `PATH` 탐색이 실제로 더 잘 걸린다.
-- 못 찾으면 **무엇을 대신 돌리면 되는지** 알려준다 — 로직 하니스 7종.
+### [실측] TCN 모드 오검출 다발 — `tryFire` 레벨 트리거 버그 → 이후 아키텍처 재수정
 
-로컬에서 여전히 같은 Chrome 을 찾고, 브라우저 하니스 4종 전부 통과하는 것을 확인했다.
+실제로 TCN 모드로 플레이해보니 가만히 있어도 원치 않는 펀치가 계속 나갔다. 1차 진단: `tryFire()`가
+발동 시 `confirmSince`만 초기화하고 `confirmLabel`은 그대로 둬서, 모델이 같은 라벨을 계속
+유지 예측하면 쿨다운 주기마다 무한 재발동했다(엣지가 아니라 레벨로 판정한 버그). 디바운스를
+고쳤는데도 여전히 오검출이 잦다는 후속 피드백을 받고 다시 보니, 애초 설계 자체가 틀려 있었다:
+`tcn_engine.js`가 "펀치 종류"뿐 아니라 "펀치가 지금 나가는지(trigger)"까지 자체 디바운스로
+결정하고 있었던 것 — `punchCore.tryPunch`는 실제 속도·뻗음이 물리 임계값을 넘어야만 창이
+열리는데, TCN 자체 트리거는 그냥 "분류기가 그 순간 뭐라고 보는가"였으므로 노이즈에 훨씬 약했다.
 
-### [21:20] `face_page_harness` 만 기본 포트가 8100 이었다
+**최종 수정**: `tcn_engine.js`에서 발동(`tryFire`) 개념을 완전히 제거했다. 이제 어느 모드든
+펀치 트리거는 `punchCore.tryPunch` 하나만 결정하고, TCN은 `guessPunchKind(side)`라는
+1회성 조회 함수만 제공한다 — rule-base가 이미 확정한 펀치에 대해 "그 순간 모델이 충분한
+확신으로 같은 팔의 펀치 라벨을 보고 있는가"만 답하고, 아니면 null을 돌려줘 rule-base의
+`classify()` 결과가 그대로 쓰이게 한다. HUD 표시용 `stableState()`는 200ms 유지돼야 반영되는
+별도 디바운스 값으로 분리해 판정 로직과 완전히 독립시켰다.
 
-4종을 연달아 돌렸더니 이것만 전부 FAIL 이었다. 잠깐 회귀를 의심했는데 원인은 이거였다.
+### [병합] origin/iter3 6개 커밋과 합치며 — 필살기가 이미 rule-base로 해결돼 있었다
 
-| 하니스 | 기본 BASE |
-|---|---|
-| page / match / avatar_page | `https://localhost:8000` |
-| **face_page** | **`https://localhost:8100`** |
+이 파일을 작업하는 동안 원격에 `punch_core.js`(75줄) · `humanoid.js`(514줄) · `app.py`(171줄)를
+건드리는 커밋 6개가 쌓여 있었다. 로컬 미커밋 변경분(순수 TCN 관련, 72줄 추가/2줄 삭제였음을
+`git diff`로 먼저 확인)을 패치로 백업해두고, `fighter_client.html`·`DEVLOG.md`는 원격 버전으로
+되돌린 뒤 fast-forward pull, 그 다음 TCN 훅만 새 코드 위치에 다시 얹었다 — "다른 부분은 기존
+코드"를 지키기 위해 자동 3-way 머지에 맡기지 않고 수동으로 재적용했다.
 
-파일 머리말에는 `python run_arena_server.py`(기본 8000)로 띄우라고 적혀 있다.
-**문서대로 하면 이 하니스만 실패한다.** 페이지가 안 열린 것뿐인데 "얼굴 기능이 깨졌다"로
-읽힌다 — 조용한 실패의 또 다른 형태다. 8000 으로 통일했다.
+가장 중요한 변화: 위에서 "ENERGY_WAVE는 `tryPunch`가 팔 하나짜리 펀치만 감지해서 트리거할 수
+없다"고 적었던 제약이 **원격 쪽에서 독립적으로 해결돼 있었다** (`필살기 동작 교체` 커밋).
+`punchCore`에 `tryUltimate`/`isUltArmed`/`ultCharge`가 새로 생겼고, "양손을 머리 위로 들고
+0.35초 유지"라는 속도-무관 정적 자세로 필살기를 트리거한다. 이 구조에서도 원칙은 그대로 지킨다:
+필살기는 "펀치 종류"가 아니라 별도 제스처이므로 TCN은 여기 전혀 관여하지 않는다 — 트리거·종류
+모두 `punchCore.tryUltimate`가 정하고, TCN의 `guessPunchKind`는 `punch.action !== punchCore.ULTIMATE`일
+때만 호출한다.
 
-### [21:20] 채점 경로는 pip 없이 돈다
+### 영향 범위
 
-`eval/*.py` 의 서드파티 의존은 `cv2` 와 `mediapipe` **둘뿐**이고, 18차에서 지연 로딩으로
-바꿨다. 나머지는 전부 표준 라이브러리(`json` `csv` `math` `statistics` `pathlib`)다.
-벤치마크 영상·정답 라벨·랜드마크 캐시·포즈 모델이 모두 저장소에 들어 있으므로
-**`pip install` 한 번 없이 채점이 돈다.** 웹에서 튜닝 루프를 돌리기에 좋은 조건이다.
-
-### [21:20] 합성 만점 vs 실영상 0.386
-
-`run_suite.py`(합성 11케이스)를 돌려 실영상과 나란히 놓았다.
-
-| | 합성 11케이스 | 실영상 90초 |
-|---|---:|---:|
-| 정답 / 검출 | 68 / **68** | 29 / **59** |
-| 정밀도 | **1.000** | 0.288 |
-| F1 | **1.000** | 0.386 |
-| 기술 종류 정확도 | **1.000** | 0.235 |
-
-**합성 궤적을 넣으면 그 궤적에 맞춰 만든 임계값이 당연히 맞는다.** 회귀 검사로는 쓸모가
-있지만 정확도의 근거로는 쓸 수 없다. 이 대비를 README 8장에 넣었다.
-
-### [21:20] 문서
-
-- README **9장 신설** — 되는 것/안 되는 것 표, 바로 돌려볼 명령 3개, 브라우저 없을 때의
-  대안, "서버는 뜨지만 플레이는 안 된다"의 이유(`getUserMedia`)와 가짜 카메라 우회
-- 8장에 합성 대 실영상 대비 추가
+`server/static/{motion_features,tcn_engine}.js` 신규, `server/static/models/` 신규,
+`fighter_client.html`(엔진 레지스트리·HUD 드롭다운·펀치 판정 종류 재조회, diff 69줄 추가/1줄 삭제
+— 트리거·이동·회전·가드·필살기 로직은 원격 버전 그대로 미변경),
+`motion_learning/{real_data,outlier_filter,rule_baseline,tcn_model,train_tcn_real,make_comparison_videos}.py` 신규.
+`punch_core.js`·이동/회전/가드/필살기 로직·서버 프로토콜은 이 작업으로 변경된 바 없음
+(원격 6개 커밋이 그 파일들을 바꾼 것이지 이 TCN 작업이 바꾼 게 아니다).
 
 ---
 

@@ -5,7 +5,7 @@ on an offline video file and outputs a detailed action timeline and summary metr
 
 Usage:
   conda activate pjt-4
-  python iter3/eval/evaluate_full_actions.py iter3/eval/video/benchmark.mp4
+  python iter4/eval/evaluate_full_actions.py iter4/eval/video/benchmark.mp4
 """
 import argparse
 import json
@@ -14,10 +14,23 @@ import sys
 import time
 from pathlib import Path
 
-import cv2
-import mediapipe as mp
-from mediapipe.tasks.python import BaseOptions
-from mediapipe.tasks.python import vision
+cv2 = None
+mp = None
+BaseOptions = None
+vision = None
+
+def _require_cv():
+    global cv2, mp, BaseOptions, vision
+    if cv2 is not None:
+        return
+    try:
+        import cv2 as _cv2
+        import mediapipe as _mp
+        from mediapipe.tasks.python import BaseOptions as _BaseOptions
+        from mediapipe.tasks.python import vision as _vision
+    except ImportError as exc:
+        raise SystemExit(f"영상 처리에는 opencv-python과 mediapipe가 필요합니다: {exc}") from exc
+    cv2, mp, BaseOptions, vision = _cv2, _mp, _BaseOptions, _vision
 
 # Landmark indices
 NOSE, L_SH, R_SH, L_EL, R_EL, L_WR, R_WR = 0, 11, 12, 13, 14, 15, 16
@@ -383,15 +396,17 @@ class FullActionEvaluator:
 
 def main():
     ap = argparse.ArgumentParser(description="Evaluate complete runtime motion recognition pipeline on video")
-    ap.add_argument("video", default="iter3/eval/video/benchmark.mp4", nargs="?")
-    ap.add_argument("--annotate", default="iter3/eval/output/annotated_full_pipeline.mp4")
-    ap.add_argument("--report", default="iter3/eval/output/full_pipeline_report.json")
+    ap.add_argument("video", default="iter4/eval/video/benchmark.mp4", nargs="?")
+    ap.add_argument("--annotate", default="iter4/eval/output/annotated_full_pipeline.mp4")
+    ap.add_argument("--report", default="iter4/eval/output/full_pipeline_report.json")
     args = ap.parse_args()
 
     video_path = Path(args.video)
     if not video_path.exists():
         print(f"❌ 오류: 비디오 파일을 찾을 수 없습니다: {video_path}")
         sys.exit(1)
+
+    _require_cv()
 
     print("=" * 65)
     print("🥊 클라이언트 런타임 전체 동작 인식 평가기 구동")

@@ -83,7 +83,14 @@
     .log-entry { padding: 3px 0; display: flex; gap: 8px; border-bottom: 1px solid #1a2030; cursor: pointer; }
     .log-entry:hover { background: rgba(0,229,255,0.08); }
     .log-t { color: var(--gold); min-width: 50px; }
-    .log-action { color: var(--pink); font-weight: 700; min-width: 110px; }
+    /* 기술별 색 — host arena 의 궤적 색과 같게 맞춘다.
+       같은 기술이 화면마다 다른 색이면 둘을 나란히 볼 때 계속 헷갈린다. */
+    .log-action { font-weight: 700; min-width: 128px; display: inline-flex; gap: 6px; align-items: baseline; }
+    .k-straight { color: #66ddff; }
+    .k-hook     { color: #ffaa22; }
+    .k-uppercut { color: #ff44aa; }
+    .k-wave     { color: #aa66ff; }
+    .k-side { font-size: .78em; opacity: .62; font-weight: 600; }
     .log-speed { color: var(--green); }
     .log-conf { color: var(--muted); }
     .log-entry.suspect { background: rgba(255,51,102,0.08); }
@@ -132,6 +139,8 @@
       </select>
     </div>
     <div class="hud-item">ACTION: <span id="hud-now" style="color:var(--cyan)">IDLE</span></div>
+    <div class="hud-item">MOVE: <span id="hud-move" style="color:var(--gold)">NONE</span></div>
+    <div class="hud-item">GUARD: <span id="hud-guard" style="color:var(--muted)">OFF</span></div>
     <div class="hud-item">FPS: <span id="hud-fps" style="color:var(--green)">--</span></div>
     <div class="hud-item">DATA: <span id="hud-data" style="color:var(--gold)">로딩 중...</span></div>
   </div>
@@ -176,6 +185,17 @@
     </div>
 
     <div class="stats-section">
+      <h3>🚶 무빙 · 회전 · 가드 요약</h3>
+      <div class="metric-grid">
+        <div class="metric-card"><div class="val" id="m-footwork-recall" style="color:var(--green)">--</div><div class="label">Footwork Recall Proxy (Phase 5)</div></div>
+        <div class="metric-card"><div class="val" id="m-static-fp" style="color:var(--pink)">--</div><div class="label">Static FP Proxy (정지 구간)</div></div>
+        <div class="metric-card"><div class="val" id="m-guard-cov" style="color:var(--gold)">--</div><div class="label">Guard Coverage %</div></div>
+        <div class="metric-card"><div class="val" id="m-move-segs" style="color:var(--cyan)">--</div><div class="label">Move 세그먼트 수</div></div>
+      </div>
+      <div id="move-distribution" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="stats-section">
       <h3>📋 구간별 프로토콜 대비 분석</h3>
       <div id="phase-analysis"></div>
     </div>
@@ -214,7 +234,43 @@ const threeBox = document.getElementById('three-box');
 const markersCv = document.getElementById('markers-cv');
 const markersCtx = markersCv.getContext('2d');
 const actionPop = document.getElementById('action-pop');
+
+/**
+ * 액션 이름 -> 기술 종류. host arena 와 같은 표기·색을 쓴다.
+ * LEFT_UPPERCUT 같은 전체 이름은 길어서 로그가 밀리고, 좌우가 섞이면 종류가 잘 안 읽힌다.
+ * 종류(JAB/HOOK/UPPER)를 크게, 좌우(L/R)를 작게 붙이면 한눈에 분류된다.
+ */
+const KIND_OF = {
+  LEFT_JAB: 'straight', RIGHT_CROSS: 'straight', JAB_STRAIGHT: 'straight',
+  LEFT_HOOK: 'hook', RIGHT_HOOK: 'hook',
+  LEFT_UPPERCUT: 'uppercut', RIGHT_UPPERCUT: 'uppercut',
+  ENERGY_WAVE: 'wave',
+};
+// 직선 펀치는 **어느 손이냐에 따라 이름이 다르다** — 앞손이 잽, 뒷손이 크로스다.
+// 둘 다 JAB 으로 적으면 복싱을 아는 사람에게 바로 틀린 것으로 읽힌다.
+const KIND_LABEL = { straight: 'JAB', hook: 'HOOK', uppercut: 'UPPER', wave: 'ULTIMATE' };
+function kindLabel(action) {
+  const k = kindOf(action);
+  if (k === 'straight') return sideOf(action) === 'R' ? 'CROSS' : 'JAB';
+  return KIND_LABEL[k];
+}
+const KIND_COLOR = { straight: '#66ddff', hook: '#ffaa22', uppercut: '#ff44aa', wave: '#aa66ff' };
+
+function kindOf(action) { return KIND_OF[action] || 'straight'; }
+function sideOf(action) {
+  if (!action) return '';
+  if (action.startsWith('LEFT')) return 'L';
+  if (action.startsWith('RIGHT') || action === 'JAB_STRAIGHT') return 'R';
+  return '';
+}
+/** 짧은 표기: "HOOK L" — 종류가 먼저, 좌우는 보조 */
+function shortLabel(action) {
+  const s = sideOf(action);
+  return kindLabel(action) + (s ? ' ' + s : '');
+}
 const hudNow = document.getElementById('hud-now');
+const hudMove = document.getElementById('hud-move');
+const hudGuard = document.getElementById('hud-guard');
 const hudFps = document.getElementById('hud-fps');
 const hudData = document.getElementById('hud-data');
 const btnPlay = document.getElementById('btn-play');
@@ -334,18 +390,21 @@ cornerPositions.forEach(([px, pz]) => {
 const hitFx = window.createHitEffects ? window.createHitEffects(scene) : null;
 
 // ==================== 2. 실제 Arena 정품 3D 복서 아바타 생성 ====================
-let myFighter = null;    // Red Boxer (플레이어)
-let dummyOpponent = null; // Cyan Boxer (상대방 타겟)
+// 플레이어 아바타는 **스켈레톤 오버레이와 같은 색**(#00E5FF)으로 맞춘다.
+// 왼쪽 영상 위에 그려지는 관절 선이 파랑인데 아바타만 빨강이면, 둘이 같은 사람을
+// 나타낸다는 게 한눈에 안 읽힌다. 상대(더미)는 대비되는 색으로 떨어뜨린다.
+let myFighter = null;    // Blue Boxer (플레이어 — 스켈레톤과 동색)
+let dummyOpponent = null; // Red Boxer (상대방 타겟)
 
 if (typeof window.createHumanoid === 'function') {
   // 1) 내 복서 (Red Boxer - 정면 마주보기)
-  myFighter = window.createHumanoid(0xff3366);
+  myFighter = window.createHumanoid(0x00e5ff);   // 스켈레톤 라인 #00E5FF 와 동일
   myFighter.group.position.set(0, 0, 1.2);
   myFighter.group.rotation.y = Math.PI; // 정면 마주보기
   scene.add(myFighter.group);
 
   // 2) 상대방 복서 (Cyan Boxer 더미)
-  dummyOpponent = window.createHumanoid(0x00e5ff);
+  dummyOpponent = window.createHumanoid(0xff3366);
   dummyOpponent.group.position.set(0, 0, -3.8);
   dummyOpponent.group.rotation.y = 0; // 나를 마주봄
   scene.add(dummyOpponent.group);
@@ -354,8 +413,41 @@ if (typeof window.createHumanoid === 'function') {
 
 // ==================== 3. 랜드마크 & 펀치 데이터 로드 ====================
 let frames = [], punchEvents = [];
+let moveTimeline = [];     // 프레임당 무빙 상태 (t_ms 오름차순)
+let moveSegments = [];     // {state, start_ms, end_ms} 연속 구간 (marker 오버레이용)
+let movementMetrics = null; // metrics.json 의 movement 섹션 (요약 카드용)
 let lastPopT = 0;
 const SKEL = [[0,11],[0,12],[11,12],[11,13],[13,15],[12,14],[14,16]];
+
+// 무빙 상태별 색상 (marker strip 오버레이 및 HUD 에 재사용)
+const MOVE_COLORS = {
+  NONE: null, // 표시하지 않음
+  FORWARD: '#3fb950',   // green
+  BACK: '#d29922',      // gold
+  LEFT: '#00E5FF',      // cyan
+  RIGHT: '#FF3366',     // pink
+};
+
+function buildMoveSegments(timeline) {
+  // timeline (t_ms 오름차순) → 연속된 동일 state 구간을 [{state,start_ms,end_ms}] 로 압축.
+  // NONE 은 제외. marker strip 렌더링 비용을 위해 필요 (2600 프레임을 매번 훑지 않기 위함).
+  const segs = [];
+  if (!timeline || !timeline.length) return segs;
+  let cur = timeline[0].move;
+  let si = 0;
+  for (let i = 1; i < timeline.length; i++) {
+    if (timeline[i].move !== cur) {
+      if (cur !== 'NONE') segs.push({ state: cur, start_ms: timeline[si].t_ms, end_ms: timeline[i-1].t_ms });
+      cur = timeline[i].move;
+      si = i;
+    }
+  }
+  if (cur !== 'NONE') {
+    const last = timeline.length - 1;
+    segs.push({ state: cur, start_ms: timeline[si].t_ms, end_ms: timeline[last].t_ms });
+  }
+  return segs;
+}
 
 async function loadVersions() {
   try {
@@ -389,7 +481,33 @@ async function loadAll(selectedVersion = null) {
     punchEvents = d.punches || [];
   } catch(e) { console.error("Punch events load fail:", e); }
 
-  hudData.innerText = `${frames.length}F / ${punchEvents.length}P`;
+  // 무빙 timeline 로드 (없으면 조용히 스킵 — 예전 버전은 movement_timeline.jsonl 이 없음)
+  try {
+    const url = (selectedVersion && selectedVersion !== "latest") ? `/api/eval-moves?version=${selectedVersion}` : '/api/eval-moves';
+    const r3 = await fetch(url);
+    if (r3.ok) {
+      const d = await r3.json();
+      moveTimeline = d.timeline || [];
+      moveSegments = buildMoveSegments(moveTimeline);
+      console.log(`[eval] movement timeline ${moveTimeline.length} frames, ${moveSegments.length} segments`);
+    } else {
+      moveTimeline = []; moveSegments = [];
+    }
+  } catch(e) { console.warn("Movement timeline load fail:", e); moveTimeline = []; moveSegments = []; }
+
+  // movement 요약 (metrics.json.movement) 로드
+  try {
+    const url = (selectedVersion && selectedVersion !== "latest") ? `/api/eval-movement-summary?version=${selectedVersion}` : '/api/eval-movement-summary';
+    const r4 = await fetch(url);
+    if (r4.ok) {
+      const d = await r4.json();
+      movementMetrics = d.movement || null;
+    } else {
+      movementMetrics = null;
+    }
+  } catch(e) { movementMetrics = null; }
+
+  hudData.innerText = `${frames.length}F / ${punchEvents.length}P / ${moveTimeline.length}M`;
   hudData.style.color = '#3fb950';
 
   renderStats();
@@ -414,20 +532,60 @@ function renderStats() {
   const avgConf = punchEvents.length ? (punchEvents.reduce((s, p) => s + p.conf_margin, 0) / punchEvents.length).toFixed(2) : '--';
   document.getElementById('m-avg-conf').innerText = avgConf;
 
+  // 종류(JAB/HOOK/UPPER)로 묶어 센다. 좌우까지 나누면 8줄이 되어 분포가 안 보인다.
   const types = {};
-  punchEvents.forEach(p => { types[p.action] = (types[p.action] || 0) + 1; });
+  punchEvents.forEach(p => {
+    const k = shortLabel(p.action);
+    types[k] = (types[k] || 0) + 1;
+  });
   const tbDiv = document.getElementById('type-breakdown');
-  tbDiv.innerHTML = Object.entries(types).sort((a,b) => b[1] - a[1]).map(([k,v]) =>
-    `<div class="type-row"><span class="type-name">${k}</span><span>${v}회</span></div>`
-  ).join('');
+  tbDiv.innerHTML = Object.entries(types).sort((a,b) => b[1] - a[1]).map(([k,v]) => {
+    const kind = k.startsWith('HOOK') ? 'hook' : k.startsWith('UPPER') ? 'uppercut'
+               : k.startsWith('ULTIMATE') ? 'wave' : 'straight';   // JAB·CROSS 모두 straight
+    return `<div class="type-row"><span class="type-name k-${kind}">${k}</span><span>${v}회</span></div>`;
+  }).join('');
 
   const paDiv = document.getElementById('phase-analysis');
+  // movement phase 는 metrics.movement.phase_analysis.phases 에 있고
+  // range 필드가 "06~19s" 형태다. t0 로 매칭 (라벨 문자열보다 안정적).
+  const mvPhases = movementMetrics?.phase_analysis?.phases || [];
+  const mvByT0 = {};
+  mvPhases.forEach(p => {
+    const m = /^(\d+)~/.exec(p.range || '');
+    if (m) mvByT0[parseInt(m[1], 10)] = p;
+  });
   paDiv.innerHTML = PROTOCOL.map(ph => {
     const detected = punchEvents.filter(p => p.t_ms >= ph.t0 * 1000 && p.t_ms < ph.t1 * 1000).length;
     const diff = detected - ph.expect;
     const diffStr = diff > 0 ? `<span style="color:var(--pink)">+${diff} 과검출</span>` : diff < 0 ? `<span style="color:var(--gold)">${diff} 미검출</span>` : `<span style="color:var(--green)">✓ 정확</span>`;
-    return `<div class="type-row"><span style="font-size:0.72rem;color:#c9d1d9">[${ph.t0}~${ph.t1}s] ${ph.label}</span><span>${detected}/${ph.expect} ${diffStr}</span></div>`;
+    const mv = mvByT0[ph.t0];
+    const mvStr = mv
+      ? `<span style="color:${MOVE_COLORS[mv.dominant_move] || 'var(--muted)'}">${mv.dominant_move}(${mv.move_active_pct}%)</span>`
+      : '<span style="color:var(--muted)">-</span>';
+    return `<div class="type-row"><span style="font-size:0.72rem;color:#c9d1d9">[${ph.t0}~${ph.t1}s] ${ph.label}</span><span>${detected}/${ph.expect} ${diffStr} · ${mvStr}</span></div>`;
   }).join('');
+
+  // 무빙 요약 카드
+  const mvSum = movementMetrics || {};
+  const mvPa = mvSum.phase_analysis || {};
+  const setCard = (id, val, suffix='') => {
+    const el = document.getElementById(id);
+    if (el) el.innerText = (val === null || val === undefined) ? '--' : `${val}${suffix}`;
+  };
+  setCard('m-footwork-recall', mvPa.footwork_recall_proxy, '%');
+  setCard('m-static-fp', mvPa.static_fp_proxy, '%');
+  setCard('m-guard-cov', mvSum.guard_coverage_pct, '%');
+  setCard('m-move-segs', mvSum.move_segments_count);
+
+  const distDiv = document.getElementById('move-distribution');
+  if (distDiv) {
+    const dist = mvSum.move_distribution_pct || {};
+    const order = ['FORWARD','BACK','LEFT','RIGHT','NONE'];
+    distDiv.innerHTML = order.filter(k => k in dist).map(k => {
+      const col = MOVE_COLORS[k] || 'var(--muted)';
+      return `<div class="type-row"><span style="color:${col};font-weight:600">${k}</span><span>${dist[k]}%</span></div>`;
+    }).join('');
+  }
 }
 
 function renderTimeline() {
@@ -437,7 +595,7 @@ function renderTimeline() {
     const isSuspect = p.conf_margin <= 0;
     return `<div class="log-entry ${isSuspect ? 'suspect' : ''}" data-t="${p.t_ms / 1000}" onclick="video.currentTime=${p.t_ms / 1000};video.pause();">
       <span class="log-t">${sec}s</span>
-      <span class="log-action">${p.action}</span>
+      <span class="log-action k-${kindOf(p.action)}" title="${p.action}">${kindLabel(p.action)}<span class="k-side">${sideOf(p.action)}</span></span>
       <span class="log-speed">${p.speed_kmh.toFixed(1)} km/h</span>
       <span class="log-conf">conf: ${p.conf_margin.toFixed(2)}${isSuspect ? ' ⚠️' : ''}</span>
     </div>`;
@@ -450,11 +608,28 @@ function renderMarkers() {
   const H = markersCv.height = 20;
   markersCtx.clearRect(0, 0, W, H);
   const dur = video.duration;
+
+  // 무빙 세그먼트를 marker strip 하단 6px 밴드에 색상별로 오버레이한다.
+  // 펀치 marker(세로 line) 는 그 위에 그려져서 서로 안 가려진다.
+  const bandH = 6;
+  const bandY = H - bandH;
+  moveSegments.forEach(seg => {
+    const col = MOVE_COLORS[seg.state];
+    if (!col) return;
+    const x0 = Math.max(0, (seg.start_ms / 1000 / dur) * W);
+    const x1 = Math.min(W, (seg.end_ms / 1000 / dur) * W);
+    markersCtx.fillStyle = col;
+    markersCtx.globalAlpha = 0.55;
+    markersCtx.fillRect(x0, bandY, Math.max(1, x1 - x0), bandH);
+  });
+  markersCtx.globalAlpha = 1;
+
+  // 펀치 marker (그 위에)
   punchEvents.forEach(p => {
     const x = (p.t_ms / 1000 / dur) * W;
     markersCtx.fillStyle = p.conf_margin <= 0 ? '#FF3366' : '#00E5FF';
-    markersCtx.globalAlpha = 0.7;
-    markersCtx.fillRect(x - 1, 0, 2, H);
+    markersCtx.globalAlpha = 0.8;
+    markersCtx.fillRect(x - 1, 0, 2, H - bandH - 1);
   });
   markersCtx.globalAlpha = 1;
 }
@@ -526,18 +701,30 @@ function updateArenaFighter(lm, wl, tMs) {
     lastPopT = performance.now();
     myFighter.setAction(curPunch.action);
 
-    actionPop.innerText = `💥 ${curPunch.action} (${curPunch.speed_kmh.toFixed(1)} km/h)`;
+    // 팝업도 기술 색으로 물들인다 — 영상 위에서 종류가 즉시 읽힌다
+    const kc = KIND_COLOR[kindOf(curPunch.action)];
+    actionPop.innerText = `💥 ${shortLabel(curPunch.action)} · ${curPunch.speed_kmh.toFixed(1)} km/h`;
+    actionPop.style.color = kc;
+    actionPop.style.borderColor = kc;
+    actionPop.style.boxShadow = `0 0 20px ${kc}66`;
     actionPop.classList.add('show');
-    hudNow.innerText = curPunch.action;
-    hudNow.style.color = 'var(--pink)';
+    hudNow.innerText = shortLabel(curPunch.action);
+    hudNow.style.color = KIND_COLOR[kindOf(curPunch.action)];
 
     // 상대방 피격 리액션 및 스파크 이펙트
     if (dummyOpponent) {
       dummyOpponent.hit(8);
     }
     if (hitFx && hitFx.spawnHit) {
+      // 분석 화면에서는 "CRITICAL!" 보다 **어떤 기술이었나**가 중요하다.
+      // 데미지 숫자도 끈다 — 여기서는 판정 결과를 보는 것이지 전투가 아니다.
       const hitPos = new THREE.Vector3(myFighter.group.position.x, 3.8, -1.8);
-      hitFx.spawnHit(hitPos, 0xFF3366, 8, false);
+      const kc = KIND_COLOR[kindOf(curPunch.action)];
+      hitFx.spawnHit(hitPos, parseInt(kc.slice(1), 16), 8, false, {
+        label: shortLabel(curPunch.action),
+        labelColor: kc,
+        damageText: false,
+      });
     }
   }
 
@@ -556,6 +743,26 @@ function findFrame(tMs) {
   return frames[Math.min(lo, frames.length - 1)];
 }
 
+// 무빙 timeline 에서 현재 t_ms 에 해당하는 프레임을 이진탐색으로 찾는다.
+// 대시보드 sync 루프는 매 프레임 이 함수를 호출하므로 O(log N).
+function findMove(tMs) {
+  if (!moveTimeline.length) return null;
+  let lo = 0, hi = moveTimeline.length - 1;
+  while (lo <= hi) { const m = (lo + hi) >> 1; if (moveTimeline[m].t_ms < tMs) lo = m + 1; else hi = m - 1; }
+  return moveTimeline[Math.min(lo, moveTimeline.length - 1)];
+}
+
+function updateMoveHud(tMs) {
+  const mv = findMove(tMs);
+  if (!mv) return;
+  const moveText = mv.move === 'NONE' ? (mv.rot === 'NONE' ? 'NONE' : mv.rot) : mv.move;
+  const moveCol = MOVE_COLORS[mv.move] || (mv.rot !== 'NONE' ? '#a371f7' : 'var(--muted)');
+  hudMove.innerText = moveText;
+  hudMove.style.color = moveCol;
+  hudGuard.innerText = mv.guard ? 'ON' : 'OFF';
+  hudGuard.style.color = mv.guard ? 'var(--green)' : 'var(--muted)';
+}
+
 let fpsFrames = 0, fpsLast = performance.now();
 function sync() {
   if (frames.length > 0) {
@@ -565,6 +772,7 @@ function sync() {
       drawSkel(d.lm); 
       updateArenaFighter(d.lm, d.wl, ms);
     }
+    updateMoveHud(ms);
   }
   fpsFrames++;
   const now = performance.now();

@@ -1,0 +1,10 @@
+{
+  "version": "v1_movement_baseline",
+  "description": "Current fighter_client.html movement/rotation tuning, unmodified (2026-08-26 revision). Every value here matches TUNE's own default, so applying this config is a no-op — it exists to name the baseline explicitly for UI selection and runs_registry bookkeeping. PUNCH_LOCK/PUNCH_LOCK_MAX are untouched (not part of this config at all).",
+  "tune": {
+    "ROT_ROLL_FLAT": 8.0,
+    "GUARD_WFACE": 0.70,
+    "GUARD_WFIST": 0.00,
+    "AMBIG_PITCH_OVERRIDE_RATIO": 999.0
+  }
+}

@@ -5,7 +5,7 @@ when the punch pipeline changes, re-run the evaluator on the same JSONL
 instead of re-processing the video.
 
 Usage:
-  python iter3/eval/extract_landmarks.py video/foo.mp4 -o datasets/foo/landmarks.jsonl
+  python iter4/eval/extract_landmarks.py video/foo.mp4 -o datasets/foo/landmarks.jsonl
 """
 import argparse
 import json

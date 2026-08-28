@@ -16,6 +16,11 @@
   <script src="/static/punch_core.js?v=3"></script>
   <script src="/static/sound.js?v=1"></script>
   <script src="/static/face3d.js?v=5"></script>
+  <!-- 동작 인식 엔진 선택지: 기본 rule-base + TCN + 증강 전/후 휴리스틱 + 합의 모드 -->
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+  <script src="/static/motion_features.js?v=1"></script>
+  <script src="/static/tcn_engine.js?v=1"></script>
+  <script src="/static/heuristic_engine.js?v=2"></script>
   <style>
     :root { --f-color: {{ color }}; --mono: "Cascadia Mono", monospace; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -32,6 +37,9 @@
     #first-person-ring { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
     .action-hud { position: absolute; bottom: 10px; left: 10px; right: 10px; background: rgba(0,0,0,0.85); border: 1px solid var(--f-color); border-radius: 6px; padding: 8px 14px; display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 12px; z-index: 5; }
     .act-title { font-size: 16px; font-weight: 900; color: var(--f-color); }
+    .engine-select { font-family: var(--mono); font-size: 11px; background: #10131c; color: #ddd;
+      border: 1px solid var(--f-color); border-radius: 4px; padding: 2px 6px; }
+    .engine-select:disabled { opacity: 0.4; }
     .hit-flash { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 10; opacity: 0;
       background: radial-gradient(ellipse at center, rgba(255,51,102,0) 30%, rgba(255,51,102,0.55) 72%, rgba(255,20,80,0.95) 100%); }
     /* K.O. — 내가 쓰러졌을 때 1인칭 화면을 덮는 관전 안내 */
@@ -168,6 +176,7 @@
       </div>
       <div class="action-hud">
         <div>Motion: <span class="act-title" id="action-text">IDLE</span></div>
+        <select class="engine-select" id="engine-select" title="동작 인식 엔진"></select>
         <div style="color:#00ff66">Speed: <b id="speed-text">0.0</b> km/h</div>
       </div>
     </div>
@@ -206,6 +215,7 @@
     const canvasCtx = canvasElement.getContext('2d');
     const actionText = document.getElementById('action-text');
     const speedText = document.getElementById('speed-text');
+    const engineSelect = document.getElementById('engine-select');
     const fpsBadge = document.getElementById('fps-badge');
     const myHpBadge = document.getElementById('my-hp-badge');
     const hitFlash = document.getElementById('hit-flash');
@@ -746,6 +756,95 @@
     // 펀치 판정기 — static/punch_core.js (런타임·평가기 공용 단일 소스)
     const punchCore = window.PunchCore.createPunchCore();
 
+    // ========== 동작 인식 엔진 선택 (기본 / TCN / 증강 전후 휴리스틱 / 합의) ==========
+    // 펀치가 나가는지·언제·어느 팔인지(트리거)와 이동·회전·가드·필살기(ENERGY_WAVE)는
+    // 모드와 무관하게 항상 punchCore(tryPunch/tryUltimate) + 아래 자세 로직(rule-base)
+    // 하나만 담당한다. 여기서 갈리는 건 딱 하나, "이미 확정된 일반 펀치의 종류를
+    // 무엇으로 판단하는가" 뿐이다 — TCN이 트리거까지 가지면 물리 임계값 없이 매 프레임
+    // 분류만으로 발동이 흔들려 오검출이 크게 늘어난다(실측 확인). 필살기는 펀치 종류가
+    // 아니라 별도 제스처라 TCN이 아예 관여하지 않는다.
+    // 합의 모드는 TCN과 "증강 O" 휴리스틱이 같은 팔·같은 공격 종류를 낼 때만 채택한다.
+    // 둘 중 하나가 불확실하거나 서로 다르면 기본 rule-base 종류 판정을 보존한다.
+    function createConsensusEngine(tcnEngine, heuristicEngine) {
+      return {
+        // 버퍼 갱신과 reset은 원본 엔진들이 담당한다. 이 객체는 읽기 전용 결합기다.
+        push() {}, reset() {},
+        guessPunchKind(side) {
+          const tcn = tcnEngine.guessPunchKind(side);
+          const heuristic = heuristicEngine.guessPunchKind(side);
+          if (!tcn || !heuristic || tcn.action !== heuristic.action) return null;
+          return { action: tcn.action, kind: tcn.kind, confidence: Math.min(tcn.confidence, heuristic.confidence) };
+        },
+        stableState() {
+          const tcn = tcnEngine.stableState();
+          const heuristic = heuristicEngine.stableState();
+          return tcn && heuristic && tcn.label === heuristic.label
+            ? { label: tcn.label, confidence: Math.min(tcn.confidence, heuristic.confidence) }
+            : null;
+        },
+        get ready() { return tcnEngine.ready && heuristicEngine.ready; },
+      };
+    }
+    const tcnEngine = window.createTCNEngine();
+    const heuristicNoAugEngine = window.createOptimizedHeuristicEngine();
+    const heuristicAugEngine = window.createOptimizedHeuristicEngine();
+    const ENGINE_REGISTRY = {
+      rule:      { label: '기본 (Rule-base)', engine: null }, // punchCore를 직접 사용
+      tcn:       { label: 'TCN (실측 학습)', engine: tcnEngine },
+      // v5c(eval/runs/v5c_tcn_hybrid_gate) 를 실시간 판정에 그대로 옮긴 것.
+      // "TCN 확신도" AND "룰베이스 물리조건"을 둘 다 요구한다 — punchCore.tryPunch가 이미
+      // 물리 임계값(PUNCH_ARM/PUNCH_EXTEND로 창 열기, PUNCH_SPEED/PUNCH_REACH_N으로 발사)을
+      // 통과해야만 punch가 생기므로, 여기서는 그 punch에 대해 TCN이 같은 팔의 펀치 라벨을
+      // 충분한 확신(guessPunchKind의 KIND_MIN_CONFIDENCE)으로 보고 있는지만 추가로 확인한다.
+      // 'tcn' 모드는 TCN이 불확실하면 rule-base 종류로 **폴백**하지만, 'hybrid'는 그 경우
+      // 아예 **펀치 자체를 무효화**한다(hitFireLoop 참고) — v5b(TCN 단독 트리거)가 실패했던
+      // "물리적 근거 없는 과검출"을 걸러내려는 목적과 동일한 AND 게이트다.
+      hybrid:    { label: '하이브리드 (TCN AND 물리조건)', engine: tcnEngine },
+      heuristic_no_aug: { label: '휴리스틱 최적화 (증강 X)', engine: heuristicNoAugEngine },
+      heuristic_aug: { label: '휴리스틱 최적화 (증강 O)', engine: heuristicAugEngine },
+      heuristic_aug_tcn: { label: '휴리스틱 최적화 (증강 O) + TCN', engine: createConsensusEngine(tcnEngine, heuristicAugEngine) },
+    };
+    const motionFeatures = window.createMotionFeatures();
+
+    // 엔진 선택을 'tcn'(실측 학습)으로 고정한다 — 사용자가 다른 모드로 바꿀 수 없게
+    // 드롭다운 자체를 비활성화(disabled)하고, 이전 접속에서 남은 localStorage 선택값도 무시한다.
+    // 다시 선택 가능하게 되돌리려면 FIXED_ENGINE_MODE를 null로 바꾸면 된다.
+    const FIXED_ENGINE_MODE = 'tcn';
+
+    let motionMode = FIXED_ENGINE_MODE || localStorage.getItem('motionMode') || 'rule';
+    if (!ENGINE_REGISTRY[motionMode]) motionMode = 'rule';
+
+    if (FIXED_ENGINE_MODE) {
+      const opt = document.createElement('option');
+      opt.value = motionMode;
+      opt.textContent = ENGINE_REGISTRY[motionMode].label;
+      engineSelect.appendChild(opt);
+      engineSelect.value = motionMode;
+      engineSelect.disabled = true;
+      engineSelect.title = `동작 인식 엔진 (${ENGINE_REGISTRY[motionMode].label}로 고정됨)`;
+    } else {
+      Object.keys(ENGINE_REGISTRY).forEach((key) => {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = ENGINE_REGISTRY[key].label;
+        engineSelect.appendChild(opt);
+      });
+      engineSelect.value = motionMode;
+      engineSelect.addEventListener('change', () => {
+        motionMode = engineSelect.value;
+        localStorage.setItem('motionMode', motionMode);
+        motionFeatures.reset();
+        Object.values(ENGINE_REGISTRY).forEach((e) => e.engine && e.engine.reset());
+      });
+    }
+
+    // TCN 등 별도 모델의 가중치는 미리 비동기로 로드해 둔다. 실패해도 rule-base 동작(트리거)에는
+    // 전혀 영향이 없고, 로드 전에 사용자가 TCN을 선택해도 guessPunchKind가 null만 돌려줘
+    // rule-base의 종류 판정이 그대로 쓰인다.
+    tcnEngine.load('/static/models/boxing_tcn.onnx', '/static/models/boxing_tcn_scaler.json');
+    heuristicNoAugEngine.load('/static/models/heuristic_thresholds_no_augmentation.json');
+    heuristicAugEngine.load('/static/models/heuristic_thresholds_augmented.json');
+
     // 자세 지표(roll/pitch/shift)는 "어깨폭" 단위로 정규화 → 카메라 거리·체격에 불변.
     // 시간 상수는 모두 ms/초 단위 → 포즈 추정 FPS가 바뀌어도 체감이 동일하게 유지된다.
     const TUNE = {
@@ -1171,6 +1270,9 @@
         latestPose = null;
         sRoll *= 0.8; sPitch *= 0.8; sShift *= 0.8;
         relaxStates();
+        // 포즈를 놓친 구간이 이어붙지 않도록 — 끊긴 시퀀스로 다음 추론이 오염되는 걸 막는다.
+        motionFeatures.reset();
+        Object.values(ENGINE_REGISTRY).forEach((entry) => entry.engine && entry.engine.reset());
         currentAction = "IDLE"; currentVelocity = 0; lastSpeedKmh = 0;
         actionText.innerText = "NO POSE";
         speedText.innerText = "0.0";
@@ -1348,6 +1450,32 @@
       }
       lastSpeedKmh = Math.max(kL.speed, kR.speed) * 3.6;
 
+      // 학습/최적화 엔진 버퍼는 선택 모드와 무관하게 함께 채운다. 게임 중 모드를 바꿔도
+      // 최근 궤적이 이미 준비되어 첫 펀치부터 비교할 수 있다.
+      if (wristOK) {
+        const feature17 = motionFeatures.step(P, lm, now);
+        Object.values(ENGINE_REGISTRY).forEach((entry) => entry.engine && entry.engine.push(feature17, now));
+      }
+      const selectedEngine = ENGINE_REGISTRY[motionMode].engine;
+      const engineTop = selectedEngine ? selectedEngine.stableState() : null;
+
+      // 필살기(ENERGY_WAVE)는 "펀치 종류"가 아니라 별도 제스처이므로 TCN이 절대 건드리지
+      // 않는다 — 트리거·종류 모두 punchCore.tryUltimate가 그대로 정한다. TCN은 일반 펀치가
+      // 확정된 경우에만, 그것도 확신 있을 때만 그 종류를 다시 되묻는다.
+      if (punch && selectedEngine && punch.action !== punchCore.ULTIMATE) {
+        const guess = selectedEngine.guessPunchKind(punch.action.startsWith('LEFT') ? 'L' : 'R');
+        if (guess) {
+          punch = Object.assign({}, punch, { action: guess.action, kind: guess.kind });
+        } else if (motionMode === 'hybrid') {
+          // v5c AND 게이트: 룰베이스 물리조건(punchCore.tryPunch)은 이미 통과했지만,
+          // TCN이 이 팔의 펀치 라벨을 확신하지 못한다 — 'tcn' 모드처럼 rule 종류로
+          // 폴백하지 않고 펀치 자체를 무효화한다(hit/사운드/네트워크 전송 전부 스킵).
+          punchLabel = `(REJECTED: ${punch.action} — TCN 미확신)`;
+          punchLabelT = now;
+          punch = null;
+        }
+      }
+
       if (punch) {
         lastPunchAny = punchCore.getLastPunchAny();   // 코어가 발동 시각의 단일 소스
         armAnim[punch.action.startsWith("LEFT") ? "L" : "R"] = 1;
@@ -1404,10 +1532,14 @@
       }
 
       // HUD 라벨: 펀치는 0.5초간 유지, 그 외에는 현재 자세 상태
+      // HUD 라벨: 펀치는 0.5초간 유지, 그 외에는 현재 자세 상태.
+      // TCN 모드에서는 발동(punch)이 없는 동안 모델이 지금 뭘 보고 있는지(top-1 + 확신도)를
+      // 그대로 보여준다 — 발동/이동/가드/필살기 판정은 여전히 rule 로직 그대로다.
       if (punch || now - punchLabelT < 500) actionText.innerText = punchLabel;
       else if (guardActive) actionText.innerText = "DUAL_GUARD";
       else if (moveState !== "NONE") actionText.innerText = moveState;
       else if (rotState !== "NONE") actionText.innerText = rotState;
+      else if (engineTop) actionText.innerText = `${engineTop.label} (${(engineTop.confidence * 100).toFixed(0)}%)`;
       else actionText.innerText = neutral.ready ? "IDLE" : "CALIBRATING";
       speedText.innerText = lastSpeedKmh.toFixed(1);
 
@@ -1425,6 +1557,32 @@
     let captureMode = false;
     let faceMesh = null, faceBusy = false;
     let capState = null;
+
+    /**
+     * 3장 촬영. 정면 1장 + 좌우 옆모습 2장.
+     *
+     * 정면 하나로는 옆·뒤에 붙일 픽셀이 아예 없다. 지금은 이마 위 머리카락을 뒤통수 전체로
+     * 늘여 붙이고 있어서 모자를 쓴 것처럼 보인다. 옆모습을 찍으면 **관자놀이·귀·귀 뒤 머리카락**
+     * 의 실제 픽셀이 생긴다.
+     *
+     * Face Mesh 는 어느 각도에서든 **같은 468개 정점**을 돌려준다. 그래서 view 사이에
+     * 대응점을 찾는 정합 과정이 필요 없다 — 같은 번호가 곧 같은 지점이다.
+     */
+    // **정면 1장만 찍는다.**
+    //
+    // 옆모습 2장을 더 찍어 관자놀이·귀·뒷머리를 채우는 것을 시도했지만, 실제로 써 보니
+    // 얼굴이 일그러지고 어두워졌다. 옆모습은 조명·각도가 정면과 달라 텍스처가 튀고,
+    // 촬영 자체도 세 번이라 번거롭다. 뒤통수가 아쉬운 것보다 **얼굴이 제대로 나오는 쪽**이
+    // 훨씬 중요하다는 판단이다.
+    //
+    // 아틀라스·옆모습 투영 코드는 face3d.js 에 그대로 남아 있다 — 넘겨주지 않으면
+    // 자동으로 1장 경로로 돈다. 나중에 되살릴 때 이 배열만 되돌리면 된다.
+    const CAP_STAGES = [
+      { key: 'front', title: '정면을 봐주세요',
+        desc: '얼굴을 원 안에 맞추고 카메라를 정면으로 봅니다.<br>안경·모자는 벗는 편이 정확합니다.' },
+    ];
+    const YAW_MIN = 0.22;     // 이만큼은 돌아가야 옆모습으로 친다
+    const YAW_MAX = 0.62;     // 너무 돌면 랜드마크 신뢰도가 떨어진다
     let myFaceBlob = null;
     const capEls = {
       box: document.getElementById('face-cap'),
@@ -1444,6 +1602,21 @@
       const dl = Math.hypot(n.x - L.x, n.y - L.y);
       const dr = Math.hypot(n.x - R.x, n.y - R.y);
       return 1 - Math.abs(dl - dr) / Math.max(dl + dr, 1e-4) * 2;   // 1=정면, 0=측면
+    }
+
+    /**
+     * **부호 있는** 고개 돌림. 0 = 정면, 양수/음수 = 서로 반대쪽.
+     *
+     * 어느 쪽이 "왼쪽"인지는 카메라 미러링에 따라 뒤집히므로 이름표를 붙이지 않는다.
+     * 마법사는 "한쪽으로" → "반대쪽으로" 순으로 안내하고, 실제로 어느 쪽을 찍었는지는
+     * 부호로 판단한다. 그래야 미러 설정이 달라도 틀리지 않는다.
+     */
+    function yawSigned(lm) {
+      const n = lm[1], L = lm[234], R = lm[454];
+      if (!n || !L || !R) return 0;
+      const dl = Math.hypot(n.x - L.x, n.y - L.y);
+      const dr = Math.hypot(n.x - R.x, n.y - R.y);
+      return (dr - dl) / Math.max(dr + dl, 1e-4);
     }
 
     /** 얼굴이 프레임에서 차지하는 범위 — 너무 작으면 텍스처가 뭉갠다. */
@@ -1477,24 +1650,39 @@
       const lm = faces && faces[0];
       const okFace = !!lm;
       const front = okFace ? frontalScore(lm) : 0;
+      const yaw = okFace ? yawSigned(lm) : 0;
       const span = okFace ? faceSpan(lm) : null;
       const bigEnough = span && span.w > 0.16;
-      const good = okFace && front > 0.72 && bigEnough;
 
+      const stage = CAP_STAGES[capState.stage];
+      const wantSide = capState.stage > 0;
+      // 옆모습 단계에서는 **반대쪽**을 요구한다. 같은 쪽을 두 번 찍으면 한쪽이 통째로 빈다.
+      const needSign = (capState.stage === 2 && capState.shots[1])
+        ? -Math.sign(capState.shots[1].yaw) : 0;
+
+      let poseOk, why;
+      if (!okFace) { poseOk = false; why = '얼굴이 보이지 않습니다'; }
+      else if (!bigEnough) { poseOk = false; why = '카메라에 조금 더 가까이'; }
+      else if (!wantSide) {
+        poseOk = front > 0.72;
+        why = poseOk ? null : '정면을 봐주세요';
+      } else if (Math.abs(yaw) < YAW_MIN) {
+        poseOk = false; why = '조금 더 돌려주세요';
+      } else if (Math.abs(yaw) > YAW_MAX) {
+        poseOk = false; why = '너무 돌렸습니다 — 조금 되돌려주세요';
+      } else if (needSign && Math.sign(yaw) !== needSign) {
+        poseOk = false; why = '반대쪽으로 돌려주세요';
+      } else { poseOk = true; why = null; }
+
+      const good = poseOk;
       capEls.guide.classList.toggle('ok', good);
 
       if (!capState.armed) {
-        capEls.title.innerText = !okFace ? '얼굴이 보이지 않습니다'
-          : (!bigEnough ? '카메라에 조금 더 가까이'
-          : (front <= 0.72 ? '정면을 봐주세요' : '좋습니다 — 촬영 시작을 누르세요'));
+        capEls.title.innerText = good ? '좋습니다 — 촬영 시작을 누르세요' : (why || stage.title);
         return;
       }
-
-      if (!good) {
-        capEls.title.innerText = !okFace ? '얼굴이 보이지 않습니다'
-          : (!bigEnough ? '조금 더 가까이' : '정면을 봐주세요');
-        return;
-      }
+      if (!good) { capEls.title.innerText = why || stage.title; return; }
+      capState.lastYaw = yaw;
 
       // 여러 프레임의 랜드마크를 평균낸다 — 한 프레임만 쓰면 추정 지터가 그대로 얼굴 굴곡이 된다
       const snap = lm.map(q => ({ x: q.x, y: q.y, z: q.z }));
@@ -1529,9 +1717,11 @@
       }
 
       const got = capState.frames.length, want = capState.want;
-      capEls.title.innerText = '촬영 중 — 그대로 계세요';
+      capEls.title.innerText = CAP_STAGES.length > 1
+        ? '촬영 중 — 그대로 계세요 (' + (capState.stage + 1) + '/' + CAP_STAGES.length + ')'
+        : '촬영 중 — 그대로 계세요';
       capEls.count.innerText = got + '/' + want;
-      if (got >= want) finishCapture();
+      if (got >= want) finishStage();
     }
 
     function averageLandmarks(frames) {
@@ -1547,37 +1737,117 @@
       return out;
     }
 
-    function finishCapture() {
+    /** 한 단계(정면/옆/반대옆) 촬영을 마감하고 결과를 모아 둔다. */
+    function finishStage() {
       const st = capState;
-      capState = null;
-      const lm = averageLandmarks(st.frames);
-      const img = st.best.image;          // 그 자리에서 복사해 둔 캔버스
-      const IW = st.best.W, IH = st.best.H;
-
-      // 얼굴 주변만 잘라 텍스처로 쓴다 — 전체 프레임을 쓰면 해상도의 2/3 를 배경에 버린다
       const sp = st.best.span;
-      const mx = sp.w * 0.22, my = sp.h * 0.18;
+      const IW = st.best.W, IH = st.best.H;
+      // 옆모습은 귀 뒤 머리카락까지 담아야 하므로 여백을 더 준다
+      const side = st.stage > 0;
+      const mx = sp.w * (side ? 0.42 : 0.22), my = sp.h * (side ? 0.26 : 0.18);
       const cx0 = Math.max(0, (sp.x0 - mx) * IW);
       const cy0 = Math.max(0, (sp.y0 - my) * IH);
       const cw = Math.min(IW - cx0, (sp.w + mx * 2) * IW);
       const ch = Math.min(IH - cy0, (sp.h + my * 2) * IH);
 
-      const tc = document.createElement('canvas');
-      tc.width = 512; tc.height = 512;
-      tc.getContext('2d').drawImage(img, cx0, cy0, cw, ch, 0, 0, 512, 512);
-
-      const blob = window.serializeFace(lm, tc, {
-        aspect: IW / IH,
+      st.shots[st.stage] = {
+        lm: averageLandmarks(st.frames),
+        uvLm: st.best.lm,
+        image: st.best.image,
         crop: { x0: cx0, y0: cy0, w: cw, h: ch },
         imageW: IW, imageH: IH,
-        uvLandmarks: st.best.lm,     // 텍스처를 딴 바로 그 프레임의 좌표 — UV 정합용
+        yaw: st.lastYaw || 0,
+      };
+
+      if (st.stage < CAP_STAGES.length - 1) {
+        st.stage++;
+        st.frames = [];
+        st.best = null;
+        const stg = CAP_STAGES[st.stage];
+        capEls.title.innerText = stg.title;
+        capEls.desc.innerHTML = stg.desc;
+        capEls.count.innerText = '';
+        return;
+      }
+      finishCapture();
+    }
+
+    function finishCapture() {
+      const st = capState;
+      capState = null;
+      const shots = st.shots;
+      const f0 = shots[0];
+      const lm = f0.lm;
+
+      // 옆모습 두 장을 부호로 좌/우에 배정한다 (미러 설정과 무관하게 맞다)
+      const sideNeg = shots.find((v, i) => i > 0 && v && v.yaw < 0) || null;
+      const sidePos = shots.find((v, i) => i > 0 && v && v.yaw > 0) || null;
+
+      // ── 옆모습이 없으면 (정면 1장 촬영) 아틀라스를 만들지 않는다 ──────
+      //
+      // 아틀라스를 쓰면 512x512 얼굴이 1024x512 의 왼쪽 절반에만 들어가 해상도가 그대로
+      // 절반이 된다. 옆모습을 안 찍는데 그 대가를 치를 이유가 없다.
+      if (!sideNeg && !sidePos) {
+        const tc1 = document.createElement('canvas');
+        tc1.width = 512; tc1.height = 512;
+        tc1.getContext('2d').drawImage(f0.image, f0.crop.x0, f0.crop.y0, f0.crop.w, f0.crop.h,
+                                       0, 0, 512, 512);
+        const blob1 = window.serializeFace(lm, tc1, {
+          aspect: f0.imageW / f0.imageH,
+          crop: f0.crop,
+          imageW: f0.imageW, imageH: f0.imageH,
+          uvLandmarks: f0.uvLm,
+        }, 0.86);
+        finishWithBlob(blob1);
+        return;
+      }
+
+      // ── 텍스처 아틀라스 (옆모습이 있을 때만) ────────────────────────
+      const AW = 1024, AH = 512;
+      const tc = document.createElement('canvas');
+      tc.width = AW; tc.height = AH;
+      const g = tc.getContext('2d');
+      g.fillStyle = '#000'; g.fillRect(0, 0, AW, AH);
+
+      const regions = {};
+      function place(shot, x, y, w, h, key) {
+        if (!shot) return;
+        g.drawImage(shot.image, shot.crop.x0, shot.crop.y0, shot.crop.w, shot.crop.h, x, y, w, h);
+        regions[key] = { x: x / AW, y: y / AH, w: w / AW, h: h / AH };
+      }
+      place(f0, 0, 0, 512, 512, 'front');
+      place(sideNeg, 512, 0, 256, 256, 'sideNeg');
+      place(sidePos, 512, 256, 256, 256, 'sidePos');
+      // 옆모습이 없으면(건너뜀) 그 자리를 앞면으로 채워 UV 가 검은 칸을 물지 않게 한다
+      if (!sideNeg) place(f0, 512, 0, 256, 256, 'sideNeg');
+      if (!sidePos) place(f0, 512, 256, 256, 256, 'sidePos');
+
+      const blob = window.serializeFace(lm, tc, {
+        aspect: f0.imageW / f0.imageH,
+        crop: f0.crop,
+        imageW: f0.imageW, imageH: f0.imageH,
+        uvLandmarks: f0.uvLm,        // 텍스처를 딴 바로 그 프레임의 좌표 — UV 정합용
+        atlas: regions,
+        // 옆모습의 랜드마크 — face3d 가 이걸로 3D->옆사진 투영을 역산해 두개골 UV 를 만든다
+        sideViews: {
+          neg: sideNeg ? { lm: sideNeg.uvLm, crop: sideNeg.crop,
+                           imageW: sideNeg.imageW, imageH: sideNeg.imageH } : null,
+          pos: sidePos ? { lm: sidePos.uvLm, crop: sidePos.crop,
+                           imageW: sidePos.imageW, imageH: sidePos.imageH } : null,
+        },
       }, 0.82);
 
+      finishWithBlob(blob);
+    }
+
+    /** 복원된 얼굴을 화면·서버·미리보기에 반영한다 (1장/3장 경로 공용) */
+    function finishWithBlob(blob) {
       stopCapture();
       capEls.title.innerText = '복원 완료 — 아바타에 적용했습니다';
       capEls.count.innerText = '';
-      capEls.desc.innerHTML = '랜드마크 468개 · 텍스처 ' + Math.round(blob.tex.length / 1024)
-        + 'KB<br>다른 파이터 화면에도 이 얼굴로 보입니다.';
+      capEls.desc.innerHTML = '랜드마크 468개 · 텍스처 '
+        + Math.round(blob.tex.length / 1024)
+        + 'KB<br>다른 파이터·host 화면에도 이 얼굴로 보입니다.';
       capEls.start.innerText = '다시 촬영';
       capEls.skip.innerText = '닫기';
 
@@ -1627,10 +1897,11 @@
     }
 
     function startCapture() {
-      capState = { frames: [], want: 12, best: null, armed: false };
+      capState = { frames: [], want: 12, best: null, armed: false, stage: 0, shots: [] };
       capEls.box.classList.add('on');
       capEls.count.innerText = '';
-      capEls.title.innerText = '얼굴을 원 안에 맞추세요';
+      capEls.title.innerText = CAP_STAGES[0].title;
+      capEls.desc.innerHTML = CAP_STAGES[0].desc;
       capEls.start.innerText = '촬영 시작';
       hidePreview();
       captureMode = true;
@@ -1638,7 +1909,7 @@
     }
 
     function armCapture() {
-      if (!capState) capState = { frames: [], want: 12, best: null, armed: false };
+      if (!capState) capState = { frames: [], want: 12, best: null, armed: false, stage: 0, shots: [] };
       capState.frames = []; capState.best = null; capState.armed = true;
       capEls.count.innerText = '0/12';
     }

@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>🥊 3D 이동/회전 모션 리플레이 뷰어</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥊</text></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="/static/punch_core.js?v=3"></script>
+  <script src="/static/effects.js?v=2"></script>
+  <script src="/static/humanoid.js?v=1"></script>
+
+  <!--
+    eval_replay.html(펀치 리플레이어)의 이동/회전판. 처음엔 이 페이지 전용 간이 스틱피겨를
+    world landmark로 직접 IK 구동했지만, 실제 클라이언트 화면과 다르게 생겨서 의미가 없었다
+    — 그래서 실제 게임이 쓰는 humanoid.js 아바타를 그대로 갖다 썼다. humanoid.js는 랜드마크
+    IK가 아니라 "액션 이름"(펀치/가드)과 group.position 변화(→ 자동 보행)로 구동되므로,
+    여기서도 실제 fighter_client.html과 같은 방식으로 상태를 흘려준다.
+      1. 자체 임시 LEFT/RIGHT 휴리스틱(rollDeg>8) 대신, evaluate_full_actions.py가 실제로
+         계산한 v1/v2 state_timeline(MOVE 6종 + ROT 2종)을 그대로 읽어와 캐릭터를 옮기고 돌린다.
+      2. 헤더의 엔진 선택 드롭다운으로 v1_baseline ↔ v2_improved 를 그 자리에서 바꿔가며
+         같은 영상에 대한 판정 차이를 볼 수 있다 — 게임에 넣을 "버전 선택 UI"의 프로토타입.
+  -->
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #090d16;
+      color: #e6edf3;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      background: #121824;
+      border-bottom: 1px solid #283347;
+      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 52px;
+      flex-shrink: 0;
+    }
+    .title-group { display: flex; align-items: center; gap: 10px; }
+    .title-group h1 { font-size: 1.05rem; font-weight: 700; color: #00E5FF; }
+    .badge {
+      background: rgba(0,229,255,0.15);
+      border: 1px solid #00E5FF;
+      color: #00E5FF;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+    .hud-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.82rem;
+      font-family: monospace;
+    }
+    .hud-item {
+      background: #1b2333;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid #2c3952;
+    }
+    .hud-item span { font-weight: bold; color: #3fb950; }
+    .hud-item span.bad { color: #FF3366; }
+    #engine-select {
+      background: #1b2333;
+      color: #00E5FF;
+      border: 1px solid #00E5FF;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    #main-container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+    .pane {
+      flex: 1;
+      position: relative;
+      background: #05080f;
+      overflow: hidden;
+    }
+    .pane:first-child {
+      border-right: 2px solid #283347;
+    }
+    .pane-header {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 10;
+      background: rgba(18, 24, 36, 0.88);
+      backdrop-filter: blur(6px);
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: 1px solid #2c3952;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #c9d1d9;
+    }
+
+    .video-wrapper {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+    }
+    #video-element {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    #skeleton-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 5;
+    }
+    #three-canvas-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    /* Action Banner Overlay — MOVE/ROT 상태 전환 시 잠깐 뜬다 */
+    #action-banner {
+      position: absolute;
+      top: 25px;
+      right: 25px;
+      z-index: 20;
+      background: rgba(13, 17, 23, 0.94);
+      border: 2px solid #00E5FF;
+      padding: 10px 24px;
+      border-radius: 20px;
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #00E5FF;
+      box-shadow: 0 0 25px rgba(0,229,255,0.45);
+      transition: all 0.15s ease;
+      opacity: 0;
+      pointer-events: none;
+    }
+    #action-banner.active {
+      opacity: 1;
+      transform: scale(1.06);
+    }
+
+    /* GT 배너 — 좌측 상단, 지금 정답이 뭔지 상시 표시 */
+    #gt-banner {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 10;
+      background: rgba(18, 24, 36, 0.88);
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: 1px solid #2c3952;
+      font-size: 0.78rem;
+      font-family: monospace;
+      color: #ffd580;
+    }
+
+    footer {
+      background: #121824;
+      border-top: 1px solid #283347;
+      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      height: 52px;
+      flex-shrink: 0;
+    }
+    .btn {
+      background: #238636;
+      color: #fff;
+      border: none;
+      padding: 7px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: background 0.15s;
+    }
+    .btn:hover { background: #2ea043; }
+    .btn-secondary { background: #30363d; }
+    .btn-secondary:hover { background: #3c444d; }
+
+    .slider-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    input[type=range] {
+      flex: 1;
+      accent-color: #00E5FF;
+      cursor: pointer;
+      height: 6px;
+    }
+    .time-label {
+      font-family: monospace;
+      font-size: 0.85rem;
+      color: #8b949e;
+      min-width: 85px;
+    }
+    select {
+      background: #1b2333;
+      color: #e6edf3;
+      border: 1px solid #2c3952;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="title-group">
+      <h1>🥊 3D 이동/회전 모션 리플레이 뷰어</h1>
+      <span class="badge">RULE-BASE STATE REPLAY</span>
+    </div>
+    <div class="hud-bar">
+      <div class="hud-item">ENGINE: <select id="engine-select">
+        <option value="v1">v1_baseline</option>
+        <option value="v2" selected>v2_improved</option>
+      </select></div>
+      <div class="hud-item">MOVE: <span id="hud-move">NONE</span></div>
+      <div class="hud-item">ROT: <span id="hud-rot">NONE</span></div>
+      <div class="hud-item">GT: <span id="hud-gt" style="color:#ffd580">-/-</span></div>
+      <div class="hud-item">STATUS: <span id="hud-status" style="color:#00E5FF">로딩 중...</span></div>
+    </div>
+  </header>
+
+  <div id="main-container">
+    <!-- 좌측: 비디오 및 2D 스켈레톤 -->
+    <div class="pane">
+      <div class="pane-header">📹 원본 녹화 영상 & MediaPipe 관절 궤적</div>
+      <div class="video-wrapper">
+        <video id="video-element" src="/eval_video/benchmark_movement_fixed.mp4" playsinline muted crossorigin="anonymous"></video>
+        <canvas id="skeleton-canvas"></canvas>
+      </div>
+    </div>
+
+    <!-- 우측: 실제 게임 아바타 (humanoid.js — fighter_client.html/arena.html과 동일) -->
+    <div class="pane">
+      <div class="pane-header" id="pane2-header">🥊 Three.js 3D 아바타 — v2_improved 판정 재생</div>
+      <div id="three-canvas-container"></div>
+      <div id="action-banner">FORWARD</div>
+      <div id="gt-banner">GT move:NONE rot:NONE</div>
+    </div>
+  </div>
+
+  <footer>
+    <button id="btn-play" class="btn">▶ 재생</button>
+    <div class="slider-container">
+      <span id="time-cur" class="time-label">00:00</span>
+      <input type="range" id="seek-bar" min="0" max="100" value="0" step="0.1">
+      <span id="time-dur" class="time-label">00:00</span>
+    </div>
+    <select id="speed-select">
+      <option value="0.5">0.5x 슬로우</option>
+      <option value="1.0" selected>1.0x 정상</option>
+      <option value="1.5">1.5x 고속</option>
+    </select>
+    <button id="btn-reset-cam" class="btn btn-secondary">카메라 리셋</button>
+  </footer>
+
+  <script>
+    const video = document.getElementById('video-element');
+    const skeletonCanvas = document.getElementById('skeleton-canvas');
+    const skeletonCtx = skeletonCanvas.getContext('2d');
+    const threeContainer = document.getElementById('three-canvas-container');
+
+    const btnPlay = document.getElementById('btn-play');
+    const seekBar = document.getElementById('seek-bar');
+    const timeCur = document.getElementById('time-cur');
+    const timeDur = document.getElementById('time-dur');
+    const speedSelect = document.getElementById('speed-select');
+    const btnResetCam = document.getElementById('btn-reset-cam');
+    const engineSelect = document.getElementById('engine-select');
+    const pane2Header = document.getElementById('pane2-header');
+
+    const hudMove = document.getElementById('hud-move');
+    const hudRot = document.getElementById('hud-rot');
+    const hudGt = document.getElementById('hud-gt');
+    const hudStatus = document.getElementById('hud-status');
+    const actionBanner = document.getElementById('action-banner');
+    const gtBanner = document.getElementById('gt-banner');
+
+    // ========== 1. Three.js 3D Scene Setup (eval_replay.html과 동일) ==========
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x060911);
+    scene.fog = new THREE.FogExp2(0x060911, 0.025);
+
+    let width = threeContainer.clientWidth || 600;
+    let height = threeContainer.clientHeight || 500;
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+    camera.position.set(0, 5.2, 12.5);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    threeContainer.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 3.6, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+
+    const ambLight = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    dirLight.position.set(5, 12, 6);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    const cyanPoint = new THREE.PointLight(0x00E5FF, 1.8, 15);
+    cyanPoint.position.set(0, 3, 2);
+    scene.add(cyanPoint);
+
+    const redPoint = new THREE.PointLight(0xFF3366, 1.2, 12);
+    redPoint.position.set(0, 2, -2);
+    scene.add(redPoint);
+
+    const floorGeo = new THREE.PlaneGeometry(14, 14);
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x0f1522, roughness: 0.4, metalness: 0.3 });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    const grid = new THREE.GridHelper(14, 14, 0x00E5FF, 0x1b2538);
+    grid.position.y = 0.01;
+    scene.add(grid);
+
+    const postMat = new THREE.MeshStandardMaterial({ color: 0xFF3366, metalness: 0.7, roughness: 0.2 });
+    [[-5, -5], [5, -5], [-5, 5], [5, 5]].forEach(([px, pz]) => {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 3.0, 16), postMat);
+      post.position.set(px, 1.5, pz);
+      scene.add(post);
+    });
+
+    const hitFx = window.createHitEffects ? window.createHitEffects(scene) : null;
+
+    // ========== 2. 실제 게임 아바타 (humanoid.js — fighter_client.html/arena.html과 완전히 동일) ==========
+    // 이 페이지 전용으로 만든 간이 스틱피겨가 아니라, 실제 클라이언트 화면에 보이는 것과
+    // 똑같은 저폴리 관절형 휴머노이드를 그대로 쓴다. humanoid.js는 랜드마크로 직접 IK를
+    // 거는 게 아니라 "액션 이름"(펀치 종류/가드)과 group.position 변화(→ 자동 보행 애니메이션)로
+    // 구동되는 절차적 캐릭터라, 우리가 계산한 move/rot/펀치 상태를 그 인터페이스에 맞게 흘려준다.
+    const humanoid = window.createHumanoid(0x00E5FF);
+    scene.add(humanoid.group);
+    const avatarGroup = humanoid.group; // 아래 updateAvatarLocomotion()이 그대로 재사용
+
+    // ========== 3. PunchCore (장식용 — 이 페이지의 MOVE/ROT 판정과 무관) ==========
+    const punchCore = window.PunchCore ? window.PunchCore.createPunchCore() : null;
+
+    // ========== 4. 데이터 로드: 랜드마크 + v1/v2 판정 상태 + GT 라벨 ==========
+    let cachedFrames = [];
+    let statesByEngine = { v1: [], v2: [] };
+    let labels = { move_segments: [], rot_segments: [] };
+    let prevMove = "NONE", prevRot = "NONE";
+
+    function findByTime(arr, tMs, keyFn) {
+      if (!arr.length) return null;
+      let low = 0, high = arr.length - 1;
+      while (low <= high) {
+        const mid = (low + high) >> 1;
+        const midT = keyFn(arr[mid]);
+        if (midT === tMs) return arr[mid];
+        else if (midT < tMs) low = mid + 1;
+        else high = mid - 1;
+      }
+      const idx = Math.max(0, Math.min(low, arr.length - 1));
+      return arr[idx];
+    }
+
+    function gtAt(segments, tMs) {
+      for (const s of segments) {
+        if (s.start_ms <= tMs && tMs < s.end_ms) return s.state;
+      }
+      return "NONE";
+    }
+
+    async function loadAll() {
+      try {
+        hudStatus.innerText = "데이터 로딩 중...";
+        const [lmRes, v1Res, v2Res, labelRes] = await Promise.all([
+          fetch('/eval_video/benchmark_movement_fixed_landmarks.jsonl'),
+          fetch('/eval_output/movement_report_v1.json'),
+          fetch('/eval_output/movement_report_v2.json'),
+          fetch('/eval_video/benchmark_movement_labels.json'),
+        ]);
+        const lmText = await lmRes.text();
+        cachedFrames = lmText.trim().split('\n').map(l => { try { return JSON.parse(l); } catch (e) { return null; } }).filter(Boolean);
+
+        const v1json = await v1Res.json();
+        const v2json = await v2Res.json();
+        statesByEngine.v1 = v1json.state_timeline || [];
+        statesByEngine.v2 = v2json.state_timeline || [];
+        punchesByEngine.v1 = v1json.punches || [];
+        punchesByEngine.v2 = v2json.punches || [];
+
+        labels = await labelRes.json();
+
+        hudStatus.innerText = `READY (${cachedFrames.length} frames, ${statesByEngine.v2.length} states)`;
+        hudStatus.style.color = "#3fb950";
+        resizeCanvas();
+      } catch (e) {
+        hudStatus.innerText = "데이터 로드 실패";
+        hudStatus.style.color = "#ff3366";
+        console.warn("Failed to load replay data:", e);
+      }
+    }
+    loadAll();
+
+    function resizeCanvas() {
+      const rect = video.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        skeletonCanvas.width = rect.width;
+        skeletonCanvas.height = rect.height;
+      }
+    }
+    window.addEventListener('resize', resizeCanvas);
+    video.addEventListener('loadedmetadata', resizeCanvas);
+
+    const SKELETON = [[0, 11], [0, 12], [11, 12], [11, 13], [13, 15], [12, 14], [14, 16]];
+
+    function drawSkeleton(lm) {
+      if (!lm) return;
+      const cW = skeletonCanvas.width;
+      const cH = skeletonCanvas.height;
+      if (cW === 0 || cH === 0) return;
+      skeletonCtx.clearRect(0, 0, cW, cH);
+
+      const vW = video.videoWidth || 640;
+      const vH = video.videoHeight || 480;
+      const vAspect = vW / vH;
+      const cAspect = cW / cH;
+
+      let rW = cW, rH = cH, oX = 0, oY = 0;
+      if (cAspect > vAspect) { rW = cH * vAspect; oX = (cW - rW) / 2; }
+      else { rH = cW / vAspect; oY = (cH - rH) / 2; }
+
+      function getPt(p) {
+        const x = Array.isArray(p) ? p[0] : p.x;
+        const y = Array.isArray(p) ? p[1] : p.y;
+        return { x: oX + x * rW, y: oY + y * rH };
+      }
+
+      skeletonCtx.lineWidth = 3;
+      skeletonCtx.strokeStyle = "#00E5FF";
+      SKELETON.forEach(([a, b]) => {
+        const pa = lm[a], pb = lm[b];
+        if (pa && pb) {
+          const ptA = getPt(pa), ptB = getPt(pb);
+          skeletonCtx.beginPath();
+          skeletonCtx.moveTo(ptA.x, ptA.y);
+          skeletonCtx.lineTo(ptB.x, ptB.y);
+          skeletonCtx.stroke();
+        }
+      });
+      [0, 11, 12, 13, 14, 15, 16].forEach(idx => {
+        const p = lm[idx];
+        if (p) {
+          const pt = getPt(p);
+          skeletonCtx.fillStyle = idx >= 15 ? (idx === 15 ? "#00E5FF" : "#FF3366") : "#58a6ff";
+          skeletonCtx.beginPath();
+          skeletonCtx.arc(pt.x, pt.y, 5.5, 0, Math.PI * 2);
+          skeletonCtx.fill();
+        }
+      });
+    }
+
+    // humanoid.js는 랜드마크로 직접 구동하지 않는다 — setAction()(펀치/가드)과
+    // group.position 변화(→ 자동 보행)로만 반응하는 절차적 캐릭터다. 실제 게임에서
+    // fighter_client.html이 punchCore가 확정한 펀치를 h.setAction(...)으로 넘기는 것과
+    // 동일한 방식을 여기서도 그대로 따른다 — 다만 실시간 판정 대신 report.json에 이미
+    // 기록된 펀치 이벤트를 재생 시각에 맞춰 순서대로 흘려보낸다.
+    let punchesByEngine = { v1: [], v2: [] };
+    let punchPtr = { v1: 0, v2: 0 };
+
+    function checkPunches(tMs) {
+      const engine = engineSelect.value;
+      const list = punchesByEngine[engine] || [];
+      let ptr = punchPtr[engine];
+      if (ptr > 0 && list[ptr - 1] && list[ptr - 1].t_ms > tMs + 50) ptr = 0; // 되감기 대응
+      while (ptr < list.length && list[ptr].t_ms <= tMs) {
+        const p = list[ptr];
+        humanoid.setAction(p.action);
+        showActionBanner(`${p.action} ${p.speed_kmh}km/h`, "#FF3366");
+        ptr++;
+      }
+      punchPtr[engine] = ptr;
+    }
+
+    function showActionBanner(text, color) {
+      actionBanner.innerText = text;
+      actionBanner.style.borderColor = color;
+      actionBanner.style.color = color;
+      actionBanner.style.boxShadow = `0 0 25px ${color}77`;
+      actionBanner.classList.add('active');
+      lastBannerT = performance.now();
+    }
+    let lastBannerT = 0;
+
+    // ========== 5. 판정 상태 반영 (v1/v2 실제 evaluate_full_actions.py 결과) ==========
+    // 판정된 MOVE/ROT 상태를 캐릭터의 실제 이동/회전으로 반영한다.
+    // (관절 IK는 실제 world landmark로 이미 재현되지만, 그것만으로는 "몸통이 링 위를
+    // 걷는다"가 표현되지 않는다 — 그건 별도로 캐릭터 루트(avatarGroup)를 옮겨야 한다.
+    // fighter_client.html의 MOVE_SPEED=14 / ROT_SPEED=1.3 rad·s⁻¹ 비율을 그대로 따르되,
+    // 이 데모 링(14x14)에 맞게 절대 속도만 축소했다.)
+    const MOVE_SPEED_VIS = 1.3;      // units/s (전진 기준)
+    const BACK_RATIO = 0.85;         // 실제 게임과 동일한 후진 감속 비율
+    const ROT_SPEED_VIS = 1.3;       // rad/s — 실제 게임과 동일
+    const ROT_LIMIT_VIS = Math.PI / 4; // 제스처 1회당 45° 상한 — 실제 게임과 동일
+    const FLOOR_HALF = 6.2;          // 바닥(14x14) 밖으로 나가지 않도록 클램프
+
+    let currentMove = "NONE", currentRot = "NONE";
+    let avatarPosX = 0, avatarPosZ = 0, avatarYaw = 0, rotAccum = 0;
+
+    function updateAvatarLocomotion(dt) {
+      if (video.paused) return;
+      // 카메라가 +Z 쪽(0,2.8,6.2)에서 원점을 보고 있으므로, FORWARD(전진)는 +Z로
+      // 옮겨 "카메라 쪽으로 다가오는" 것처럼 보이게 한다 — 실제 시야에서 직관적으로 맞다.
+      if (currentMove === "FORWARD") avatarPosZ += MOVE_SPEED_VIS * dt;
+      else if (currentMove === "BACK") avatarPosZ -= MOVE_SPEED_VIS * BACK_RATIO * dt;
+      else if (currentMove === "LEFT") avatarPosX -= MOVE_SPEED_VIS * dt;
+      else if (currentMove === "RIGHT") avatarPosX += MOVE_SPEED_VIS * dt;
+      else {
+        // 150초 넘게 쌓이면 편향된 방향(LEFT가 더 잘 잡히는 등)으로 링 구석까지 밀려나
+        // 화면 밖으로 나가버린다 — 실제 게임처럼 "다음 판정을 기다리는 동안" 서서히
+        // 중앙으로 돌아오게 한다 (완전히 멈춰있진 않되, 걷는 것보단 훨씬 느리게).
+        avatarPosX *= Math.max(0, 1 - dt * 0.5);
+        avatarPosZ *= Math.max(0, 1 - dt * 0.5);
+      }
+      avatarPosX = THREE.MathUtils.clamp(avatarPosX, -FLOOR_HALF, FLOOR_HALF);
+      // Z는 카메라(6.2)에 너무 가까워지지 않도록 좁게 클램프한다.
+      avatarPosZ = THREE.MathUtils.clamp(avatarPosZ, -FLOOR_HALF, 0.8);
+
+      if (currentRot === "NONE") {
+        rotAccum = 0; // 제스처가 끝나면 다음 제스처가 다시 45°를 다 쓸 수 있게 리셋
+        avatarYaw *= Math.max(0, 1 - dt * 0.3); // 위치와 같은 이유로 정면을 서서히 되찾는다
+      } else if (rotAccum < ROT_LIMIT_VIS) {
+        const d = Math.min(ROT_SPEED_VIS * dt, ROT_LIMIT_VIS - rotAccum);
+        avatarYaw += (currentRot === "ROT_LEFT" ? 1 : -1) * d;
+        rotAccum += d;
+      }
+
+      avatarGroup.position.set(avatarPosX, 0, avatarPosZ);
+      avatarGroup.rotation.y = avatarYaw;
+    }
+
+    function applyState(tMs) {
+      const engine = engineSelect.value;
+      const timeline = statesByEngine[engine];
+      if (!timeline || !timeline.length) return;
+      const st = findByTime(timeline, tMs, x => x.t_ms);
+      if (!st) return;
+
+      const gtMove = gtAt(labels.move_segments || [], tMs);
+      const gtRot = gtAt(labels.rot_segments || [], tMs);
+
+      const moveOk = st.move === gtMove;
+      const rotOk = st.rot === gtRot;
+
+      hudMove.innerText = st.move;
+      hudMove.className = moveOk ? "" : "bad";
+      hudRot.innerText = st.rot;
+      hudRot.className = rotOk ? "" : "bad";
+      hudGt.innerText = `${gtMove}/${gtRot}`;
+      gtBanner.innerText = `GT move:${gtMove} rot:${gtRot}`;
+
+      if (st.move !== "NONE" && st.move !== prevMove) {
+        showActionBanner(st.move, moveOk ? "#3fb950" : "#FF3366");
+      } else if (st.rot !== "NONE" && st.rot !== prevRot) {
+        showActionBanner(st.rot, rotOk ? "#3fb950" : "#FF3366");
+      }
+      prevMove = st.move; prevRot = st.rot;
+      currentMove = st.move; currentRot = st.rot;
+
+      // 가드는 punch_core/실제 게임처럼 "held" 상태다 — 매 프레임 계속 호출해야
+      // humanoid.js 내부의 0.5초 감쇠 타이머가 계속 갱신된다 (fighter_client.html의
+      // 100Hz DUAL_GUARD 반복 전송과 같은 방식).
+      if (st.guard) humanoid.setAction('DUAL_GUARD');
+    }
+
+    engineSelect.addEventListener('change', () => {
+      pane2Header.innerText = `🥊 Three.js 3D 아바타 — ${engineSelect.options[engineSelect.selectedIndex].text} 판정 재생`;
+      punchPtr.v1 = 0; punchPtr.v2 = 0;
+    });
+
+    // ========== 6. 비디오 동기화 루프 ==========
+    function syncLoop() {
+      if (cachedFrames.length > 0) {
+        const curMs = Math.round(video.currentTime * 1000);
+        const data = findByTime(cachedFrames, curMs, x => x.t_ms);
+        if (data) {
+          drawSkeleton(data.lm);
+          checkPunches(curMs);
+          applyState(curMs);
+        }
+      }
+      requestAnimationFrame(syncLoop);
+    }
+    requestAnimationFrame(syncLoop);
+
+    function formatTime(s) {
+      if (isNaN(s)) return "00:00";
+      const m = Math.floor(s / 60);
+      const sec = Math.floor(s % 60);
+      return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+    }
+
+    video.addEventListener('loadedmetadata', () => {
+      timeDur.innerText = formatTime(video.duration);
+      seekBar.max = video.duration;
+      resizeCanvas();
+    });
+
+    video.addEventListener('timeupdate', () => {
+      timeCur.innerText = formatTime(video.currentTime);
+      seekBar.value = video.currentTime;
+      if (performance.now() - lastBannerT > 650) {
+        actionBanner.classList.remove('active');
+      }
+    });
+
+    btnPlay.addEventListener('click', () => {
+      if (video.paused) {
+        video.play().then(() => {
+          btnPlay.innerText = "⏸ 일시정지";
+          btnPlay.classList.add('btn-secondary');
+        }).catch(e => alert("비디오 재생 실패: " + e.message));
+      } else {
+        video.pause();
+        btnPlay.innerText = "▶ 재생";
+        btnPlay.classList.remove('btn-secondary');
+      }
+    });
+
+    seekBar.addEventListener('input', () => { video.currentTime = parseFloat(seekBar.value); });
+    speedSelect.addEventListener('change', () => { video.playbackRate = parseFloat(speedSelect.value); });
+    btnResetCam.addEventListener('click', () => {
+      camera.position.set(0, 5.2, 12.5);
+      controls.target.set(0, 3.6, 0);
+    });
+
+    window.addEventListener('resize', () => {
+      width = threeContainer.clientWidth;
+      height = threeContainer.clientHeight;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height);
+      resizeCanvas();
+    });
+
+    let clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = clock.getDelta();
+      updateAvatarLocomotion(dt);   // group.position/rotation을 먼저 옮겨야
+      humanoid.update();            // humanoid.js가 그 변화로 보행 애니메이션을 감지한다
+      controls.update();
+      if (hitFx) hitFx.update(dt);
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+{
+  "n_samples": 29,
+  "note": "타이밍/트리거 배제: 29개 GT 펀치 전부에 대해, side는 GT로 이미 알고 있다는 전제로 STRAIGHT/HOOK/UPPERCUT 3지 분류만 평가.",
+  "rule_at_gt": {
+    "confusion_matrix": [
+      [
+        8,
+        3,
+        5
+      ],
+      [
+        4,
+        2,
+        1
+      ],
+      [
+        5,
+        0,
+        1
+      ]
+    ],
+    "labels_order": [
+      "STRAIGHT",
+      "HOOK",
+      "UPPERCUT"
+    ],
+    "per_class": {
+      "STRAIGHT": {
+        "precision": 0.4706,
+        "recall": 0.5,
+        "f1": 0.4848,
+        "support": 16
+      },
+      "HOOK": {
+        "precision": 0.4,
+        "recall": 0.2857,
+        "f1": 0.3333,
+        "support": 7
+      },
+      "UPPERCUT": {
+        "precision": 0.1429,
+        "recall": 0.1667,
+        "f1": 0.1538,
+        "support": 6
+      }
+    },
+    "accuracy": 0.3793,
+    "macro_f1": 0.324,
+    "weighted_f1": 0.3798
+  },
+  "tcn_deployed": {
+    "confusion_matrix": [
+      [
+        8,
+        6,
+        2
+      ],
+      [
+        4,
+        1,
+        2
+      ],
+      [
+        2,
+        4,
+        0
+      ]
+    ],
+    "labels_order": [
+      "STRAIGHT",
+      "HOOK",
+      "UPPERCUT"
+    ],
+    "per_class": {
+      "STRAIGHT": {
+        "precision": 0.5714,
+        "recall": 0.5,
+        "f1": 0.5333,
+        "support": 16
+      },
+      "HOOK": {
+        "precision": 0.0909,
+        "recall": 0.1429,
+        "f1": 0.1111,
+        "support": 7
+      },
+      "UPPERCUT": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 6
+      }
+    },
+    "accuracy": 0.3103,
+    "macro_f1": 0.2148,
+    "weighted_f1": 0.3211
+  },
+  "tcn_overfit_hong": {
+    "confusion_matrix": [
+      [
+        16,
+        0,
+        0
+      ],
+      [
+        0,
+        7,
+        0
+      ],
+      [
+        0,
+        0,
+        6
+      ]
+    ],
+    "labels_order": [
+      "STRAIGHT",
+      "HOOK",
+      "UPPERCUT"
+    ],
+    "per_class": {
+      "STRAIGHT": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 16
+      },
+      "HOOK": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 7
+      },
+      "UPPERCUT": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 6
+      }
+    },
+    "accuracy": 1.0,
+    "macro_f1": 1.0,
+    "weighted_f1": 1.0
+  }
+}

@@ -175,13 +175,13 @@
 
   <!-- Top HUD: 4-Player Health Bars & Match Clock -->
   <div class="hud-top">
-    <div class="fighter-card" id="card-client_1" style="--f-color: var(--red);">
+    <div class="fighter-card" id="card-client_1" style="--f-color: var(--cyan);">
       <div class="fighter-head"><span>🥊 User 1 (Red)</span><span id="hp-text-client_1">100 HP</span></div>
       <div class="hp-bar-bg"><div class="hp-bar-fill" id="hp-bar-client_1"></div></div>
       <div class="rage-bg"><div class="rage-fill" id="rage-bar-client_1"></div></div>
       <div class="action-badge"><span>Action:</span><b id="act-client_1">IDLE</b></div>
     </div>
-    <div class="fighter-card" id="card-client_2" style="--f-color: var(--cyan);">
+    <div class="fighter-card" id="card-client_2" style="--f-color: var(--red);">
       <div class="fighter-head"><span>🥊 User 2 (Cyan)</span><span id="hp-text-client_2">100 HP</span></div>
       <div class="hp-bar-bg"><div class="hp-bar-fill" id="hp-bar-client_2"></div></div>
       <div class="rage-bg"><div class="rage-fill" id="rage-bar-client_2"></div></div>
@@ -325,8 +325,8 @@
 
     // --- 2. 4인 3D 파이터 아바타 생성 (관절형 휴머노이드, baseYaw = 링 중앙 마주보기) ---
     const fighterConfigs = {
-      "client_1": { color: 0xff3366, name: "Red Boxer", pos: [-12, 0, 0], baseYaw: Math.PI / 2 },
-      "client_2": { color: 0x00e5ff, name: "Cyan Boxer", pos: [12, 0, 0], baseYaw: -Math.PI / 2 },
+      "client_1": { color: 0x00e5ff, name: "Blue Boxer", pos: [-12, 0, 0], baseYaw: Math.PI / 2 },
+      "client_2": { color: 0xff3366, name: "Red Boxer", pos: [12, 0, 0], baseYaw: -Math.PI / 2 },
       "client_3": { color: 0xffd700, name: "Gold Mage", pos: [0, 0, -12], baseYaw: 0 },
       "client_4": { color: 0x00ff66, name: "Green Striker", pos: [0, 0, 12], baseYaw: Math.PI }
     };
@@ -439,14 +439,98 @@
 
     // 펀치 타격 광선 이펙트 (Punch Laser Beam) — setInterval 대신 rAF 기반 감쇠
     const activeTrails = [];
-    function spawnPunchTrail(startPos, colorHex) {
-      const dir = new THREE.Vector3(0, 4, 0).sub(startPos).normalize();
-      const endPos = startPos.clone().addScaledVector(dir, 15);
-      const geom = new THREE.BufferGeometry().setFromPoints([startPos, endPos]);
-      const mat = new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 1.0 });
+    /**
+     * 기술별 궤적. **모양과 색이 기술마다 다르다.**
+     *
+     * 1인칭에서는 내 팔이 실시간으로 움직이니 잽·훅·어퍼가 그냥 보인다. 그런데 host 는
+     * 링 전체를 멀리서 잡기 때문에 아바타의 팔 동작(측정해 보면 궤적 차이 1.0~1.9 units)이
+     * 눈에 안 읽힌다. 그래서 궤적 자체를 기술마다 다른 모양으로 그린다.
+     *
+     *   직선(잽·크로스) : 정면으로 곧게 뻗는 선
+     *   훅              : 옆에서 감아 도는 수평 호
+     *   어퍼            : 아래에서 위로 솟는 호
+     */
+    const PUNCH_STYLE = {
+      straight: { color: 0x66ddff, name: 'JAB',   width: 3 },
+      hook:     { color: 0xffaa22, name: 'HOOK',  width: 4 },
+      uppercut: { color: 0xff44aa, name: 'UPPER', width: 4 },
+      wave:     { color: 0xaa66ff, name: 'ULTIMATE', width: 6 },
+    };
+    const ACTION_KIND = {
+      LEFT_JAB: 'straight', RIGHT_CROSS: 'straight', JAB_STRAIGHT: 'straight',
+      LEFT_HOOK: 'hook', RIGHT_HOOK: 'hook',
+      LEFT_UPPERCUT: 'uppercut', RIGHT_UPPERCUT: 'uppercut',
+      ENERGY_WAVE: 'wave',
+    };
+
+    function spawnPunchTrail(startPos, colorHex, action, side) {
+      const kind = ACTION_KIND[action] || 'straight';
+      const st = PUNCH_STYLE[kind];
+      // 링 중앙(정면)을 향하는 방향과, 그에 수직인 옆 방향
+      const fwd = new THREE.Vector3(0, startPos.y, 0).sub(startPos).setY(0).normalize();
+      const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
+      const sgn = (side === 'left') ? 1 : -1;
+
+      const pts = [];
+      const N = 24;
+      for (let i = 0; i <= N; i++) {
+        const t = i / N;
+        const q = startPos.clone();
+        if (kind === 'hook') {
+          // 옆으로 크게 감았다가 안으로 들어온다
+          q.addScaledVector(fwd, 11 * Math.sin(t * Math.PI * 0.62));
+          q.addScaledVector(right, sgn * 7.0 * Math.sin(t * Math.PI));
+          q.y += 0.8 * Math.sin(t * Math.PI);
+        } else if (kind === 'uppercut') {
+          // 아래에서 위로 솟는다
+          q.addScaledVector(fwd, 7.5 * t);
+          q.y += 9.0 * Math.sin(t * Math.PI * 0.55) - 1.6 * (1 - t);
+        } else if (kind === 'wave') {
+          q.addScaledVector(fwd, 18 * t);
+          q.addScaledVector(right, Math.sin(t * Math.PI * 3) * 1.6);
+        } else {
+          q.addScaledVector(fwd, 15 * t);       // 곧게
+        }
+        pts.push(q);
+      }
+      const geom = new THREE.BufferGeometry().setFromPoints(pts);
+      const mat = new THREE.LineBasicMaterial({
+        color: st.color, transparent: true, opacity: 1.0, linewidth: st.width });
       const line = new THREE.Line(geom, mat);
       scene.add(line);
       activeTrails.push({ line, life: 1.0 });
+
+      // 직선 펀치는 앞손이 잽, 뒷손이 크로스다. 둘 다 JAB 으로 적으면 틀린 표기가 된다.
+      const label = (kind === 'straight' && side !== 'left') ? 'CROSS' : st.name;
+      spawnActionLabel(startPos, label, st.color);
+    }
+
+    /**
+     * 기술 이름을 아바타 위에 잠깐 띄운다.
+     *
+     * 궤적만으로도 구분은 되지만, 멀리서 여러 명이 동시에 치면 확신이 안 선다.
+     * 글자는 거리와 무관하게 읽히므로 확인 사살 역할을 한다.
+     */
+    const actionLabels = [];
+    function spawnActionLabel(pos, text, colorHex) {
+      const c = document.createElement('canvas');
+      c.width = 384; c.height = 96;
+      const g = c.getContext('2d');
+      g.font = '900 66px Consolas, monospace';
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.lineWidth = 12; g.strokeStyle = 'rgba(0,0,0,0.9)';
+      g.strokeText(text, 192, 52);
+      g.fillStyle = '#' + ('000000' + colorHex.toString(16)).slice(-6);
+      g.fillText(text, 192, 52);
+      const tex = new THREE.CanvasTexture(c);
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: tex, transparent: true, depthTest: false }));
+      // 링 전체를 멀리서 잡는 카메라라 작으면 안 읽힌다. 크게, 머리 위로 충분히 띄운다.
+      sp.scale.set(9.5, 2.4, 1);
+      sp.position.copy(pos).add(new THREE.Vector3(0, 4.0, 0));
+      sp.renderOrder = 999;
+      scene.add(sp);
+      actionLabels.push({ sp, tex, life: 1.0 });
     }
 
     // --- 3. WebSocket 실시간 연동 ---
@@ -618,13 +702,13 @@
       if (action === 'RIGHT_CROSS' || action === 'JAB_STRAIGHT' || action === 'RIGHT_UPPERCUT' || action === 'RIGHT_HOOK') {
         const gw = new THREE.Vector3();
         mesh.rightGlove.getWorldPosition(gw);
-        spawnPunchTrail(gw, fighterConfigs[cid].color);
+        spawnPunchTrail(gw, fighterConfigs[cid].color, action, 'right');
         snd.whoosh(data.velocity || 20);
         matchStats.punches++;
       } else if (action === 'LEFT_JAB' || action === 'LEFT_HOOK' || action === 'LEFT_UPPERCUT') {
         const gw = new THREE.Vector3();
         mesh.leftGlove.getWorldPosition(gw);
-        spawnPunchTrail(gw, fighterConfigs[cid].color);
+        spawnPunchTrail(gw, fighterConfigs[cid].color, action, 'left');
         snd.whoosh(data.velocity || 20);
         matchStats.punches++;
       }
@@ -730,6 +814,21 @@
       fx.update(dtSec);
 
       // 펀치 트레일 감쇠 (setInterval → rAF)
+      // 기술 이름표 — 떠오르면서 사라진다
+      for (let i = actionLabels.length - 1; i >= 0; i--) {
+        const L = actionLabels[i];
+        L.life -= dtSec / 1.5;      // 0.9초는 눈이 따라가기에 짧다
+        if (L.life <= 0) {
+          scene.remove(L.sp);
+          L.sp.material.dispose();
+          L.tex.dispose();
+          actionLabels.splice(i, 1);
+          continue;
+        }
+        L.sp.material.opacity = Math.min(1, L.life * 1.8);
+        L.sp.position.y += dtSec * 2.2;   // 천천히 떠오르게
+      }
+
       for (let i = activeTrails.length - 1; i >= 0; i--) {
         const t = activeTrails[i];
         t.life -= dtSec * 5;

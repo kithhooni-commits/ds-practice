@@ -232,7 +232,16 @@
      * @param {number} damage        데미지 (숫자로 띄운다)
      * @param {boolean} isGuard      가드로 막혔는지 — 막히면 푸른 톤에 작게
      */
-    function spawnHit(pos, colorHex, damage, isGuard) {
+    /**
+     * @param {object} [opts]
+     *   opts.label      임팩트 텍스트를 직접 지정한다. 'HIT!'/'CRITICAL!' 대신
+     *                   기술 이름(JAB·HOOK·UPPER)을 띄우고 싶을 때 쓴다.
+     *   opts.labelColor 그 텍스트 색 (CSS 문자열)
+     *   opts.damageText  false 면 -N 숫자를 그리지 않는다 (분석 화면처럼
+     *                   데미지가 의미 없는 곳에서 화면만 시끄러워진다)
+     */
+    function spawnHit(pos, colorHex, damage, isGuard, opts) {
+      opts = opts || {};
       const color = isGuard ? 0x66ddff : colorHex;
       const hot   = mixHex(color, 0xffffff, 0.55);   // 화염구 안쪽은 흰색에 가깝게
       const mag   = isGuard ? 0.55 : 1.0;            // 가드면 전체적으로 작게
@@ -267,16 +276,19 @@
       push(s.pts, isGuard ? 0.5 : 0.75, 'sparks', { vel: s.vel });
 
       // 7) 임팩트 텍스트 — HIT! / CRITICAL! / BLOCK!
-      const label = isGuard ? 'BLOCK!' : (big ? 'CRITICAL!' : 'HIT!');
-      const labelCol = isGuard ? '#5fd8ff' : (big ? '#ffd23a' : hexToCss(colorHex));
+      const label = opts.label || (isGuard ? 'BLOCK!' : (big ? 'CRITICAL!' : 'HIT!'));
+      const labelCol = opts.labelColor
+        || (isGuard ? '#5fd8ff' : (big ? '#ffd23a' : hexToCss(colorHex)));
       const labelH = isGuard ? 3.0 : (big ? 5.2 : 4.2);
       addImpactText(pos.clone().add(new THREE.Vector3(0, 2.6, 0)),
                     label, labelCol, 104, labelH, 0.85, 4.2,
                     (Math.random() - 0.5) * 0.28, 0);
 
       // 8) 데미지 숫자 — 임팩트 텍스트보다 살짝 늦게 떠서 순서가 읽힌다
-      addImpactText(pos.clone().add(new THREE.Vector3(0, 1.0, 0)),
-                    `-${damage}`, '#ffffff', 78, 2.8, 0.85, 6.0, 0, 0.10);
+      if (opts.damageText !== false) {
+        addImpactText(pos.clone().add(new THREE.Vector3(0, 1.0, 0)),
+                      `-${damage}`, '#ffffff', 78, 2.8, 0.85, 6.0, 0, 0.10);
+      }
     }
 
     /** K.O. — 타격보다 크고 길게. 넘어지는 연출과 겹쳐 재생한다. */

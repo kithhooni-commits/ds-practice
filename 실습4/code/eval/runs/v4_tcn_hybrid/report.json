@@ -1,0 +1,598 @@
+{
+  "summary": {
+    "video_duration_s": 88.43,
+    "pose_coverage_pct": 100.0,
+    "pose_fps_mean": 30.0,
+    "total_punches": 31,
+    "windows_opened": 72,
+    "windows_expired_without_fire": 28,
+    "by_action": {
+      "RIGHT_CROSS": {
+        "count": 8,
+        "speed_kmh_mean": 11.32,
+        "reach_n_mean": 1.046,
+        "elbow_deg_mean": 102.4
+      },
+      "LEFT_JAB": {
+        "count": 13,
+        "speed_kmh_mean": 9.35,
+        "reach_n_mean": 1.103,
+        "elbow_deg_mean": 94.1
+      },
+      "LEFT_UPPERCUT": {
+        "count": 3,
+        "speed_kmh_mean": 8.23,
+        "reach_n_mean": 1.069,
+        "elbow_deg_mean": 88.9
+      },
+      "RIGHT_HOOK": {
+        "count": 4,
+        "speed_kmh_mean": 10.63,
+        "reach_n_mean": 1.091,
+        "elbow_deg_mean": 104.1
+      },
+      "RIGHT_UPPERCUT": {
+        "count": 2,
+        "speed_kmh_mean": 8.79,
+        "reach_n_mean": 1.226,
+        "elbow_deg_mean": 113.5
+      },
+      "LEFT_HOOK": {
+        "count": 1,
+        "speed_kmh_mean": 6.67,
+        "reach_n_mean": 0.916,
+        "elbow_deg_mean": 69.8
+      }
+    },
+    "by_side": {
+      "L": 17,
+      "R": 14
+    },
+    "speed_kmh": {
+      "mean": 9.79,
+      "median": 6.97,
+      "max": 41.48,
+      "min": 5.77
+    },
+    "cadence_ms": {
+      "mean": 2457.8,
+      "median": 1283.5,
+      "min": 567
+    },
+    "ppm": 21.0,
+    "form_checks_pct": {
+      "straight_full_extension(elbow>150)": 4.8,
+      "hook_low_elbow(<=165)": 100.0,
+      "uppercut_low_elbow(<=155)": 100.0,
+      "fired_at_or_beyond_095_reach": 100.0,
+      "confident_classification(margin>=0.15)": 90.3
+    },
+    "scoring": {
+      "tolerance_ms": 400,
+      "ground_truth": 29,
+      "predicted": 31,
+      "tp": 11,
+      "fp": 20,
+      "fn": 18,
+      "precision": 0.3548,
+      "recall": 0.3793,
+      "f1": 0.3666,
+      "kind_accuracy": 0.4545,
+      "side_accuracy": 0.3636,
+      "timing_error_ms_mean": 169.7,
+      "timing_error_ms_max": 333,
+      "confusion": {
+        "STRAIGHT->STRAIGHT": 5,
+        "STRAIGHT->HOOK": 1,
+        "STRAIGHT->UPPERCUT": 1,
+        "UPPERCUT->STRAIGHT": 2,
+        "UPPERCUT->HOOK": 1,
+        "HOOK->UPPERCUT": 1
+      },
+      "matches": [
+        {
+          "pred_index": 2,
+          "pred_t_ms": 13133,
+          "label_t_ms": 13133,
+          "dt_ms": 0
+        },
+        {
+          "pred_index": 1,
+          "pred_t_ms": 11166,
+          "label_t_ms": 11133,
+          "dt_ms": 33
+        },
+        {
+          "pred_index": 29,
+          "pred_t_ms": 79966,
+          "label_t_ms": 80000,
+          "dt_ms": 34
+        },
+        {
+          "pred_index": 26,
+          "pred_t_ms": 76433,
+          "label_t_ms": 76500,
+          "dt_ms": 67
+        },
+        {
+          "pred_index": 28,
+          "pred_t_ms": 78800,
+          "label_t_ms": 78900,
+          "dt_ms": 100
+        },
+        {
+          "pred_index": 30,
+          "pred_t_ms": 81666,
+          "label_t_ms": 81800,
+          "dt_ms": 134
+        },
+        {
+          "pred_index": 17,
+          "pred_t_ms": 47766,
+          "label_t_ms": 47500,
+          "dt_ms": 266
+        },
+        {
+          "pred_index": 4,
+          "pred_t_ms": 16900,
+          "label_t_ms": 17200,
+          "dt_ms": 300
+        },
+        {
+          "pred_index": 13,
+          "pred_t_ms": 43200,
+          "label_t_ms": 43500,
+          "dt_ms": 300
+        },
+        {
+          "pred_index": 16,
+          "pred_t_ms": 45800,
+          "label_t_ms": 45500,
+          "dt_ms": 300
+        },
+        {
+          "pred_index": 7,
+          "pred_t_ms": 24833,
+          "label_t_ms": 24500,
+          "dt_ms": 333
+        }
+      ]
+    }
+  },
+  "punches": [
+    {
+      "t_ms": 7933,
+      "frame": 239,
+      "side": "R",
+      "action": "RIGHT_CROSS",
+      "kind": "STRAIGHT",
+      "speed_ms": 1.893,
+      "speed_kmh": 6.81,
+      "reach_n": 1.16,
+      "elbow_deg": 102.6,
+      "vx": -0.396,
+      "vy": -0.134,
+      "conf_margin": 0.418
+    },
+    {
+      "t_ms": 11166,
+      "frame": 336,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_ms": 1.696,
+      "speed_kmh": 6.11,
+      "reach_n": 0.993,
+      "elbow_deg": 91.5,
+      "vx": -0.416,
+      "vy": -0.575,
+      "conf_margin": 0.045
+    },
+    {
+      "t_ms": 13133,
+      "frame": 395,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_ms": 1.807,
+      "speed_kmh": 6.51,
+      "reach_n": 1.165,
+      "elbow_deg": 111.9,
+      "vx": 0.146,
+      "vy": 0.214,
+      "conf_margin": 0.775
+    },
+    {
+      "t_ms": 14000,
+      "frame": 421,
+      "side": "L",
+      "action": "LEFT_UPPERCUT",
+      "kind": "UPPERCUT",
+      "speed_ms": 2.118,
+      "speed_kmh": 7.62,
+      "reach_n": 1.086,
+      "elbow_deg": 101.2,
+      "vx": 0.088,
+      "vy": 0.257,
+      "conf_margin": 0.603
+    },
+    {
+      "t_ms": 16900,
+      "frame": 508,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_ms": 1.896,
+      "speed_kmh": 6.82,
+      "reach_n": 1.13,
+      "elbow_deg": 84.9,
+      "vx": -0.082,
+      "vy": 0.058,
+      "conf_margin": 0.879
+    },
+    {
+      "t_ms": 20766,
+      "frame": 624,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_ms": 1.604,
+      "speed_kmh": 5.77,
+      "reach_n": 1.155,
+      "elbow_deg": 85.6,
+      "vx": -0.06,
+      "vy": -0.001,
+      "conf_margin": 0.895
+    },
+    {
+      "t_ms": 23733,
+      "frame": 713,
+      "side": "R",
+      "action": "RIGHT_HOOK",
+      "kind": "HOOK",
+      "speed_ms": 2.913,
+      "speed_kmh": 10.49,
+      "reach_n": 1.155,
+      "elbow_deg": 106.7,
+      "vx": -2.91,
+      "vy": 0.118,
+      "conf_margin": 1.499
+    },
+    {
+      "t_ms": 24833,
+      "frame": 746,
+      "side": "R",
+      "action": "RIGHT_UPPERCUT",
+      "kind": "UPPERCUT",
+      "speed_ms": 2.585,
+      "speed_kmh": 9.3,
+      "reach_n": 1.51,
+      "elbow_deg": 139.1,
+      "vx": 0.036,
+      "vy": -1.12,
+      "conf_margin": 0.45
+    },
+    {
+      "t_ms": 26133,
+      "frame": 785,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_ms": 2.744,
+      "speed_kmh": 9.88,
+      "reach_n": 0.976,
+      "elbow_deg": 89.3,
+      "vx": -0.056,
+      "vy": 0.34,
+      "conf_margin": 0.943
+    },
+    {
+      "t_ms": 27466,
+      "frame": 825,
+      "side": "L",
+      "action": "LEFT_UPPERCUT",
+      "kind": "UPPERCUT",
+      "speed_ms": 1.851,
+      "speed_kmh": 6.66,
+      "reach_n": 0.913,
+      "elbow_deg": 71.1,
+      "vx": 1.444,
+      "vy": 1.157,
+      "conf_margin": 0.784
+    },
+    {
+      "t_ms": 29000,
+      "frame": 871,
+      "side": "L",
+      "action": "LEFT_UPPERCUT",
+      "kind": "UPPERCUT",
+      "speed_ms": 2.891,
+      "speed_kmh": 10.41,
+      "reach_n": 1.209,
+      "elbow_deg": 94.4,
+      "vx": 1.04,
+      "vy": 1.213,
+      "conf_margin": 0.498
+    },
+    {
+      "t_ms": 40833,
+      "frame": 1226,
+      "side": "R",
+      "action": "RIGHT_HOOK",
+      "kind": "HOOK",
+      "speed_ms": 3.038,
+      "speed_kmh": 10.94,
+      "reach_n": 1.006,
+      "elbow_deg": 104.0,
+      "vx": -2.332,
+      "vy": 1.331,
+      "conf_margin": 1.138
+    },
+    {
+      "t_ms": 42000,
+      "frame": 1261,
+      "side": "R",
+      "action": "RIGHT_CROSS",
+      "kind": "STRAIGHT",
+      "speed_ms": 9.994,
+      "speed_kmh": 35.98,
+      "reach_n": 1.065,
+      "elbow_deg": 140.3,
+      "vx": -0.825,
+      "vy": 0.397,
+      "conf_margin": 0.762
+    },
+    {
+      "t_ms": 43200,
+      "frame": 1297,
+      "side": "R",
+      "action": "RIGHT_HOOK",
+      "kind": "HOOK",
+      "speed_ms": 2.373,
+      "speed_kmh": 8.54,
+      "reach_n": 1.287,
+      "elbow_deg": 147.7,
+      "vx": 0.547,
+      "vy": 1.015,
+      "conf_margin": 0.458
+    },
+    {
+      "t_ms": 43966,
+      "frame": 1320,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_ms": 11.521,
+      "speed_kmh": 41.48,
+      "reach_n": 1.169,
+      "elbow_deg": 156.5,
+      "vx": 4.325,
+      "vy": 9.432,
+      "conf_margin": -0.046
+    },
+    {
+      "t_ms": 44533,
+      "frame": 1337,
+      "side": "R",
+      "action": "RIGHT_CROSS",
+      "kind": "STRAIGHT",
+      "speed_ms": 1.661,
+      "speed_kmh": 5.98,
+      "reach_n": 0.885,
+      "elbow_deg": 84.1,
+      "vx": -0.174,
+      "vy": 0.795,
+      "conf_margin": 0.709
+    },
+    {
+      "t_ms": 45800,
+      "frame": 1375,
+      "side": "R",
+      "action": "RIGHT_CROSS",
+      "kind": "STRAIGHT",
+      "speed_ms": 2.137,
+      "speed_kmh": 7.69,
+      "reach_n": 1.066,
+      "elbow_deg": 92.4,
+      "vx": 0.061,
+      "vy": 1.849,
+      "conf_margin": 0.921
+    },
+    {
+      "t_ms": 47766,
+      "frame": 1434,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_ms": 1.717,
+      "speed_kmh": 6.18,
+      "reach_n": 1.131,
+      "elbow_deg": 83.8,
+      "vx": 0.015,
+      "vy": 0.095,
+      "conf_margin": 0.975
+    },
+    {
+      "t_ms": 57366,
+      "frame": 1722,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_ms": 1.795,
+      "speed_kmh": 6.46,
+      "reach_n": 0.991,
+      "elbow_deg": 85.4,
+      "vx": 0.155,
+      "vy": 0.187,
+      "conf_margin": 0.759
+    },
+    {
+      "t_ms": 58566,
+      "frame": 1758,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_ms": 1.646,
+      "speed_kmh": 5.92,
+      "reach_n": 1.155,
+      "elbow_deg": 88.2,
+      "vx": 0.475,
+      "vy": 0.163,
+      "conf_margin": 0.196
+    },
+    {
+      "t_ms": 59433,
+      "frame": 1784,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_ms": 2.276,
+      "speed_kmh": 8.19,
+      "reach_n": 1.066,
+      "elbow_deg": 90.0,
+      "vx": 0.203,
+      "vy": 0.199,
+      "conf_margin": 0.751
+    },
+    {
+      "t_ms": 60666,
+      "frame": 1821,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_ms": 1.689,
+      "speed_kmh": 6.08,
+      "reach_n": 1.208,
+      "elbow_deg": 89.6,
+      "vx": 0.002,
+      "vy": -0.167,
+      "conf_margin": 0.529
+    },
+    {
+      "t_ms": 66533,
+      "frame": 1997,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_ms": 1.731,
+      "speed_kmh": 6.23,
+      "reach_n": 1.187,
+      "elbow_deg": 86.6,
+      "vx": -0.012,
+      "vy": 0.014,
+      "conf_margin": 0.43
+    },
+    {
+      "t_ms": 67766,
+      "frame": 2034,
+      "side": "R",
+      "action": "RIGHT_HOOK",
+      "kind": "HOOK",
+      "speed_ms": 3.491,
+      "speed_kmh": 12.57,
+      "reach_n": 0.917,
+      "elbow_deg": 57.9,
+      "vx": 1.028,
+      "vy": 0.29,
+      "conf_margin": 0.681
+    },
+    {
+      "t_ms": 69000,
+      "frame": 2071,
+      "side": "R",
+      "action": "RIGHT_CROSS",
+      "kind": "STRAIGHT",
+      "speed_ms": 3.067,
+      "speed_kmh": 11.04,
+      "reach_n": 1.119,
+      "elbow_deg": 92.0,
+      "vx": -0.028,
+      "vy": 0.166,
+      "conf_margin": 0.504
+    },
+    {
+      "t_ms": 71233,
+      "frame": 2138,
+      "side": "L",
+      "action": "LEFT_JAB",
+      "kind": "STRAIGHT",
+      "speed_ms": 1.651,
+      "speed_kmh": 5.94,
+      "reach_n": 1.014,
+      "elbow_deg": 79.6,
+      "vx": 0.256,
+      "vy": -0.005,
+      "conf_margin": 0.568
+    },
+    {
+      "t_ms": 76433,
+      "frame": 2294,
+      "side": "L",
+      "action": "LEFT_HOOK",
+      "kind": "HOOK",
+      "speed_ms": 1.853,
+      "speed_kmh": 6.67,
+      "reach_n": 0.916,
+      "elbow_deg": 69.8,
+      "vx": 1.093,
+      "vy": 0.008,
+      "conf_margin": 0.643
+    },
+    {
+      "t_ms": 77666,
+      "frame": 2331,
+      "side": "R",
+      "action": "RIGHT_CROSS",
+      "kind": "STRAIGHT",
+      "speed_ms": 2.699,
+      "speed_kmh": 9.72,
+      "reach_n": 0.915,
+      "elbow_deg": 109.7,
+      "vx": 1.688,
+      "vy": -0.962,
+      "conf_margin": 0.441
+    },
+    {
+      "t_ms": 78800,
+      "frame": 2365,
+      "side": "R",
+      "action": "RIGHT_CROSS",
+      "kind": "STRAIGHT",
+      "speed_ms": 1.772,
+      "speed_kmh": 6.38,
+      "reach_n": 0.926,
+      "elbow_deg": 88.4,
+      "vx": 0.864,
+      "vy": 0.164,
+      "conf_margin": -0.359
+    },
+    {
+      "t_ms": 79966,
+      "frame": 2400,
+      "side": "R",
+      "action": "RIGHT_CROSS",
+      "kind": "STRAIGHT",
+      "speed_ms": 1.935,
+      "speed_kmh": 6.97,
+      "reach_n": 1.23,
+      "elbow_deg": 109.8,
+      "vx": 1.176,
+      "vy": 0.843,
+      "conf_margin": 0.7
+    },
+    {
+      "t_ms": 81666,
+      "frame": 2451,
+      "side": "R",
+      "action": "RIGHT_UPPERCUT",
+      "kind": "UPPERCUT",
+      "speed_ms": 2.298,
+      "speed_kmh": 8.27,
+      "reach_n": 0.941,
+      "elbow_deg": 87.9,
+      "vx": 0.555,
+      "vy": -2.23,
+      "conf_margin": 1.069
+    }
+  ]
+}

@@ -1,0 +1,712 @@
+{
+  "tolerance_ms": 400,
+  "ground_truth": 15,
+  "predicted": 60,
+  "tp": 12,
+  "fp": 48,
+  "fn": 3,
+  "precision": 0.2,
+  "recall": 0.8,
+  "f1": 0.32,
+  "kind_accuracy": 0.3333,
+  "side_accuracy": 0.75,
+  "timing_error_ms_mean": 130.6,
+  "timing_error_ms_max": 300,
+  "confusion": {
+    "STRAIGHT->STRAIGHT": 4,
+    "STRAIGHT->HOOK": 2,
+    "STRAIGHT->UPPERCUT": 3,
+    "HOOK->UPPERCUT": 2,
+    "UPPERCUT->HOOK": 1
+  },
+  "matches": [
+    {
+      "pred_index": 57,
+      "pred_t_ms": 81833,
+      "label_t_ms": 81800,
+      "dt_ms": 33
+    },
+    {
+      "pred_index": 47,
+      "pred_t_ms": 76900,
+      "label_t_ms": 76933,
+      "dt_ms": 33
+    },
+    {
+      "pred_index": 50,
+      "pred_t_ms": 78233,
+      "label_t_ms": 78200,
+      "dt_ms": 33
+    },
+    {
+      "pred_index": 55,
+      "pred_t_ms": 80533,
+      "label_t_ms": 80466,
+      "dt_ms": 67
+    },
+    {
+      "pred_index": 58,
+      "pred_t_ms": 82266,
+      "label_t_ms": 82366,
+      "dt_ms": 100
+    },
+    {
+      "pred_index": 29,
+      "pred_t_ms": 28400,
+      "label_t_ms": 28500,
+      "dt_ms": 100
+    },
+    {
+      "pred_index": 54,
+      "pred_t_ms": 80133,
+      "label_t_ms": 80000,
+      "dt_ms": 133
+    },
+    {
+      "pred_index": 13,
+      "pred_t_ms": 12966,
+      "label_t_ms": 13133,
+      "dt_ms": 167
+    },
+    {
+      "pred_index": 46,
+      "pred_t_ms": 76333,
+      "label_t_ms": 76500,
+      "dt_ms": 167
+    },
+    {
+      "pred_index": 51,
+      "pred_t_ms": 78700,
+      "label_t_ms": 78900,
+      "dt_ms": 200
+    },
+    {
+      "pred_index": 43,
+      "pred_t_ms": 45266,
+      "label_t_ms": 45500,
+      "dt_ms": 234
+    },
+    {
+      "pred_index": 59,
+      "pred_t_ms": 82700,
+      "label_t_ms": 83000,
+      "dt_ms": 300
+    }
+  ],
+  "version": "v5b_tcn_trigger",
+  "source_video": "C:\\DS_Team2\\project-4\\iter4\\eval\\video\\benchmark.mp4",
+  "engine": "tcn_full_trigger",
+  "description": "v5b: TCN이 '펀치 종류'뿐 아니라 '펀치가 언제 나가는지(트리거)'까지 매 프레임 causal 추론으로 직접 결정. 룰베이스 punch_core.try_punch 는 전혀 관여하지 않음. TCN_MIN_CONF=0.32, cooldown=390ms, edge-trigger(직전 프레임과 클래스가 달라질 때만 발사).",
+  "verified_tcn_forward_success": true,
+  "model_param_count": 20556,
+  "all_predictions_full_90s": [
+    {
+      "t_ms": 2533,
+      "side": "L",
+      "kind": "STRAIGHT",
+      "conf": 0.9451
+    },
+    {
+      "t_ms": 7333,
+      "side": "L",
+      "kind": "STRAIGHT",
+      "conf": 0.9999
+    },
+    {
+      "t_ms": 7766,
+      "side": "R",
+      "kind": "STRAIGHT",
+      "conf": 0.9662
+    },
+    {
+      "t_ms": 8366,
+      "side": "L",
+      "kind": "UPPERCUT",
+      "conf": 0.696
+    },
+    {
+      "t_ms": 8800,
+      "side": "L",
+      "kind": "STRAIGHT",
+      "conf": 0.9997
+    },
+    {
+      "t_ms": 9333,
+      "side": "R",
+      "kind": "STRAIGHT",
+      "conf": 0.4464
+    },
+    {
+      "t_ms": 9733,
+      "side": "R",
+      "kind": "STRAIGHT",
+      "conf": 0.9477
+    },
+    {
+      "t_ms": 10133,
+      "side": "R",
+      "kind": "STRAIGHT",
+      "conf": 0.8821
+    },
+    {
+      "t_ms": 10566,
+      "side": "R",
+      "kind": "STRAIGHT",
+      "conf": 0.5806
+    },
+    {
+      "t_ms": 10966,
+      "side": "R",
+      "kind": "STRAIGHT",
+      "conf": 0.9577
+    },
+    {
+      "t_ms": 11366,
+      "side": "L",
+      "kind": "UPPERCUT",
+      "conf": 0.5021
+    },
+    {
+      "t_ms": 11900,
+      "side": "R",
+      "kind": "UPPERCUT",
+      "conf": 0.7252
+    },
+    {
+      "t_ms": 12400,
+      "side": "L",
+      "kind": "UPPERCUT",
+      "conf": 0.8041
+    },
+    {
+      "t_ms": 12966,
+      "side": "L",
+      "kind": "STRAIGHT",
+      "conf": 0.8587
+    },
+    {
+      "t_ms": 13366,
+      "side": "L",
+      "kind": "UPPERCUT",
+      "conf": 0.9724
+    },
+    {
+      "t_ms": 13766,
+      "side": "L",
+      "kind": "STRAIGHT",
+      "conf": 0.9711
+    },
+    {
+      "t_ms": 14200,
+      "side": "R",
+      "kind": "STRAIGHT",
+      "conf": 0.8794
+    },
+    {
+      "t_ms": 15700,
+      "side": "R",
+      "kind": "STRAIGHT",
+      "conf": 0.78
+    },
+    {
+      "t_ms": 20433,
+      "side": "R",
+      "kind": "STRAIGHT",
+      "conf": 0.504
+    },
+    {
+      "t_ms": 23600,
+      "side": "L",
+      "kind": "STRAIGHT",
+      "conf": 0.9576
+    },
+    {
+      "t_ms": 24000,
+      "side": "R",
+      "kind": "STRAIGHT",
+      "conf": 0.9284
+    },
+    {
+      "t_ms": 24800,
+      "side": "L",
+      "kind": "UPPERCUT",
+      "conf": 0.6859
+    },
+    {
+      "t_ms": 25200,
+      "side": "L",
+      "kind": "UPPERCUT",
+      "conf": 0.9846
+    },
+    {
+      "t_ms": 25666,
+      "side": "L",
+      "kind": "UPPERCUT",
+      "conf": 0.8056
+    },
+    {
+      "t_ms": 26066,
+      "side": "R",
+      "kind": "HOOK",
+      "conf": 0.9767
+    },
+    {
+      "t_ms": 26599,
+      "side": "L",
+      "kind": "STRAIGHT",
+      "conf": 0.6207
+    },
+    {
+      "t_ms": 27099,
+      "side": "L",
+      "kind": "HOOK",
+      "conf": 0.6577
+    },
+    {
+      "t_ms": 27533,
+      "side": "R",
+      "kind": "STRAIGHT",
+      "conf": 0.923
+    },
+    {
+      "t_ms": 27966,
+      "side": "R",
+      "kind": "STRAIGHT",
+      "conf": 0.9632
+    },
+    {
+      "t_ms": 28400,
+      "side": "R",
+      "kind": "UPPERCUT",
+      "conf": 0.9439
+    },
+    {
+      "t_ms": 28966,
+      "side": "R",
+      "kind": "STRAIGHT",
+      "conf": 0.5366
+    },
+    {
+      "t_ms": 29433,
+      "side": "L",
+      "kind": "HOOK",
+      "conf": 0.5762
+    },
+    {
+      "t_ms": 34833,
+      "side": "R",
+      "kind": "STRAIGHT",
+      "conf": 0.9933
+    },
+    {
+      "t_ms": 38533,
+      "side": "R",
+      "kind": "STRAIGHT",
+      "conf": 0.5962
+    },
+    {
+      "t_ms": 40733,
+      "side": "L",
+      "kind": "STRAIGHT",
+      "conf": 0.5992
+    },
+    {
+      "t_ms": 41133,
+      "side": "L",
+      "kind": "UPPERCUT",
+      "conf": 0.6783
+    },
+    {
+      "t_ms": 41766,
+      "side": "L",
+      "kind": "HOOK",
+      "conf": 0.8946
+    },
+    {
+      "t_ms": 42333,
+      "side": "L",
+      "kind": "UPPERCUT",
+      "conf": 0.9882
+    },
+    {
+      "t_ms": 42800,
+      "side": "L",
+      "kind": "STRAIGHT",
+      "conf": 0.6028
+    },
+    {
+      "t_ms": 43266,
+      "side": "L",
+      "kind": "HOOK",
+      "conf": 0.9274
+    },
+    {
+      "t_ms": 43666,
+      "side": "L",
+      "kind": "UPPERCUT",
+      "conf": 0.9963
+    },
+    {
+      "t_ms": 44266,
+      "side": "R",
+      "kind": "UPPERCUT",
+      "conf": 0.5095
+    },
+    {
+      "t_ms": 44866,
+      "side": "R",
+      "kind": "HOOK",
+      "conf": 0.6346
+    },
+    {
+      "t_ms": 45266,
+      "side": "R",
+      "kind": "HOOK",
+      "conf": 0.9815
+    },
+    {
+      "t_ms": 45966,
+      "side": "R",
+      "kind": "HOOK",
+      "conf": 0.782
+    },
+    {
+      "t_ms": 46366,
+      "side": "R",
+      "kind": "UPPERCUT",
+      "conf": 0.9618
+    },
+    {
+      "t_ms": 76333,
+      "side": "L",
+      "kind": "STRAIGHT",
+      "conf": 0.8448
+    },
+    {
+      "t_ms": 76900,
+      "side": "R",
+      "kind": "HOOK",
+      "conf": 0.5056
+    },
+    {
+      "t_ms": 77433,
+      "side": "R",
+      "kind": "STRAIGHT",
+      "conf": 0.9972
+    },
+    {
+      "t_ms": 77833,
+      "side": "L",
+      "kind": "UPPERCUT",
+      "conf": 0.7415
+    },
+    {
+      "t_ms": 78233,
+      "side": "L",
+      "kind": "UPPERCUT",
+      "conf": 0.5829
+    },
+    {
+      "t_ms": 78700,
+      "side": "R",
+      "kind": "STRAIGHT",
+      "conf": 0.5915
+    },
+    {
+      "t_ms": 79200,
+      "side": "L",
+      "kind": "UPPERCUT",
+      "conf": 0.5524
+    },
+    {
+      "t_ms": 79600,
+      "side": "R",
+      "kind": "UPPERCUT",
+      "conf": 0.462
+    },
+    {
+      "t_ms": 80133,
+      "side": "L",
+      "kind": "UPPERCUT",
+      "conf": 0.8269
+    },
+    {
+      "t_ms": 80533,
+      "side": "R",
+      "kind": "HOOK",
+      "conf": 0.6788
+    },
+    {
+      "t_ms": 81000,
+      "side": "L",
+      "kind": "UPPERCUT",
+      "conf": 0.9565
+    },
+    {
+      "t_ms": 81833,
+      "side": "R",
+      "kind": "STRAIGHT",
+      "conf": 0.9462
+    },
+    {
+      "t_ms": 82266,
+      "side": "R",
+      "kind": "UPPERCUT",
+      "conf": 0.5372
+    },
+    {
+      "t_ms": 82700,
+      "side": "L",
+      "kind": "UPPERCUT",
+      "conf": 0.5261
+    }
+  ],
+  "note_on_scope": "predictions 는 90초 전체에서 나온 것이지만(TRAIN_GT 14개 구간 포함), 채점 정답은 TEST_GT 15개만 사용 — TRAIN_GT 근방 예측은 정답이 없으므로 매칭되면 안 되고(=TRAIN 시각에 GT 자체가 없음), 매칭 안 되면 FP 로 집계된다.",
+  "full_90s_leaky_metrics": {
+    "tolerance_ms": 400,
+    "ground_truth": 29,
+    "predicted": 60,
+    "tp": 21,
+    "fp": 39,
+    "fn": 8,
+    "precision": 0.35,
+    "recall": 0.7241,
+    "f1": 0.4719,
+    "kind_accuracy": 0.4762,
+    "side_accuracy": 0.8095,
+    "timing_error_ms_mean": 166.7,
+    "timing_error_ms_max": 300,
+    "confusion": {
+      "STRAIGHT->STRAIGHT": 9,
+      "STRAIGHT->HOOK": 2,
+      "STRAIGHT->UPPERCUT": 3,
+      "HOOK->STRAIGHT": 1,
+      "HOOK->UPPERCUT": 3,
+      "UPPERCUT->UPPERCUT": 1,
+      "UPPERCUT->HOOK": 2
+    }
+  },
+  "full_90s_leaky_metrics_WARNING": "ground_truth=29(TRAIN_GT 14개 포함) 기준 채점 — TRAIN_GT 구간은 모델이 학습 중 이미 본 시각이라 이 숫자는 낙관적으로 부풀려져 있다(leakage). 공정한 일반화 성능은 위쪽 최상위 TEST_GT 전용 지표(tp/fp/fn/precision/recall/f1)를 봐야 한다.",
+  "movement": {
+    "total_frames": 2654,
+    "move_distribution_pct": {
+      "NONE": 70.1,
+      "FORWARD": 22.0,
+      "BACK": 1.3,
+      "RIGHT": 2.6,
+      "LEFT": 4.0
+    },
+    "rot_distribution_pct": {
+      "NONE": 99.9,
+      "ROT_LEFT": 0.1
+    },
+    "guard_coverage_pct": 74.9,
+    "punch_lock_pct": 37.0,
+    "move_segments_count": 11,
+    "rot_segments_count": 2,
+    "move_segments_top": [
+      {
+        "state": "FORWARD",
+        "start_ms": 77366,
+        "end_ms": 83333,
+        "dwell_ms": 5967,
+        "frames": 180
+      },
+      {
+        "state": "FORWARD",
+        "start_ms": 57233,
+        "end_ms": 62333,
+        "dwell_ms": 5100,
+        "frames": 154
+      },
+      {
+        "state": "FORWARD",
+        "start_ms": 8433,
+        "end_ms": 12700,
+        "dwell_ms": 4267,
+        "frames": 129
+      },
+      {
+        "state": "LEFT",
+        "start_ms": 68933,
+        "end_ms": 72466,
+        "dwell_ms": 3533,
+        "frames": 107
+      },
+      {
+        "state": "FORWARD",
+        "start_ms": 27833,
+        "end_ms": 30333,
+        "dwell_ms": 2500,
+        "frames": 76
+      },
+      {
+        "state": "BACK",
+        "start_ms": 63699,
+        "end_ms": 64833,
+        "dwell_ms": 1134,
+        "frames": 35
+      },
+      {
+        "state": "RIGHT",
+        "start_ms": 65166,
+        "end_ms": 66266,
+        "dwell_ms": 1100,
+        "frames": 34
+      },
+      {
+        "state": "RIGHT",
+        "start_ms": 67633,
+        "end_ms": 68733,
+        "dwell_ms": 1100,
+        "frames": 34
+      },
+      {
+        "state": "FORWARD",
+        "start_ms": 56100,
+        "end_ms": 56766,
+        "dwell_ms": 666,
+        "frames": 21
+      },
+      {
+        "state": "FORWARD",
+        "start_ms": 50333,
+        "end_ms": 50900,
+        "dwell_ms": 567,
+        "frames": 18
+      }
+    ],
+    "rot_segments_top": [
+      {
+        "state": "ROT_LEFT",
+        "start_ms": 40833,
+        "end_ms": 40833,
+        "dwell_ms": 0,
+        "frames": 1
+      },
+      {
+        "state": "ROT_LEFT",
+        "start_ms": 42633,
+        "end_ms": 42633,
+        "dwell_ms": 0,
+        "frames": 1
+      }
+    ],
+    "phase_analysis": {
+      "phases": [
+        {
+          "phase": "1. 준비 (Calibration)",
+          "range": "00~06s",
+          "is_action": false,
+          "frames": 180,
+          "move_active_pct": 0.0,
+          "rot_active_pct": 0.0,
+          "guard_pct": 97.2,
+          "dominant_move": "NONE"
+        },
+        {
+          "phase": "2. 직선 펀치 (Straight)",
+          "range": "06~19s",
+          "is_action": true,
+          "frames": 390,
+          "move_active_pct": 33.1,
+          "rot_active_pct": 0.0,
+          "guard_pct": 66.2,
+          "dominant_move": "NONE"
+        },
+        {
+          "phase": "⏸ 숨고르기 (Rest 1)",
+          "range": "19~23s",
+          "is_action": false,
+          "frames": 120,
+          "move_active_pct": 0.0,
+          "rot_active_pct": 0.0,
+          "guard_pct": 100.0,
+          "dominant_move": "NONE"
+        },
+        {
+          "phase": "3. 훅 펀치 (Hook)",
+          "range": "23~35s",
+          "is_action": true,
+          "frames": 360,
+          "move_active_pct": 21.1,
+          "rot_active_pct": 0.0,
+          "guard_pct": 64.4,
+          "dominant_move": "NONE"
+        },
+        {
+          "phase": "⏸ 숨고르기 (Rest 2)",
+          "range": "35~40s",
+          "is_action": false,
+          "frames": 150,
+          "move_active_pct": 0.0,
+          "rot_active_pct": 0.0,
+          "guard_pct": 100.0,
+          "dominant_move": "NONE"
+        },
+        {
+          "phase": "4. 어퍼컷 (Uppercut)",
+          "range": "40~52s",
+          "is_action": true,
+          "frames": 360,
+          "move_active_pct": 5.0,
+          "rot_active_pct": 0.6,
+          "guard_pct": 59.2,
+          "dominant_move": "NONE"
+        },
+        {
+          "phase": "⏸ 숨고르기 (Rest 3)",
+          "range": "52~57s",
+          "is_action": false,
+          "frames": 150,
+          "move_active_pct": 14.0,
+          "rot_active_pct": 0.0,
+          "guard_pct": 100.0,
+          "dominant_move": "NONE"
+        },
+        {
+          "phase": "5. 풋워크 (Footwork)",
+          "range": "57~70s",
+          "is_action": false,
+          "frames": 390,
+          "move_active_pct": 75.4,
+          "rot_active_pct": 0.0,
+          "guard_pct": 81.0,
+          "dominant_move": "FORWARD"
+        },
+        {
+          "phase": "⏸ 숨고르기 (Rest 4)",
+          "range": "70~75s",
+          "is_action": false,
+          "frames": 150,
+          "move_active_pct": 50.0,
+          "rot_active_pct": 0.0,
+          "guard_pct": 100.0,
+          "dominant_move": "LEFT"
+        },
+        {
+          "phase": "6. 실전 콤보 (Combos)",
+          "range": "75~85s",
+          "is_action": true,
+          "frames": 300,
+          "move_active_pct": 60.0,
+          "rot_active_pct": 0.0,
+          "guard_pct": 40.3,
+          "dominant_move": "FORWARD"
+        },
+        {
+          "phase": "7. 마무리 (Cooldown)",
+          "range": "85~90s",
+          "is_action": false,
+          "frames": 104,
+          "move_active_pct": 0.0,
+          "rot_active_pct": 0.0,
+          "guard_pct": 100.0,
+          "dominant_move": "NONE"
+        }
+      ],
+      "footwork_recall_proxy": 75.4,
+      "static_fp_proxy": 11.2
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "version": "v6c_tcn_hybrid_gate",
+  "engine": "tcn_hybrid",
+  "description": "v6c: v6b(TCNTriggerEvaluator, 순수 TCN 트리거)와 같은 leakage-safe 모델(motion_learning/v6b_tcn_trigger)을 그대로 쓰되, 트리거 조건을 'TCN 확신도(edge+confirm+cooldown) AND 룰베이스 물리조건(PUNCH_ARM/PUNCH_EXTEND 수준의 순간 속도·뻗음)'으로 수정(TCNHybridTriggerEvaluator). 다른 세션이 동일 구조를 v5c_tcn_hybrid_gate로 이미 검증한 튠 값을 그대로 재사용해 재현성을 확인한다.",
+  "tune": {
+    "TCN_TRIGGER_CONFIRM_FRAMES": 3,
+    "TCN_TRIGGER_MIN_CONF": 0.5,
+    "TCN_TRIGGER_COOLDOWN_MS": 600,
+    "TCN_HYBRID_ARM_GATE": 1.0,
+    "TCN_HYBRID_EXTEND_GATE": 0.40
+  }
+}

@@ -1,20 +1,22 @@
 """Offline punch evaluation on a video file.
 
-Ports the runtime punch pipeline of iter3/server/templates/fighter_client.html
+Ports the runtime punch pipeline of iter4/server/templates/fighter_client.html
 (MediaPipe Pose upper-body 7 nodes + window-latch punch detector) to Python,
 runs it frame-by-frame on an input video, and reports punch counts, types,
 speeds and form metrics.
 
 Usage:
   conda activate pjt-4
-  python iter3/eval/evaluate_video.py video/iter3-poc.mp4
-  python iter3/eval/evaluate_video.py video/iter3-poc.mp4 --annotate out.mp4
+  python iter4/eval/evaluate_video.py video/benchmark.mp4
+  python iter4/eval/evaluate_video.py video/benchmark.mp4 --annotate out.mp4
 """
 import argparse
 import csv
 import json
 import math
 import statistics
+import sys
+import shutil
 from pathlib import Path
 
 # cv2/mediapipe 는 **영상을 디코딩할 때만** 필요하다.
@@ -76,6 +78,21 @@ CALIB_MS = 1800
 
 LOCK_MIN_MS = 180
 LOCK_MAX_MS = 1100
+TCN_MIN_CONF = 0.35
+
+# v6b: --engine tcn_trigger 전용 (TCNTriggerEvaluator). 룰베이스 키네마틱 임계값과는
+# 완전히 독립적인, "모델 출력의 시간적 안정성"만으로 트리거를 결정하는 파라미터.
+TCN_TRIGGER_CONFIRM_FRAMES = 2
+TCN_TRIGGER_MIN_CONF = 0.5
+TCN_TRIGGER_COOLDOWN_MS = 350
+
+# v5c: --engine tcn_hybrid 전용 (TCNHybridTriggerEvaluator). TCNTriggerEvaluator와 동일한
+# confirm/edge/cooldown 조건에 "그 순간 해당 side가 실제로 물리적으로 움직이고 있는가"라는
+# AND 게이트를 추가한다. 룰베이스가 창을 여는 데 쓰는 PUNCH_ARM/PUNCH_EXTEND와 같은 하한선을
+# 그대로 재사용한다 — "확정 피크"(PUNCH_SPEED/PUNCH_REACH_N)까지 요구하면 TCN이 확정되는
+# 프레임과 물리적 피크 프레임이 어긋날 때 정당한 펀치까지 게이트에서 막히기 때문이다.
+TCN_HYBRID_ARM_GATE = 1.0
+TCN_HYBRID_EXTEND_GATE = 0.40
 
 PUNCH_NAME = {
     "L": {"STRAIGHT": "LEFT_JAB", "HOOK": "LEFT_HOOK", "UPPERCUT": "LEFT_UPPERCUT"},
@@ -83,6 +100,150 @@ PUNCH_NAME = {
 }
 
 DEFAULT_MODEL = Path(__file__).with_name("models") / "pose_landmarker_full.task"
+
+
+# ==================== TCN 딥러닝 모션 분류기 ====================
+class TCNMotionClassifier:
+    """Offline PyTorch Causal TCN Classifier for Punch Kind Recognition."""
+    CLASSES = [
+        "IDLE", "LEFT_JAB", "RIGHT_JAB", "LEFT_HOOK", "RIGHT_HOOK",
+        "LEFT_UPPERCUT", "RIGHT_UPPERCUT", "TWO_HAND_GUARD", "ENERGY_WAVE", "OTHER",
+    ]
+    PUNCH_CLASSES = {
+        "LEFT_JAB", "RIGHT_JAB", "LEFT_HOOK", "RIGHT_HOOK",
+        "LEFT_UPPERCUT", "RIGHT_UPPERCUT"
+    }
+
+    def __init__(self, model_dir: Path = None):
+        if model_dir is None:
+            model_dir = Path(__file__).parent.parent / "motion_learning"
+        self.model_dir = model_dir
+        self.model = None
+        self.scaler = None
+        self.buffer = []  # list of 17-dim arrays
+        self.seq_len = 60
+        self.dim = 17
+        self.prev_l = None
+        self.prev_r = None
+        self.prev_t = 0
+        self._load()
+
+    def _load(self):
+        try:
+            import torch
+            # tcn_model.py (및 그 자신의 `from real_data import CLASSES`)는 항상
+            # motion_learning/ 에 있다. --tcn-model-dir 로 실험용 가중치만 든 디렉터리
+            # (예: v6b_tcn_trigger/, overfit_hong/) 를 가리켜도 모듈을 찾을 수 있도록
+            # 정식 경로를 항상 같이 넣는다.
+            canonical_dir = Path(__file__).parent.parent / "motion_learning"
+            sys.path.insert(0, str(canonical_dir))
+            sys.path.insert(0, str(self.model_dir))
+            from tcn_model import CausalMotionTCN
+            
+            pth_path = self.model_dir / "boxing_tcn.pth"
+            scaler_path = self.model_dir / "boxing_tcn_scaler.json"
+            
+            if not pth_path.exists() or not scaler_path.exists():
+                print(f"⚠️ TCN 가중치/스케일러 파일 없음: {pth_path}")
+                return
+
+            self.scaler = json.loads(scaler_path.read_text(encoding="utf-8"))
+            self.model = CausalMotionTCN(input_dim=17, num_classes=len(self.CLASSES))
+            ckpt = torch.load(str(pth_path), map_location="cpu")
+            self.model.load_state_dict(ckpt)
+            self.model.eval()
+            print(f"🧠 [TCN Engine] PyTorch Causal TCN 모델 로드 완료 ({pth_path.name})")
+        except Exception as e:
+            print(f"⚠️ TCN 로드 실패 (룰베이스로 폴백): {e}")
+            self.model = None
+
+    def push(self, lm, now_ms):
+        if not lm or len(lm) <= R_WR:
+            return
+        # 17차원 heuristic_7j_v1 피처 추출
+        nose, lsh, rsh = lm[NOSE], lm[L_SH], lm[R_SH]
+        lel, rel, lwr, rwr = lm[L_EL], lm[R_EL], lm[L_WR], lm[R_WR]
+
+        sh2d = max(math.hypot(lsh.x - rsh.x, lsh.y - rsh.y), 1e-3)
+        l_el_ratio = angle_deg(lsh, lel, lwr) / 180.0
+        r_el_ratio = angle_deg(rsh, rel, rwr) / 180.0
+        l_reach = dist3(lwr, lsh) / sh2d
+        r_reach = dist3(rwr, rsh) / sh2d
+        hands_dist = dist3(lwr, rwr) / sh2d
+        l_wrist_nose = dist3(lwr, nose) / sh2d
+        r_wrist_nose = dist3(rwr, nose) / sh2d
+        elbow_dist = dist3(lel, rel) / sh2d
+        avg_wrist_z = ((lwr.z + rwr.z) / 2.0) / sh2d
+
+        lvx, lvy, lvz = 0.0, 0.0, 0.0
+        rvx, rvy, rvz = 0.0, 0.0, 0.0
+        dt = (now_ms - self.prev_t) / 1000.0 if self.prev_t else 0.0
+        if self.prev_l and 0.008 < dt < 0.4:
+            lvx = (lwr.x - self.prev_l[0]) / dt / sh2d
+            lvy = (lwr.y - self.prev_l[1]) / dt / sh2d
+            lvz = (lwr.z - self.prev_l[2]) / dt / sh2d
+            rvx = (rwr.x - self.prev_r[0]) / dt / sh2d
+            rvy = (rwr.y - self.prev_r[1]) / dt / sh2d
+            rvz = (rwr.z - self.prev_r[2]) / dt / sh2d
+
+        self.prev_l = (lwr.x, lwr.y, lwr.z)
+        self.prev_r = (rwr.x, rwr.y, rwr.z)
+        self.prev_t = now_ms
+
+        l_speed = math.hypot(lvx, lvy, lvz)
+        r_speed = math.hypot(rvx, rvy, rvz)
+
+        feat17 = [
+            l_el_ratio, r_el_ratio, l_reach, r_reach,
+            lvx, lvy, lvz, rvx, rvy, rvz,
+            l_speed, r_speed, hands_dist, l_wrist_nose, r_wrist_nose, elbow_dist, avg_wrist_z
+        ]
+        self.buffer.append(feat17)
+        if len(self.buffer) > self.seq_len:
+            self.buffer.pop(0)
+
+    def guess_punch_kind(self, side: str):
+        if not self.model or len(self.buffer) == 0:
+            return None, 0.0
+        import torch
+        # Build normalized input tensor
+        median = self.scaler["median"]
+        scale = self.scaler["scale"]
+        clip = self.scaler.get("clip", 5.0)
+
+        n = len(self.buffer)
+        data = []
+        for t in range(self.seq_len):
+            src_idx = max(0, t - (self.seq_len - n))
+            src = self.buffer[src_idx]
+            norm_f = []
+            for f in range(self.dim):
+                v = (src[f] - median[f]) / scale[f]
+                v = max(-clip, min(clip, v))
+                norm_f.append(v)
+            data.append(norm_f)
+
+        x = torch.tensor([data], dtype=torch.float32)
+        with torch.no_grad():
+            logits = self.model(x)[0]
+            probs = torch.softmax(logits, dim=-1).numpy()
+
+        best_idx = int(probs.argmax())
+        best_label = self.CLASSES[best_idx]
+        best_prob = float(probs[best_idx])
+
+        want_side = "LEFT_" if side == "L" else "RIGHT_"
+        if best_label in self.PUNCH_CLASSES and best_label.startswith(want_side):
+            # Map RIGHT_JAB -> STRAIGHT, LEFT_JAB -> STRAIGHT, HOOK -> HOOK, UPPERCUT -> UPPERCUT
+            raw_kind = best_label.replace(want_side, "")
+            if raw_kind == "JAB":
+                kind = "STRAIGHT"
+            elif raw_kind in ("HOOK", "UPPERCUT"):
+                kind = raw_kind
+            else:
+                kind = "STRAIGHT"
+            return kind, best_prob
+        return None, best_prob
 
 
 def dist3(a, b):
@@ -170,7 +331,7 @@ def arm_kinematics(st, sh, el, wr, shoulder_w, now_ms):
 
 
 class PunchEvaluator:
-    def __init__(self, calib=True):
+    def __init__(self, calib=True, tcn_classifier=None):
         self.calib_enabled = calib
         self.neutral_ready = not calib
         self.calib_t0 = None
@@ -183,6 +344,7 @@ class PunchEvaluator:
         self.arms = {"L": ArmState("L"), "R": ArmState("R")}
         self.events = []
         self.windows_expired = 0
+        self.tcn_classifier = tcn_classifier
 
     def process(self, lm, wl, now_ms):
         fired = []
@@ -286,6 +448,9 @@ class PunchEvaluator:
 
     def try_punch(self, k, now_ms):
         st = self.arms[k.side]
+        if self.posture_locked:
+            st.armed = False
+            return None
         if not st.armed and k.speed > PUNCH_ARM and k.d_reach > PUNCH_EXTEND:
             st.armed = True
             st.arm_t = now_ms
@@ -316,7 +481,17 @@ class PunchEvaluator:
         st.armed = False
         st.last_punch = now_ms
         st.windows_fired += 1
+        
+        # 1) 기본 룰베이스 키네마틱스 분류
         kind, margin = classify_punch(st.peak, st.pvx, st.pvy, st.pelbow)
+        
+        # 2) TCN 딥러닝 모드 활성화 시 Causal TCN 추론 결과로 재분류
+        if self.tcn_classifier:
+            tcn_kind, tcn_prob = self.tcn_classifier.guess_punch_kind(k.side)
+            if tcn_kind is not None and tcn_prob >= TCN_MIN_CONF:
+                kind = tcn_kind
+                margin = tcn_prob
+
         return {
             "t_ms": now_ms,
             "frame": None,
@@ -331,6 +506,168 @@ class PunchEvaluator:
             "vy": round(st.pvy, 3),
             "conf_margin": round(margin, 3),
         }
+
+
+class TCNTriggerEvaluator:
+    """v6b: TCN이 "펀치 종류"뿐 아니라 "펀치가 지금 나가는가(트리거)"까지 직접 결정한다.
+
+    PunchEvaluator/try_punch() 의 PUNCH_ARM·PUNCH_SPEED·PUNCH_REACH_N 같은 물리 임계값을
+    **전혀 쓰지 않는다.** 대신 매 프레임 CausalMotionTCN의 10-클래스 softmax 예측만으로:
+
+      1) **확정(confirm)**: 같은 펀치 클래스가 CONFIRM_FRAMES 프레임 연속으로, 매번
+         MIN_CONF 이상의 확신도로 나와야 "확정"된다 (한 프레임의 noise로 즉발 트리거되지 않음).
+      2) **엣지 트리거(edge-fire)**: 확정되는 바로 그 프레임에서 1회만 이벤트를 발사한다.
+         확정된 클래스가 계속 유지돼도 다시 발사하지 않는다 — `already_fired_this_streak` 로
+         막는다. 이게 없으면 DEVLOG에 기록된 "같은 라벨을 계속 예측하면 쿨다운마다 무한
+         재발동" 버그가 재현된다.
+      3) **스트릭 리셋**: 예측이 펀치 클래스가 아니거나 확신도가 MIN_CONF 밑으로 떨어지면
+         스트릭이 끝난 것으로 보고, 다음에 다시 확정되면 새 이벤트로 발사를 허용한다.
+      4) **전역 쿨다운**: 그래도 최소 COOLDOWN_MS 안에는 새 이벤트를 막아, 스트릭이 아주
+         짧게 깨졌다가 같은 스윙으로 바로 재확정되는 경우의 중복 발사를 한 번 더 막는다.
+
+    이 네 가지가 전부 "모델 출력 자체의 시간적 안정성"만으로 트리거를 결정하며, 손목 속도·
+    팔꿈치 각도 같은 키네마틱 값은 어디에도 쓰이지 않는다.
+    """
+
+    PUNCH_CLASSES = {
+        "LEFT_JAB", "RIGHT_JAB", "LEFT_HOOK", "RIGHT_HOOK",
+        "LEFT_UPPERCUT", "RIGHT_UPPERCUT",
+    }
+    KIND_OF = {"JAB": "STRAIGHT", "HOOK": "HOOK", "UPPERCUT": "UPPERCUT"}
+
+    def __init__(self, model, scaler, classes, confirm_frames=2, min_conf=0.5,
+                 cooldown_ms=350, seq_len=60, dim=17):
+        self.model = model
+        self.scaler = scaler
+        self.classes = classes
+        self.confirm_frames = confirm_frames
+        self.min_conf = min_conf
+        self.cooldown_ms = cooldown_ms
+        self.seq_len = seq_len
+        self.dim = dim
+        self.buffer = []
+        self.prev_l = None
+        self.prev_r = None
+        self.prev_t = None
+        self.confirm_label = None
+        self.confirm_count = 0
+        self.already_fired_this_streak = False
+        self.last_fire_t = -1e9
+        self.events = []
+
+    def _physics_gate_ok(self, label, feat):
+        """기본(순수 TCN 트리거)은 게이트가 없다 — 항상 통과. v5c가 오버라이드한다."""
+        return True
+
+    def _extract_feat17(self, lm, now_ms):
+        nose, lsh, rsh = lm[NOSE], lm[L_SH], lm[R_SH]
+        lel, rel, lwr, rwr = lm[L_EL], lm[R_EL], lm[L_WR], lm[R_WR]
+        sh2d = max(math.hypot(lsh.x - rsh.x, lsh.y - rsh.y), 1e-3)
+        l_el_ratio = angle_deg(lsh, lel, lwr) / 180.0
+        r_el_ratio = angle_deg(rsh, rel, rwr) / 180.0
+        l_reach = dist3(lwr, lsh) / sh2d
+        r_reach = dist3(rwr, rsh) / sh2d
+        hands_dist = dist3(lwr, rwr) / sh2d
+        l_wrist_nose = dist3(lwr, nose) / sh2d
+        r_wrist_nose = dist3(rwr, nose) / sh2d
+        elbow_dist = dist3(lel, rel) / sh2d
+        avg_wrist_z = ((lwr.z + rwr.z) / 2.0) / sh2d
+        lvx = lvy = lvz = rvx = rvy = rvz = 0.0
+        dt = (now_ms - self.prev_t) / 1000.0 if self.prev_t else 0.0
+        if self.prev_l and 0.008 < dt < 0.4:
+            lvx = (lwr.x - self.prev_l[0]) / dt / sh2d
+            lvy = (lwr.y - self.prev_l[1]) / dt / sh2d
+            lvz = (lwr.z - self.prev_l[2]) / dt / sh2d
+            rvx = (rwr.x - self.prev_r[0]) / dt / sh2d
+            rvy = (rwr.y - self.prev_r[1]) / dt / sh2d
+            rvz = (rwr.z - self.prev_r[2]) / dt / sh2d
+        self.prev_l = (lwr.x, lwr.y, lwr.z)
+        self.prev_r = (rwr.x, rwr.y, rwr.z)
+        self.prev_t = now_ms
+        l_speed = math.hypot(lvx, lvy, lvz)
+        r_speed = math.hypot(rvx, rvy, rvz)
+        return [
+            l_el_ratio, r_el_ratio, l_reach, r_reach,
+            lvx, lvy, lvz, rvx, rvy, rvz,
+            l_speed, r_speed, hands_dist, l_wrist_nose, r_wrist_nose, elbow_dist, avg_wrist_z,
+        ]
+
+    def process(self, lm, now_ms):
+        if lm is None or len(lm) <= R_WR:
+            return []
+        feat = self._extract_feat17(lm, now_ms)
+        self.buffer.append(feat)
+        if len(self.buffer) > self.seq_len:
+            self.buffer.pop(0)
+
+        import torch
+        median = self.scaler["median"]
+        scale = self.scaler["scale"]
+        clip = self.scaler.get("clip", 8.0)
+        n = len(self.buffer)
+        data = []
+        for t in range(self.seq_len):
+            src_idx = max(0, t - (self.seq_len - n))
+            src = self.buffer[src_idx]
+            data.append([max(-clip, min(clip, (src[f] - median[f]) / scale[f])) for f in range(self.dim)])
+        x = torch.tensor([data], dtype=torch.float32)
+        with torch.no_grad():
+            probs = torch.softmax(self.model(x)[0], dim=-1).numpy()
+        idx = int(probs.argmax())
+        label = self.classes[idx]
+        conf = float(probs[idx])
+
+        is_punch_candidate = label in self.PUNCH_CLASSES and conf >= self.min_conf
+        if is_punch_candidate and not self._physics_gate_ok(label, feat):
+            is_punch_candidate = False  # 서브클래스(v5c)가 물리 게이트를 요구하면 여기서 걸러진다
+        if is_punch_candidate and label == self.confirm_label:
+            self.confirm_count += 1
+        elif is_punch_candidate:
+            self.confirm_label = label
+            self.confirm_count = 1
+        else:
+            self.confirm_label = None
+            self.confirm_count = 0
+            self.already_fired_this_streak = False  # 스트릭이 끝났으니 다음 확정은 새 이벤트
+
+        fired = []
+        if (is_punch_candidate and self.confirm_count >= self.confirm_frames
+                and not self.already_fired_this_streak
+                and (now_ms - self.last_fire_t) >= self.cooldown_ms):
+            side = "L" if label.startswith("LEFT_") else "R"
+            suffix = label.split("_", 1)[1]
+            kind = self.KIND_OF[suffix]
+            ev = {
+                "t_ms": now_ms, "frame": None, "side": side,
+                "action": PUNCH_NAME[side][kind], "kind": kind,
+                "speed_ms": 0.0, "speed_kmh": 0.0, "reach_n": 0.0, "elbow_deg": 0.0,
+                "vx": 0.0, "vy": 0.0, "conf_margin": round(conf, 3),
+            }
+            fired.append(ev)
+            self.events.append(ev)
+            self.already_fired_this_streak = True
+            self.last_fire_t = now_ms
+        return fired
+
+
+class TCNHybridTriggerEvaluator(TCNTriggerEvaluator):
+    """v5c: TCNTriggerEvaluator(v6b)와 confirm/edge/cooldown 로직은 완전히 동일하되,
+    "TCN 확신도" AND "룰베이스 물리 조건"을 둘 다 만족해야 후보로 인정한다.
+
+    v5b(순수 TCN 트리거) 실험 결과, 확신도+시간적 안정성만으로는 90초에 60번을 쏴 Precision이
+    0.20까지 무너졌다(F1 0.32, 룰베이스 트리거 v5의 0.379보다 낮음) — 모델이 프레임마다 흔들리는
+    구간(footwork, 팔 반동 등)에서도 "펀치처럼 보인다"는 확신을 자주 냈기 때문이다.
+
+    여기서는 그 순간 해당 side의 손목이 **실제로 물리적으로 뻗어나가는 중인가**
+    (`TCN_HYBRID_ARM_GATE` 이상의 속도 AND `TCN_HYBRID_EXTEND_GATE` 이상의 뻗음)를 추가로 요구한다.
+    TCN 혼자서도, 물리 조건 혼자서도 열 수 없고 **둘 다 있어야 연다.**
+    """
+
+    def _physics_gate_ok(self, label, feat):
+        side = "L" if label.startswith("LEFT_") else "R"
+        speed = feat[10] if side == "L" else feat[11]   # l_speed / r_speed
+        reach = feat[2] if side == "L" else feat[3]      # l_reach / r_reach
+        return speed > TCN_HYBRID_ARM_GATE and reach > TCN_HYBRID_EXTEND_GATE
 
 
 def draw_overlay(frame, lm, fired, hud_lines, label_until, now_ms):
@@ -497,7 +834,9 @@ def print_report(summary, events):
 def apply_tune_config(config_path):
     global PUNCH_ARM, PUNCH_EXTEND, PUNCH_SPEED, PUNCH_REACH_N, PUNCH_GROW_N
     global PUNCH_WINDOW_MS, PUNCH_CD_MS, PUNCH_CD_ANY_MS, UPPERCUT_VY, UPPERCUT_ELBOW
-    global HOOK_VX, HOOK_ELBOW, LOCK_MIN_MS, LOCK_MAX_MS
+    global HOOK_VX, HOOK_ELBOW, LOCK_MIN_MS, LOCK_MAX_MS, TCN_MIN_CONF
+    global TCN_TRIGGER_CONFIRM_FRAMES, TCN_TRIGGER_MIN_CONF, TCN_TRIGGER_COOLDOWN_MS
+    global TCN_HYBRID_ARM_GATE, TCN_HYBRID_EXTEND_GATE
     if not config_path or not Path(config_path).exists():
         return
     data = json.loads(Path(config_path).read_text(encoding="utf-8"))
@@ -516,7 +855,13 @@ def apply_tune_config(config_path):
     HOOK_ELBOW = float(tune.get("HOOK_ELBOW", HOOK_ELBOW))
     LOCK_MIN_MS = float(tune.get("LOCK_MIN_MS", LOCK_MIN_MS))
     LOCK_MAX_MS = float(tune.get("LOCK_MAX_MS", LOCK_MAX_MS))
-    print(f"🔧 [Config Applied] {Path(config_path).name} (SPEED={PUNCH_SPEED}, EXTEND={PUNCH_EXTEND})")
+    TCN_MIN_CONF = float(tune.get("TCN_MIN_CONF", TCN_MIN_CONF))
+    TCN_TRIGGER_CONFIRM_FRAMES = int(tune.get("TCN_TRIGGER_CONFIRM_FRAMES", TCN_TRIGGER_CONFIRM_FRAMES))
+    TCN_TRIGGER_MIN_CONF = float(tune.get("TCN_TRIGGER_MIN_CONF", TCN_TRIGGER_MIN_CONF))
+    TCN_TRIGGER_COOLDOWN_MS = float(tune.get("TCN_TRIGGER_COOLDOWN_MS", TCN_TRIGGER_COOLDOWN_MS))
+    TCN_HYBRID_ARM_GATE = float(tune.get("TCN_HYBRID_ARM_GATE", TCN_HYBRID_ARM_GATE))
+    TCN_HYBRID_EXTEND_GATE = float(tune.get("TCN_HYBRID_EXTEND_GATE", TCN_HYBRID_EXTEND_GATE))
+    print(f"🔧 [Config Applied] {Path(config_path).name} (SPEED={PUNCH_SPEED}, EXTEND={PUNCH_EXTEND}, TCN_CONF={TCN_MIN_CONF})")
 
 
 def main():
@@ -529,6 +874,13 @@ def main():
     ap.add_argument("--labels", default=None, help="labels.json for accuracy scoring (default: auto-discover next to input)")
     ap.add_argument("--model", default=str(DEFAULT_MODEL))
     ap.add_argument("--out-dir", default=None, help="output directory (default: iter3/eval/output/<stem>)")
+    ap.add_argument("--engine", default="rule", choices=["rule", "tcn", "tcn_trigger", "tcn_hybrid"],
+                     help="rule: 룰베이스 트리거+분류 / tcn: 룰베이스 트리거 + TCN 분류 / "
+                          "tcn_trigger(v6b): TCN이 트리거까지 직접 담당 / "
+                          "tcn_hybrid(v5c): TCN 확신도 AND 룰베이스 물리조건")
+    ap.add_argument("--tcn-model-dir", default=None,
+                     help="boxing_tcn.pth + boxing_tcn_scaler.json 를 담은 디렉터리 오버라이드 "
+                          "(기본값: motion_learning/). tcn/tcn_trigger 엔진에 공통 적용")
     ap.add_argument("--annotate", nargs="?", const="AUTO", help="write annotated mp4 (optional path)")
     ap.add_argument("--start", type=float, default=0.0, help="analysis start second")
     ap.add_argument("--end", type=float, default=None, help="analysis end second")
@@ -538,6 +890,43 @@ def main():
 
     if args.config:
         apply_tune_config(args.config)
+
+    tcn_model_dir = Path(args.tcn_model_dir) if args.tcn_model_dir else None
+
+    tcn_clf = None
+    tcn_trigger = None
+    if args.engine == "tcn":
+        tcn_clf = TCNMotionClassifier(model_dir=tcn_model_dir)
+        # TCN 로드 실패를 조용히 룰베이스로 폴백하면 registry가 오염된다
+        # ("v4_tcn_hybrid" 인데 실제로는 rule 결과가 저장되는 상황).
+        # --engine tcn 을 명시적으로 요청했는데 모델이 없으면 즉시 중단한다.
+        if tcn_clf.model is None:
+            raise SystemExit(
+                "TCN 엔진 요청됨(--engine tcn) 하지만 모델 로드 실패. "
+                "가중치/스케일러 경로와 torch 설치를 확인하세요. "
+                "registry 오염을 막기 위해 파이프라인을 중단합니다."
+            )
+    elif args.engine in ("tcn_trigger", "tcn_hybrid"):
+        probe = TCNMotionClassifier(model_dir=tcn_model_dir)
+        if probe.model is None:
+            raise SystemExit(
+                f"TCN 트리거 엔진 요청됨(--engine {args.engine}) 하지만 모델 로드 실패. "
+                "가중치/스케일러 경로와 torch 설치를 확인하세요."
+            )
+        evaluator_cls = TCNHybridTriggerEvaluator if args.engine == "tcn_hybrid" else TCNTriggerEvaluator
+        tcn_trigger = evaluator_cls(
+            probe.model, probe.scaler, TCNMotionClassifier.CLASSES,
+            confirm_frames=TCN_TRIGGER_CONFIRM_FRAMES,
+            min_conf=TCN_TRIGGER_MIN_CONF,
+            cooldown_ms=TCN_TRIGGER_COOLDOWN_MS,
+        )
+        if args.engine == "tcn_hybrid":
+            print(f"🧠 [TCN Hybrid Trigger Engine] confirm_frames={TCN_TRIGGER_CONFIRM_FRAMES} "
+                  f"min_conf={TCN_TRIGGER_MIN_CONF} cooldown_ms={TCN_TRIGGER_COOLDOWN_MS} "
+                  f"AND arm_gate={TCN_HYBRID_ARM_GATE} extend_gate={TCN_HYBRID_EXTEND_GATE}")
+        else:
+            print(f"🧠 [TCN Trigger Engine] confirm_frames={TCN_TRIGGER_CONFIRM_FRAMES} "
+                  f"min_conf={TCN_TRIGGER_MIN_CONF} cooldown_ms={TCN_TRIGGER_COOLDOWN_MS}")
 
     if not args.video and not args.landmarks:
         print("영상 경로 또는 --landmarks JSONL 중 하나는 필수")
@@ -584,7 +973,7 @@ def main():
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         writer = cv2.VideoWriter(str(annotate_path), fourcc, src_fps, (width, height))
 
-    evaluator = PunchEvaluator(calib=not args.no_calib)
+    evaluator = None if tcn_trigger else PunchEvaluator(calib=not args.no_calib, tcn_classifier=tcn_clf)
     label_until = -1
     detected_frames = 0
     seen_frames = 0
@@ -601,18 +990,30 @@ def main():
         if lm is not None and wl is not None and len(wl) > R_WR:
             detected_frames += 1
 
-        fired = evaluator.process(lm, wl, ts_ms)
+        if tcn_trigger is not None:
+            # v6b: 룰베이스 키네마틱스를 전혀 거치지 않는다 — wl(월드 랜드마크)도 안 쓴다.
+            fired = tcn_trigger.process(lm, ts_ms)
+            active_events = tcn_trigger.events
+        else:
+            if tcn_clf and lm is not None:
+                tcn_clf.push(lm, ts_ms)
+            fired = evaluator.process(lm, wl, ts_ms)
+            active_events = evaluator.events
+
         for ev in fired:
             ev["frame"] = seen_frames
             label_until = ts_ms + 700
 
         if writer is not None:
-            hud = [
-                f"t={ts_ms / 1000.0:.2f}s  punches={len(evaluator.events)}",
-                f"L spd={evaluator.arms['L'].last_speed:.1f}m/s reach={evaluator.arms['L'].last_reach_n:.2f}x",
-                f"R spd={evaluator.arms['R'].last_speed:.1f}m/s reach={evaluator.arms['R'].last_reach_n:.2f}x",
-                f"calib={'OK' if evaluator.neutral_ready else '...'}",
-            ]
+            if tcn_trigger is not None:
+                hud = [f"t={ts_ms / 1000.0:.2f}s  punches={len(active_events)} (tcn_trigger)"]
+            else:
+                hud = [
+                    f"t={ts_ms / 1000.0:.2f}s  punches={len(active_events)}",
+                    f"L spd={evaluator.arms['L'].last_speed:.1f}m/s reach={evaluator.arms['L'].last_reach_n:.2f}x",
+                    f"R spd={evaluator.arms['R'].last_speed:.1f}m/s reach={evaluator.arms['R'].last_reach_n:.2f}x",
+                    f"calib={'OK' if evaluator.neutral_ready else '...'}",
+                ]
             frame = draw_overlay(frame, lm, fired, hud, label_until, ts_ms)
             writer.write(frame)
 
@@ -657,12 +1058,17 @@ def main():
         writer.release()
 
     duration_s = min(prev_ts if prev_ts is not None else 0.0, end_ms) / 1000.0 - args.start
-    windows_opened = sum(st.windows_opened for st in evaluator.arms.values())
-    windows_expired = evaluator.windows_expired
+    if tcn_trigger is not None:
+        # v6b 는 "arm/window" 개념이 없다 (물리 임계값을 안 쓰므로) — 0으로 둔다.
+        windows_opened = 0
+        windows_expired = 0
+        events = tcn_trigger.events
+    else:
+        windows_opened = sum(st.windows_opened for st in evaluator.arms.values())
+        windows_expired = evaluator.windows_expired
+        events = evaluator.events
     coverage = detected_frames / seen_frames if seen_frames else 0.0
     fps_mean = statistics.mean(fps_samples) if fps_samples else 0.0
-
-    events = evaluator.events
     summary = summarize(events, coverage, fps_mean, duration_s, windows_opened, windows_expired)
 
     labels_path = Path(args.labels) if args.labels else None
@@ -686,13 +1092,13 @@ def main():
         shutil.move(str(tmp_json), str(json_path))
 
     csv_path = out_dir / "punches.csv"
-    cols = ["t_ms", "frame", "side", "action", "speed_ms", "speed_kmh", "reach_n", "elbow_deg", "vx", "vy", "conf_margin"]
+    cols = ["t_ms", "frame", "side", "action", "kind", "speed_ms", "speed_kmh", "reach_n", "elbow_deg", "vx", "vy", "conf_margin"]
     try:
         with csv_path.open("w", newline="", encoding="utf-8-sig") as f:
             wcsv = csv.DictWriter(f, fieldnames=cols)
             wcsv.writeheader()
             for e in events:
-                wcsv.writerow({c: e[c] for c in cols})
+                wcsv.writerow({c: e.get(c, "") for c in cols})
     except Exception as err:
         import os
         tmp_csv = out_dir / f"punches_{os.getpid()}.csv"
@@ -700,7 +1106,7 @@ def main():
             wcsv = csv.DictWriter(f, fieldnames=cols)
             wcsv.writeheader()
             for e in events:
-                wcsv.writerow({c: e[c] for c in cols})
+                wcsv.writerow({c: e.get(c, "") for c in cols})
         try:
             if csv_path.exists():
                 csv_path.unlink()

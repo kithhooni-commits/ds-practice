@@ -4,7 +4,7 @@ A case directory contains landmarks.jsonl (+ labels.json for graded cases).
 Use this after any change to the detection pipeline to catch regressions.
 
 Usage:
-  python iter3/eval/run_suite.py [--datasets iter3/eval/datasets] [--out suite_report.json]
+  python iter4/eval/run_suite.py [--datasets iter4/eval/datasets] [--out suite_report.json]
 """
 import argparse
 import json

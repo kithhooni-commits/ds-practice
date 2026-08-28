@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-27T01:05:21.186426+00:00",
+  "feature_set": "heuristic_7j_v1",
+  "sequence_length": 60,
+  "classifier": "ordered_thresholds_v1",
+  "classes": [
+    "IDLE",
+    "LEFT_JAB",
+    "RIGHT_JAB",
+    "LEFT_HOOK",
+    "RIGHT_HOOK",
+    "LEFT_UPPERCUT",
+    "RIGHT_UPPERCUT",
+    "TWO_HAND_GUARD",
+    "ENERGY_WAVE",
+    "OTHER"
+  ],
+  "thresholds": {
+    "lookback_frames": 8,
+    "hand_dist_guard": 1.143723286645324,
+    "elbow_dist_guard": 1.4837044822374352,
+    "idle_speed_max": 6.962551314401278,
+    "wave_min_speed": 10.933978141535075,
+    "wave_balance_ratio": 0.7718786028129884,
+    "other_balance_min": 0.7201035331609651,
+    "uppercut_vy": 0.43204213500945154,
+    "uppercut_elbow_ratio": 0.9477837238663764,
+    "hook_vx": 0.3030036308485613,
+    "hook_elbow_ratio": 0.9018989612851167,
+    "jab_vz_min": 0.6848602861668662
+  },
+  "training": {
+    "original_samples": 183,
+    "augmented_samples": 183,
+    "augmentation": {
+      "profile": "none",
+      "horizontal_mirror": false,
+      "left_right_labels_swapped": false,
+      "time_scale": [],
+      "frame_dropout": null,
+      "coordinate_noise": null,
+      "partial_visibility": null,
+      "camera_distance": [],
+      "action_prefix_fractions": [],
+      "counts": {
+        "original": 183
+      }
+    },
+    "participants": [
+      "cheols",
+      "hong",
+      "kim",
+      "suhwan"
+    ],
+    "trials": 12000,
+    "seed": 42,
+    "outliers_excluded": 17
+  }
+}

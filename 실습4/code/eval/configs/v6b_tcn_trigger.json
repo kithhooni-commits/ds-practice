@@ -1,0 +1,10 @@
+{
+  "version": "v6b_tcn_trigger",
+  "engine": "tcn_trigger",
+  "description": "v6b: TCN이 트리거(펀치가 언제 나가는지)까지 직접 담당. 룰베이스 키네마틱 임계값 불사용. benchmark.mp4에서 leakage 방지 train/test 분할로 학습.",
+  "tune": {
+    "TCN_TRIGGER_CONFIRM_FRAMES": 2,
+    "TCN_TRIGGER_MIN_CONF": 0.5,
+    "TCN_TRIGGER_COOLDOWN_MS": 350
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "version": "v6_tcn_overfit_hong",
+  "engine": "tcn",
+  "description": "EXPERIMENT (not a deployable version): Causal TCN retrained to overfit benchmark.mp4's own user (hong), same tune as v5_tcn_optimized to isolate the training-data-distribution variable. Model weights: motion_learning/overfit_hong/ (does not touch the deployed boxing_tcn.pth).",
+  "tune": {
+    "PUNCH_ARM": 1.0,
+    "PUNCH_EXTEND": 0.40,
+    "PUNCH_SPEED": 1.65,
+    "PUNCH_REACH_N": 0.88,
+    "PUNCH_GROW_N": 0.28,
+    "PUNCH_WINDOW_MS": 380,
+    "PUNCH_CD_MS": 390,
+    "PUNCH_CD_ANY_MS": 190,
+    "LOCK_MIN_MS": 190,
+    "LOCK_MAX_MS": 1100,
+    "TCN_MIN_CONF": 0.32
+  }
+}

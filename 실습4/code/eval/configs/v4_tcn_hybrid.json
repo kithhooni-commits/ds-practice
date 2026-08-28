@@ -1,0 +1,17 @@
+{
+  "version": "v4_tcn_hybrid",
+  "engine": "tcn",
+  "description": "Hybrid Causal TCN Deep Learning Classifier with Rule-based Trigger",
+  "tune": {
+    "PUNCH_ARM": 1.0,
+    "PUNCH_EXTEND": 0.40,
+    "PUNCH_SPEED": 1.6,
+    "PUNCH_REACH_N": 0.88,
+    "PUNCH_GROW_N": 0.28,
+    "PUNCH_WINDOW_MS": 380,
+    "PUNCH_CD_MS": 400,
+    "PUNCH_CD_ANY_MS": 200,
+    "LOCK_MIN_MS": 180,
+    "LOCK_MAX_MS": 1100
+  }
+}

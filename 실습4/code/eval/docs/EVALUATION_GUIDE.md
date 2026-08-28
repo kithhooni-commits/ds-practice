@@ -56,10 +56,10 @@ iter3/eval/
 
 ```bash
 # 1. 합성 궤적 데이터셋 생성 (필요 시)
-python iter3/eval/synth_dataset.py
+python iter4/eval/synth_dataset.py
 
 # 2. 전체 스위트 실행 및 요약 결과 확인
-python iter3/eval/run_suite.py
+python iter4/eval/run_suite.py
 ```
 
 * **출력 예시**:
@@ -89,13 +89,13 @@ python iter3/eval/run_suite.py
 
 ```bash
 # 기본 분석 및 점수 측정
-python iter3/eval/evaluate_video.py iter3/eval/video/benchmark.mp4 --labels iter3/eval/video/benchmark_labels.json
+python iter4/eval/evaluate_video.py iter4/eval/video/benchmark.mp4 --labels iter4/eval/video/benchmark_labels.json
 
 # 관절 궤적 및 판정 이벤트가 오버레이된 비디오 생성
-python iter3/eval/evaluate_video.py iter3/eval/video/benchmark.mp4 \
-  --labels iter3/eval/video/benchmark_labels.json \
-  --annotate iter3/eval/output/annotated_benchmark.mp4 \
-  --report iter3/eval/output/benchmark_report.json
+python iter4/eval/evaluate_video.py iter4/eval/video/benchmark.mp4 \
+  --labels iter4/eval/video/benchmark_labels.json \
+  --annotate iter4/eval/output/annotated_benchmark.mp4 \
+  --report iter4/eval/output/benchmark_report.json
 ```
 
 ---
@@ -114,13 +114,153 @@ python iter3/eval/evaluate_video.py iter3/eval/video/benchmark.mp4 \
 
 ---
 
-## 🔄 5. 알고리즘 수정 및 회귀 방지 (Regression Testing) 워크플로우
+## 🔄 5. 알고리즘/모델 변경 시 새 버전 평가 워크플로우
 
-클라이언트(`fighter_client.html`)의 펀치 임계값(속도, 각도, 쿨다운 등)이나 판정 로직을 변경할 때는 다음 순서로 검증합니다:
+**철칙**: `iter4/eval/runs/<version>/` 는 **불변 아카이브**다. 이미 존재하는 버전에 덮어쓰지 않고, 항상 **새 버전 태그**로 아카이빙한다. (`run_pipeline.py` 는 기존 버전 덮어쓰기를 기본 차단하며, 재실행이 필요하면 `--overwrite` 를 명시해야 한다.)
 
-1. **`evaluate_video.py`에 변경된 파라미터 반영** (`PUNCH_SPEED`, `PUNCH_EXTEND` 등)
-2. **`python iter3/eval/run_suite.py` 실행**
-   - Track 1의 11개 스위트가 `F1 = 1.000`, `FP = 0`, `FN = 0`으로 유지되는지 확인.
-3. **Track 2 고정 비디오 재평가**
-   - 실제 촬영 영상에 대한 F1 점수 및 지연시간 변화 확인.
-4. 모든 지표가 기준치를 만족하면 `fighter_client.html` 및 `DEVLOG.md`에 반영.
+### 5.1 언제 새 버전을 만드는가
+
+다음 중 하나라도 해당하면 새 `vN_...` 버전을 만들어 평가한다:
+
+* `punch_core.js` / `evaluate_video.py` 의 룰베이스 임계값 변경 (`PUNCH_SPEED`, `PUNCH_EXTEND`, `HOOK_VX`, `UPPERCUT_VY` 등)
+* TCN 모델 재학습, 학습 데이터/피처 변경, `boxing_tcn.pth` / `boxing_tcn_scaler.json` 교체
+* `TCN_MIN_CONF` 등 TCN 신뢰도 임계값 변경
+* 검출 파이프라인 로직 변경 (트리거·잠금·좌우 판단 등)
+* Kinematics 정의나 좌표계 변경
+
+**scoring/phase 로직 자체 수정** (예: 매칭 알고리즘 개선) 은 **모든 기존 버전을 재실행**해 registry 를 갱신한다. 이 경우엔 새 버전을 만드는 게 아니라 `--overwrite` 로 전체를 다시 굽는다.
+
+### 5.2 표준 절차
+
+```bash
+conda activate pjt-4
+
+# 1) 새 config 를 iter4/eval/configs/vN_<slug>.json 로 만든다
+#    - v1_baseline.json 을 복사해 tune 값 조정하는 게 가장 안전
+#    - TCN 을 쓰면 "engine": "tcn" 을 포함, TCN_MIN_CONF 도 넣는다
+
+# 2) 합성 스위트로 회귀 확인 (선택이지만 강력 권장)
+python iter4/eval/run_suite.py
+#    -> 68/68 F1=1.000 이 유지되지 않으면 룰베이스 변경이 합성 궤적을
+#       망가뜨렸다는 뜻. 새 버전 아카이빙 전에 원인 파악.
+
+# 3) 실촬영 벤치마크로 새 버전 아카이빙
+python iter4/eval/run_pipeline.py \
+  --version vN_<slug> \
+  --engine <rule|tcn> \
+  --config iter4/eval/configs/vN_<slug>.json
+
+# 결과: iter4/eval/runs/vN_<slug>/{metrics.json, report.json,
+#       summary_report.md, punches.csv} + runs_registry.json 갱신
+```
+
+### 5.3 결과 검증 체크리스트
+
+버전을 아카이빙한 뒤 다음을 반드시 확인한다. 하나라도 실패하면 registry 오염 가능성이 있으므로 **커밋하지 말고** 원인을 찾는다.
+
+* [ ] `--engine tcn` 인 경우 stdout 에 `🧠 [TCN Engine] PyTorch Causal TCN 모델 로드 완료` 로그가 있다. 없으면 룰베이스로 폴백된 상태로 저장됐다는 뜻이지만, 현재 파이프라인은 로드 실패 시 즉시 `SystemExit` 이므로 이 로그가 없으면 파이프라인이 애초에 중단됐어야 한다.
+* [ ] `metrics.json` 에 `matches` 필드가 있고 `len(matches) == tp` 이다.
+* [ ] `metrics.json.phase_analysis.skipped` 가 `true` 가 아니다. (알려지지 않은 case labels 를 실수로 쓰면 phase 분석이 스킵된다.)
+* [ ] `runs_registry.json` 최신 엔트리의 `version` 이 방금 만든 태그이고 `f1/precision/recall/non_action_fp` 가 stdout 요약과 일치한다.
+* [ ] 룰베이스 변경이면 혼동행렬(`confusion`) 이 이전 버전과 다르다. TCN 변경이면 `confusion` 에 `->UPPERCUT`, `->HOOK` 같은 TCN 특유 오분류가 등장한다 (혼동행렬이 rule 결과와 완전히 동일하면 TCN 이 실제로 관여하지 않은 것).
+
+### 5.4 커밋 규칙
+
+* 로직 변경 파일 + `runs/vN_<slug>/*` + `runs_registry.json` + `output/benchmark/*` 를 **한 커밋**으로 묶는다. 산출물이 로직과 분리 커밋되면 나중에 revert 할 때 registry 가 불일치 상태로 남는다.
+* 커밋 메시지 프리픽스는 `feat(eval):` (새 알고리즘/모델), `fix(eval):` (평가 로직 버그 수정), `perf(eval):` (튠 최적화).
+
+---
+
+## 🤖 6. 새 버전 평가를 Agent 에게 시킬 때 프롬프트 템플릿
+
+Agent 에게 던질 때는 **무엇을 바꿨는지 · 새 버전 태그 · 성공 판정 기준**을 명시한다. 애매하면 agent 가 기존 버전에 덮어쓰거나 rule 폴백을 못 눈치채고 커밋한다 (v4/v5 사고의 재발). 아래 두 템플릿을 상황에 맞게 골라 쓴다.
+
+### 6.1 튠(임계값) 변경 — 룰베이스
+
+```text
+iter4 브랜치, conda env pjt-4.
+
+<무엇을 바꿨는지 한 줄> 을 반영한 새 버전 v<N>_<slug> 를 평가·아카이빙해줘.
+
+절차:
+1) iter4/eval/configs/v1_baseline.json 을 복사해서
+   iter4/eval/configs/v<N>_<slug>.json 을 만든다.
+   변경 파라미터: <PUNCH_SPEED=..., PUNCH_EXTEND=..., 필요한 것만>
+2) `python iter4/eval/run_suite.py` 로 합성 스위트가 68/68 F1=1.000
+   유지되는지 먼저 확인. 깨지면 여기서 멈추고 원인 보고.
+3) `python iter4/eval/run_pipeline.py --version v<N>_<slug>
+   --engine rule --config iter4/eval/configs/v<N>_<slug>.json`
+   실행. `--overwrite` 는 붙이지 말 것.
+4) `iter4/eval/docs/EVALUATION_GUIDE.md` 5.3 체크리스트 전 항목 검증
+   결과를 보고. 하나라도 실패면 커밋하지 말고 원인을 알려줘.
+5) 모두 통과하면 로직 변경 파일 + runs/v<N>_<slug>/* +
+   runs_registry.json + output/benchmark/* 를 한 커밋으로 묶어서
+   `feat(eval): ...` 메시지로 커밋해줘.
+
+성공 기준(참고): non_action_fp 가 v1_baseline(9) 대비 감소, F1 이
+v1_baseline(0.3666) 이상. 이 기준을 못 맞춰도 결과는 아카이빙하되
+커밋 메시지에 "회귀 관찰됨" 을 명시.
+```
+
+### 6.2 TCN 모델/신뢰도 변경 — 딥러닝
+
+```text
+iter4 브랜치, conda env pjt-4.
+
+<TCN 재학습 / TCN_MIN_CONF 변경 / 스케일러 교체 등> 을 반영한 새
+버전 v<N>_<slug> 를 평가·아카이빙해줘.
+
+절차:
+1) `iter4/motion_learning/boxing_tcn.pth` 와
+   `boxing_tcn_scaler.json` 이 새 파일인지, 파일 mtime 이 이번 학습
+   커밋 이후인지 확인.
+2) iter4/eval/configs/v5_tcn_optimized.json 을 복사해
+   iter4/eval/configs/v<N>_<slug>.json 을 만든다.
+   변경 파라미터: <TCN_MIN_CONF=..., 필요하면 룰 트리거도>
+   반드시 `"engine": "tcn"` 을 유지.
+3) `python iter4/eval/run_pipeline.py --version v<N>_<slug>
+   --engine tcn --config iter4/eval/configs/v<N>_<slug>.json`
+   실행. stdout 에 `🧠 [TCN Engine] PyTorch Causal TCN 모델 로드
+   완료` 로그가 반드시 있어야 한다. 없으면 즉시 중단·보고.
+4) `iter4/eval/runs/v<N>_<slug>/metrics.json` 의 `confusion` 을
+   `v1_baseline` 의 그것과 비교해 서로 다른지 확인. 완전히 같으면
+   TCN 이 실제로 관여하지 않았다는 뜻이므로 커밋하지 말고 원인
+   보고.
+5) EVALUATION_GUIDE.md 5.3 체크리스트 전 항목 검증. 하나라도 실패면
+   커밋 금지·원인 보고.
+6) 통과하면 학습 산출물 + configs/v<N>_<slug>.json + runs/... +
+   registry 를 한 커밋으로 `feat(eval): ...` 로 커밋.
+
+성공 기준(참고): kind_accuracy 가 v1_baseline(36.4%) 을 초과. F1 은
+현재 상한이 낮으니 v5(0.3793) 이상이면 진전. 못 맞춰도 결과는
+아카이빙하되 커밋 메시지에 "회귀 관찰됨" 명시.
+```
+
+### 6.3 파이프라인/scoring 로직 자체를 바꿀 때 — 전체 재실행
+
+```text
+iter4 브랜치, conda env pjt-4.
+
+<scoring 알고리즘 / phase 계산 / evaluate_video.py 파이프라인 등>
+로직 자체를 바꿨어. 기존 5개 버전을 모두 --overwrite 로 재실행해
+registry 를 갱신해야 한다.
+
+절차:
+1) `python iter4/eval/run_suite.py` 로 합성 스위트 회귀 확인.
+   68/68 F1=1.000 유지 안 되면 여기서 멈추고 보고.
+2) v1_baseline / v2_anti_sway / v3_iter4_eval (--engine rule) 과
+   v4_tcn_hybrid / v5_tcn_optimized (--engine tcn) 를 각각
+   `python iter4/eval/run_pipeline.py --version <v> --engine <e>
+    --config iter4/eval/configs/<v>.json --overwrite`
+   로 실행.
+3) 각 버전에 대해 EVALUATION_GUIDE.md 5.3 체크리스트를 돌리고,
+   특히 이전 F1 값과 비교해 변화량을 표로 정리해 보고.
+4) 변화가 의도한 로직 개선과 부합하면 로직 변경 + 전체 runs/* +
+   registry + docs 를 한 커밋으로 `fix(eval):` 또는 `feat(eval):`
+   로 커밋.
+
+주의: 로직 변경이 registry 숫자를 흔들면 EVALUATION_REPORT.md 의
+표도 함께 갱신해야 한다. 커밋 전에 표와 registry 가 일치하는지
+반드시 확인.
+```
+

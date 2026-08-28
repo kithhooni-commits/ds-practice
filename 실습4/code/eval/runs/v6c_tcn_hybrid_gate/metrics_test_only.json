@@ -1,0 +1,250 @@
+{
+  "version": "v6c_tcn_hybrid_gate",
+  "description": "v6b(순수 TCN 트리거)와 같은 leakage-safe 모델을 트리거 조건만 'TCN 확신도 AND 룰베이스 물리조건'으로 바꿔 재평가.",
+  "base_model_dir": "C:\\DS_Team2\\project-4\\iter4\\motion_learning\\v6b_tcn_trigger",
+  "test_region_definition": {
+    "singleton_windows_ms": [
+      [
+        12133,
+        14133
+      ],
+      [
+        17400,
+        19400
+      ],
+      [
+        27500,
+        29500
+      ],
+      [
+        33000,
+        35000
+      ],
+      [
+        44500,
+        46500
+      ],
+      [
+        50500,
+        52500
+      ]
+    ],
+    "combo_block_ms": [
+      75500,
+      84000
+    ]
+  },
+  "full_90s_reference_NOT_leakage_free": {
+    "tolerance_ms": 400,
+    "ground_truth": 29,
+    "predicted": 30,
+    "tp": 17,
+    "fp": 13,
+    "fn": 12,
+    "precision": 0.5667,
+    "recall": 0.5862,
+    "f1": 0.5763,
+    "kind_accuracy": 0.5882,
+    "side_accuracy": 0.7059,
+    "timing_error_ms_mean": 155.2,
+    "timing_error_ms_max": 367,
+    "confusion": {
+      "STRAIGHT->STRAIGHT": 8,
+      "HOOK->STRAIGHT": 2,
+      "HOOK->HOOK": 1,
+      "UPPERCUT->HOOK": 2,
+      "STRAIGHT->UPPERCUT": 2,
+      "STRAIGHT->HOOK": 1,
+      "UPPERCUT->UPPERCUT": 1
+    },
+    "matches": [
+      {
+        "pred_index": 0,
+        "pred_t_ms": 7500,
+        "label_t_ms": 7500,
+        "dt_ms": 0
+      },
+      {
+        "pred_index": 26,
+        "pred_t_ms": 80033,
+        "label_t_ms": 80000,
+        "dt_ms": 33
+      },
+      {
+        "pred_index": 23,
+        "pred_t_ms": 76466,
+        "label_t_ms": 76500,
+        "dt_ms": 34
+      },
+      {
+        "pred_index": 13,
+        "pred_t_ms": 26733,
+        "label_t_ms": 26666,
+        "dt_ms": 67
+      },
+      {
+        "pred_index": 5,
+        "pred_t_ms": 11233,
+        "label_t_ms": 11133,
+        "dt_ms": 100
+      },
+      {
+        "pred_index": 7,
+        "pred_t_ms": 13033,
+        "label_t_ms": 13133,
+        "dt_ms": 100
+      },
+      {
+        "pred_index": 2,
+        "pred_t_ms": 8866,
+        "label_t_ms": 9000,
+        "dt_ms": 134
+      },
+      {
+        "pred_index": 10,
+        "pred_t_ms": 24366,
+        "label_t_ms": 24500,
+        "dt_ms": 134
+      },
+      {
+        "pred_index": 25,
+        "pred_t_ms": 78766,
+        "label_t_ms": 78900,
+        "dt_ms": 134
+      },
+      {
+        "pred_index": 20,
+        "pred_t_ms": 43366,
+        "label_t_ms": 43500,
+        "dt_ms": 134
+      },
+      {
+        "pred_index": 24,
+        "pred_t_ms": 77100,
+        "label_t_ms": 76933,
+        "dt_ms": 167
+      },
+      {
+        "pred_index": 29,
+        "pred_t_ms": 82566,
+        "label_t_ms": 82366,
+        "dt_ms": 200
+      },
+      {
+        "pred_index": 18,
+        "pred_t_ms": 41733,
+        "label_t_ms": 41500,
+        "dt_ms": 233
+      },
+      {
+        "pred_index": 27,
+        "pred_t_ms": 80700,
+        "label_t_ms": 80466,
+        "dt_ms": 234
+      },
+      {
+        "pred_index": 28,
+        "pred_t_ms": 81533,
+        "label_t_ms": 81800,
+        "dt_ms": 267
+      },
+      {
+        "pred_index": 15,
+        "pred_t_ms": 28200,
+        "label_t_ms": 28500,
+        "dt_ms": 300
+      },
+      {
+        "pred_index": 22,
+        "pred_t_ms": 45133,
+        "label_t_ms": 45500,
+        "dt_ms": 367
+      }
+    ]
+  },
+  "test_only_leakage_free": {
+    "tolerance_ms": 400,
+    "ground_truth": 15,
+    "predicted": 13,
+    "tp": 10,
+    "fp": 3,
+    "fn": 5,
+    "precision": 0.7692,
+    "recall": 0.6667,
+    "f1": 0.7143,
+    "kind_accuracy": 0.5,
+    "side_accuracy": 0.6,
+    "timing_error_ms_mean": 183.6,
+    "timing_error_ms_max": 367,
+    "confusion": {
+      "STRAIGHT->STRAIGHT": 5,
+      "STRAIGHT->UPPERCUT": 2,
+      "STRAIGHT->HOOK": 1,
+      "HOOK->STRAIGHT": 1,
+      "UPPERCUT->HOOK": 1
+    },
+    "matches": [
+      {
+        "pred_index": 9,
+        "pred_t_ms": 80033,
+        "label_t_ms": 80000,
+        "dt_ms": 33
+      },
+      {
+        "pred_index": 6,
+        "pred_t_ms": 76466,
+        "label_t_ms": 76500,
+        "dt_ms": 34
+      },
+      {
+        "pred_index": 1,
+        "pred_t_ms": 13033,
+        "label_t_ms": 13133,
+        "dt_ms": 100
+      },
+      {
+        "pred_index": 8,
+        "pred_t_ms": 78766,
+        "label_t_ms": 78900,
+        "dt_ms": 134
+      },
+      {
+        "pred_index": 7,
+        "pred_t_ms": 77100,
+        "label_t_ms": 76933,
+        "dt_ms": 167
+      },
+      {
+        "pred_index": 12,
+        "pred_t_ms": 82566,
+        "label_t_ms": 82366,
+        "dt_ms": 200
+      },
+      {
+        "pred_index": 10,
+        "pred_t_ms": 80700,
+        "label_t_ms": 80466,
+        "dt_ms": 234
+      },
+      {
+        "pred_index": 11,
+        "pred_t_ms": 81533,
+        "label_t_ms": 81800,
+        "dt_ms": 267
+      },
+      {
+        "pred_index": 3,
+        "pred_t_ms": 28200,
+        "label_t_ms": 28500,
+        "dt_ms": 300
+      },
+      {
+        "pred_index": 5,
+        "pred_t_ms": 45133,
+        "label_t_ms": 45500,
+        "dt_ms": 367
+      }
+    ]
+  },
+  "n_predictions_in_train_region_excluded_from_scoring": 17
+}

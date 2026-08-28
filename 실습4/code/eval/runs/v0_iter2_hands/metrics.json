@@ -1,0 +1,549 @@
+{
+  "tolerance_ms": 400,
+  "ground_truth": 29,
+  "predicted": 242,
+  "tp": 29,
+  "fp": 213,
+  "fn": 0,
+  "precision": 0.1198,
+  "recall": 1.0,
+  "f1": 0.214,
+  "kind_accuracy": 0.4138,
+  "side_accuracy": 0.5172,
+  "timing_error_ms_mean": 101.2,
+  "timing_error_ms_max": 167,
+  "confusion": {
+    "STRAIGHT->STRAIGHT": 10,
+    "UPPERCUT->STRAIGHT": 5,
+    "STRAIGHT->HOOK": 6,
+    "HOOK->STRAIGHT": 5,
+    "HOOK->HOOK": 2,
+    "UPPERCUT->HOOK": 1
+  },
+  "matches": [
+    {
+      "pred_index": 50,
+      "pred_t_ms": 18400,
+      "label_t_ms": 18400,
+      "dt_ms": 0
+    },
+    {
+      "pred_index": 113,
+      "pred_t_ms": 41500,
+      "label_t_ms": 41500,
+      "dt_ms": 0
+    },
+    {
+      "pred_index": 218,
+      "pred_t_ms": 80000,
+      "label_t_ms": 80000,
+      "dt_ms": 0
+    },
+    {
+      "pred_index": 215,
+      "pred_t_ms": 78900,
+      "label_t_ms": 78900,
+      "dt_ms": 0
+    },
+    {
+      "pred_index": 223,
+      "pred_t_ms": 81833,
+      "label_t_ms": 81800,
+      "dt_ms": 33
+    },
+    {
+      "pred_index": 124,
+      "pred_t_ms": 45533,
+      "label_t_ms": 45500,
+      "dt_ms": 33
+    },
+    {
+      "pred_index": 213,
+      "pred_t_ms": 78166,
+      "label_t_ms": 78200,
+      "dt_ms": 34
+    },
+    {
+      "pred_index": 87,
+      "pred_t_ms": 31966,
+      "label_t_ms": 32000,
+      "dt_ms": 34
+    },
+    {
+      "pred_index": 135,
+      "pred_t_ms": 49566,
+      "label_t_ms": 49500,
+      "dt_ms": 66
+    },
+    {
+      "pred_index": 226,
+      "pred_t_ms": 82933,
+      "label_t_ms": 83000,
+      "dt_ms": 67
+    },
+    {
+      "pred_index": 30,
+      "pred_t_ms": 11033,
+      "label_t_ms": 11133,
+      "dt_ms": 100
+    },
+    {
+      "pred_index": 36,
+      "pred_t_ms": 13233,
+      "label_t_ms": 13133,
+      "dt_ms": 100
+    },
+    {
+      "pred_index": 47,
+      "pred_t_ms": 17300,
+      "label_t_ms": 17200,
+      "dt_ms": 100
+    },
+    {
+      "pred_index": 140,
+      "pred_t_ms": 51400,
+      "label_t_ms": 51500,
+      "dt_ms": 100
+    },
+    {
+      "pred_index": 219,
+      "pred_t_ms": 80366,
+      "label_t_ms": 80466,
+      "dt_ms": 100
+    },
+    {
+      "pred_index": 67,
+      "pred_t_ms": 24633,
+      "label_t_ms": 24500,
+      "dt_ms": 133
+    },
+    {
+      "pred_index": 210,
+      "pred_t_ms": 77066,
+      "label_t_ms": 76933,
+      "dt_ms": 133
+    },
+    {
+      "pred_index": 82,
+      "pred_t_ms": 30133,
+      "label_t_ms": 30000,
+      "dt_ms": 133
+    },
+    {
+      "pred_index": 20,
+      "pred_t_ms": 7366,
+      "label_t_ms": 7500,
+      "dt_ms": 134
+    },
+    {
+      "pred_index": 129,
+      "pred_t_ms": 47366,
+      "label_t_ms": 47500,
+      "dt_ms": 134
+    },
+    {
+      "pred_index": 78,
+      "pred_t_ms": 28666,
+      "label_t_ms": 28500,
+      "dt_ms": 166
+    },
+    {
+      "pred_index": 93,
+      "pred_t_ms": 34166,
+      "label_t_ms": 34000,
+      "dt_ms": 166
+    },
+    {
+      "pred_index": 224,
+      "pred_t_ms": 82200,
+      "label_t_ms": 82366,
+      "dt_ms": 166
+    },
+    {
+      "pred_index": 73,
+      "pred_t_ms": 26833,
+      "label_t_ms": 26666,
+      "dt_ms": 167
+    },
+    {
+      "pred_index": 208,
+      "pred_t_ms": 76333,
+      "label_t_ms": 76500,
+      "dt_ms": 167
+    },
+    {
+      "pred_index": 39,
+      "pred_t_ms": 14333,
+      "label_t_ms": 14500,
+      "dt_ms": 167
+    },
+    {
+      "pred_index": 24,
+      "pred_t_ms": 8833,
+      "label_t_ms": 9000,
+      "dt_ms": 167
+    },
+    {
+      "pred_index": 118,
+      "pred_t_ms": 43333,
+      "label_t_ms": 43500,
+      "dt_ms": 167
+    },
+    {
+      "pred_index": 43,
+      "pred_t_ms": 15833,
+      "label_t_ms": 16000,
+      "dt_ms": 167
+    }
+  ],
+  "version": "v0_iter2_hands",
+  "source_video": "C:\\hong\\project-4\\iter4\\eval\\video\\benchmark_landmarks.jsonl",
+  "phase_analysis": {
+    "rest_fp": 79,
+    "footwork_fp": 35,
+    "non_action_fp_total": 114,
+    "phases": [
+      {
+        "phase": "1. 준비 (Calibration)",
+        "range": "00~06s",
+        "is_action": false,
+        "detected": 17,
+        "fp": 17,
+        "punches": [
+          "LEFT_JAB",
+          "RIGHT_UPPERCUT",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_HOOK",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB"
+        ]
+      },
+      {
+        "phase": "2. 직선 펀치 (Straight)",
+        "range": "06~19s",
+        "is_action": true,
+        "detected": 35,
+        "fp": 0,
+        "punches": [
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB"
+        ]
+      },
+      {
+        "phase": "⏸ 숨고르기 (Rest 1)",
+        "range": "19~23s",
+        "is_action": false,
+        "detected": 11,
+        "fp": 11,
+        "punches": [
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "RIGHT_CROSS",
+          "LEFT_JAB"
+        ]
+      },
+      {
+        "phase": "3. 훅 펀치 (Hook)",
+        "range": "23~35s",
+        "is_action": true,
+        "detected": 33,
+        "fp": 0,
+        "punches": [
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_HOOK",
+          "RIGHT_CROSS",
+          "LEFT_HOOK",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "RIGHT_CROSS",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB"
+        ]
+      },
+      {
+        "phase": "⏸ 숨고르기 (Rest 2)",
+        "range": "35~40s",
+        "is_action": false,
+        "detected": 13,
+        "fp": 13,
+        "punches": [
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "RIGHT_CROSS",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB"
+        ]
+      },
+      {
+        "phase": "4. 어퍼컷 (Uppercut)",
+        "range": "40~52s",
+        "is_action": true,
+        "detected": 33,
+        "fp": 0,
+        "punches": [
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB"
+        ]
+      },
+      {
+        "phase": "⏸ 숨고르기 (Rest 3)",
+        "range": "52~57s",
+        "is_action": false,
+        "detected": 14,
+        "fp": 14,
+        "punches": [
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB"
+        ]
+      },
+      {
+        "phase": "5. 풋워크 (Footwork)",
+        "range": "57~70s",
+        "is_action": false,
+        "detected": 35,
+        "fp": 35,
+        "punches": [
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB"
+        ]
+      },
+      {
+        "phase": "⏸ 숨고르기 (Rest 4)",
+        "range": "70~75s",
+        "is_action": false,
+        "detected": 14,
+        "fp": 14,
+        "punches": [
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "RIGHT_CROSS",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK"
+        ]
+      },
+      {
+        "phase": "6. 실전 콤보 (Combos)",
+        "range": "75~85s",
+        "is_action": true,
+        "detected": 27,
+        "fp": 0,
+        "punches": [
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_HOOK",
+          "LEFT_HOOK",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB"
+        ]
+      },
+      {
+        "phase": "7. 마무리 (Cooldown)",
+        "range": "85~90s",
+        "is_action": false,
+        "detected": 10,
+        "fp": 10,
+        "punches": [
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_HOOK",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_JAB",
+          "LEFT_HOOK",
+          "LEFT_HOOK",
+          "LEFT_HOOK"
+        ]
+      }
+    ]
+  }
+}

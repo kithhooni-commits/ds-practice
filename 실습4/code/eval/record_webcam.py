@@ -1,11 +1,11 @@
 """60-Second Boxing Benchmark Video Recorder with On-Screen Protocol Overlay.
 
-Records webcam footage directly to `iter3/eval/video/benchmark.mp4` while showing
+Records webcam footage directly to `iter4/eval/video/benchmark.mp4` while showing
 real-time timer, countdown, and boxing protocol instructions on the screen.
 
 Usage:
   conda activate pjt-4
-  python iter3/eval/record_webcam.py
+  python iter4/eval/record_webcam.py
 """
 import sys
 import time

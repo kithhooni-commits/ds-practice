@@ -130,6 +130,11 @@
       const zMin = ((face.bounds && face.bounds.zMin) || -0.4) * sc;
       return c - zMin + FACE_MARGIN;      // 바운딩만 있을 때의 안전한 폴백
     }
+    // 얼굴 정점이 전부 타원체 **밖**에 놓이려면 얼마나 떨어져야 하는가.
+    //
+    // 이 값을 **얼굴을 앞으로 미는 데** 쓰면 부리처럼 튀어나온다 — 코끝만 나오면 될 것을
+    // 얼굴 전체가 앞으로 가기 때문이다. 그래서 호출부는 이 값만큼 **구를 뒤로 물린다.**
+    // 얼굴은 제자리에 있고 머리 뒤통수가 그만큼 깊어질 뿐이라 사람 머리에 가깝다.
     let d = -Infinity;
     for (let i = 0; i < pos.length; i += 3) {
       const x = pos[i] * sc, y = pos[i + 1] * sc, z = pos[i + 2] * sc;
@@ -523,7 +528,9 @@
           skinMat.color.setHex(faceObj.skinTone);
         }
 
-        const fb = faceObj.bounds;
+        // **얼굴 기준으로 정렬한다.** 두개골까지 포함한 바운딩을 쓰면 정수리를
+        // 세운 만큼 중심이 올라가 얼굴이 아래로 처진다(턱이 가슴에 파묻힌다).
+        const fb = faceObj.faceBounds || faceObj.bounds;
         const fullHead = !!faceObj.isFullHead;
 
         // 머리 크기에 맞춘다. 호출부가 어떤 width 로 만들었든 여기서 실측 폭으로 다시 맞춘다.
@@ -559,17 +566,33 @@
           // 배치를 상수로 박으면 안 된다. 얼굴 깊이는 사람마다 다르고, 조금만 뒤로 가면
           // 얼굴 전체가 구 안에 파묻혀 아무것도 안 보인다(실제로 그렇게 됐었다).
           head.scale.set(SKULL_SCALE.x, SKULL_SCALE.y, SKULL_SCALE.z);
+          // **얼굴을 등록하면 아바타의 기본 머리를 숨긴다.**
+          //
+          // 구를 남기고 얼굴을 그 앞에 얹으면 어떻게 배치해도 어색하다 — 앞으로 밀면
+          // 부리가 되고, 딱 붙이면 구가 얼굴을 뚫고 나온다. 얼굴 뒤로 구를 물리면
+          // 이번엔 얼굴이 공중에 뜬 것처럼 보인다. 사진 얼굴과 단색 구는 크기·곡률이
+          // 애초에 안 맞는다.
+          //
+          // 그래서 얼굴이 있으면 구·턱·귀·바이저·헤드기어를 **전부 숨기고** 얼굴만 남긴다.
+          // 뒤통수가 없지만, 정면에서 하는 게임이라 어색한 머리보다 낫다.
+          // (얼굴을 등록하지 않은 파이터는 아래 else 에서 원래 머리를 그대로 쓴다.)
           faceObj.__yOff = 0;
-          faceObj.mesh.position.set(0, head.position.y, faceForwardOffset(faceObj));
-          head.visible = true;
-          jaw.visible = true;
+          faceObj.mesh.position.set(0, head.position.y, 0);
+          head.position.z = 0;
+          jaw.position.z = 0;
+          head.visible = false;
+          jaw.visible = false;
           visor.visible = false;
           headgear.visible = false;
+          ears.forEach(e => { e.visible = false; });
         }
         rig.add(faceObj.mesh);
       } else {
         head.visible = true;
         jaw.visible = true;
+        head.position.z = 0;
+        jaw.position.z = 0;
+        ears.forEach(e => { e.visible = true; });
         head.scale.set(0.94, 1.10, 0.96);
         headMat.color.setHex(0xc08a63);
         visor.visible = true;

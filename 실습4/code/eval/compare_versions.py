@@ -4,8 +4,8 @@
 Reads runs_registry.json and outputs a comparative table of all evaluated algorithm versions.
 
 Usage:
-  python iter3/eval/compare_versions.py
-  python iter3/eval/compare_versions.py v1_baseline v2_anti_sway
+  python iter4/eval/compare_versions.py
+  python iter4/eval/compare_versions.py v1_baseline v2_anti_sway
 """
 import argparse
 import json
@@ -48,7 +48,8 @@ def print_comparison_table(runs, baseline_ver=None, candidate_ver=None):
         rec = f"{r.get('recall', 0.0):.4f}" if r.get('recall') is not None else "--"
         tp_fp_fn = f"{r.get('tp',0)}/{r.get('fp',0)}/{r.get('fn',0)}"
         non_act = f"{r.get('non_action_fp', 0)}회"
-        lat = f"{r.get('timing_err_ms', 0.0):.1f}ms"
+        lat_val = r.get('timing_err_ms')
+        lat = f"{lat_val:.1f}ms" if lat_val is not None else "--"
 
         row = f"{ver:<18} | {f1:<8} | {prec:<9} | {rec:<8} | {tp_fp_fn:<10} | {non_act:<12} | {lat:<7}"
         print(row)
