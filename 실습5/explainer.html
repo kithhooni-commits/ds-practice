@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>흐린 이미지를 되돌리는 법</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@300;400;500;600&display=swap">
+</head>
+<body>
+
+<style>
+:root{
+  --ground:#EDF1F5;
+  --surface:#FFFFFF;
+  --sunken:#E3E9F0;
+  --ink:#16202E;
+  --muted:#5C6B7F;
+  --line:#D3DBE5;
+  --line-strong:#B8C4D2;
+  --accent:#A85B32;
+  --accent-soft:rgba(168,91,50,.12);
+  --accent-line:rgba(168,91,50,.42);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#11161D;
+    --surface:#171E27;
+    --sunken:#1D2630;
+    --ink:#E3E9F0;
+    --muted:#93A1B3;
+    --line:#2A3441;
+    --line-strong:#3A4756;
+    --accent:#E08A54;
+    --accent-soft:rgba(224,138,84,.14);
+    --accent-line:rgba(224,138,84,.48);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#11161D;
+  --surface:#171E27;
+  --sunken:#1D2630;
+  --ink:#E3E9F0;
+  --muted:#93A1B3;
+  --line:#2A3441;
+  --line-strong:#3A4756;
+  --accent:#E08A54;
+  --accent-soft:rgba(224,138,84,.14);
+  --accent-line:rgba(224,138,84,.48);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--ground);
+  color:var(--ink);
+  font-family:"IBM Plex Sans KR","Malgun Gothic",system-ui,sans-serif;
+  font-weight:400;
+  font-size:16.5px;
+  line-height:1.78;
+  -webkit-font-smoothing:antialiased;
+  word-break:keep-all;
+}
+.page{max-width:56rem;margin:0 auto;padding:0 1.5rem 6rem}
+
+/* ---------- masthead ---------- */
+.masthead{
+  padding:5rem 0 2.5rem;
+  border-bottom:1px solid var(--line);
+  display:flex;flex-direction:column;gap:1.15rem;
+}
+.eyebrow{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted);
+}
+h1{
+  font-family:"Gowun Batang","Batang",serif;
+  font-weight:700;
+  font-size:clamp(2.1rem,5.4vw,3.35rem);
+  line-height:1.24;
+  margin:0;
+  text-wrap:balance;
+  letter-spacing:-.01em;
+}
+.standfirst{
+  font-size:1.12rem;color:var(--muted);max-width:38ch;margin:0;
+  font-weight:300;
+}
+.byline{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.75rem;color:var(--muted);
+  display:flex;flex-wrap:wrap;gap:.4rem 1.1rem;
+  padding-top:.4rem;
+}
+
+/* ---------- sections ---------- */
+section{padding:3.4rem 0 .4rem;border-bottom:1px solid var(--line)}
+section:last-of-type{border-bottom:none}
+h2{
+  font-family:"Gowun Batang","Batang",serif;
+  font-weight:700;
+  font-size:clamp(1.42rem,3.1vw,1.85rem);
+  line-height:1.35;
+  margin:0 0 1.1rem;
+  text-wrap:balance;
+}
+h3{
+  font-size:1.02rem;font-weight:600;margin:2.2rem 0 .55rem;
+  letter-spacing:-.005em;
+}
+p{margin:0 0 1.05rem;max-width:66ch}
+strong{font-weight:600}
+em{font-style:normal;color:var(--accent);font-weight:500}
+a{color:var(--accent)}
+
+.lede{font-size:1.06rem}
+
+code,.m{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.88em;
+  background:var(--sunken);
+  border:1px solid var(--line);
+  border-radius:3px;
+  padding:.08em .38em;
+  white-space:nowrap;
+}
+
+/* ---------- callouts ---------- */
+.thesis{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-left:3px solid var(--accent);
+  padding:1.5rem 1.6rem;
+  margin:2.2rem 0 0;
+  display:flex;flex-direction:column;gap:.5rem;
+}
+.thesis .k{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);
+}
+.thesis p{margin:0;font-size:1.08rem}
+
+.aside{
+  background:var(--surface);
+  border:1px solid var(--line);
+  padding:1.25rem 1.4rem;
+  margin:1.8rem 0;
+}
+.aside p:last-child{margin-bottom:0}
+.aside .k{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+  display:block;margin-bottom:.5rem;
+}
+
+/* ---------- numbered steps (real sequence only) ---------- */
+.steps{list-style:none;margin:1.6rem 0 0;padding:0;display:flex;flex-direction:column;gap:1.5rem}
+.steps li{display:grid;grid-template-columns:2.6rem 1fr;gap:1rem;align-items:start}
+.steps .n{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.78rem;color:var(--accent);
+  border-top:2px solid var(--accent-line);
+  padding-top:.35rem;
+}
+.steps h4{margin:0 0 .3rem;font-size:1rem;font-weight:600}
+.steps p{margin:0;color:var(--muted)}
+
+/* ---------- option cards ---------- */
+.options{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);margin:1.8rem 0}
+@media(min-width:720px){.options{grid-template-columns:repeat(3,1fr)}}
+.option{background:var(--surface);padding:1.3rem 1.3rem 1.45rem;display:flex;flex-direction:column;gap:.5rem}
+.option .tag{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+}
+.option h4{margin:0;font-size:1.02rem;font-weight:600}
+.option p{margin:0;font-size:.94rem;color:var(--muted);line-height:1.7}
+
+/* ---------- figures ---------- */
+figure{margin:2.4rem 0;background:var(--surface);border:1px solid var(--line);padding:1.6rem 1.3rem 1.2rem}
+figure .scroll{overflow-x:auto}
+figure svg{display:block;max-width:100%;height:auto;margin:0 auto;color:var(--ink)}
+figcaption{
+  margin-top:1.1rem;padding-top:.9rem;border-top:1px solid var(--line);
+  font-size:.88rem;color:var(--muted);line-height:1.7;max-width:62ch;
+}
+.svg-fill{fill:var(--surface)}
+.svg-box{fill:none;stroke:currentColor;stroke-width:1.25;opacity:.55}
+.svg-label{font-family:"IBM Plex Sans KR",sans-serif;font-size:13px;fill:currentColor}
+.svg-small{font-family:"IBM Plex Mono",monospace;font-size:11px;fill:currentColor;opacity:.62}
+.svg-line{stroke:currentColor;stroke-width:1.25;fill:none;opacity:.65}
+.svg-accent{stroke:var(--accent);stroke-width:1.6;fill:none}
+.svg-accent-fill{fill:var(--accent-soft);stroke:var(--accent-line);stroke-width:1}
+.svg-accent-text{fill:var(--accent);font-family:"IBM Plex Sans KR",sans-serif;font-size:12.5px;font-weight:500}
+
+/* ---------- spec table ---------- */
+.tablewrap{overflow-x:auto;margin:1.8rem 0;border:1px solid var(--line);background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:33rem;font-size:.94rem}
+th,td{text-align:left;padding:.82rem 1.1rem;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500;
+  background:var(--sunken);
+}
+tbody tr:last-child td{border-bottom:none}
+td:first-child{font-weight:500;white-space:nowrap}
+.num{font-variant-numeric:tabular-nums;font-family:"IBM Plex Mono",monospace}
+
+/* ---------- glossary ---------- */
+dl{margin:1.6rem 0 0;display:grid;gap:0}
+dl>div{display:grid;grid-template-columns:1fr;gap:.15rem;padding:.9rem 0;border-bottom:1px solid var(--line)}
+@media(min-width:640px){dl>div{grid-template-columns:11rem 1fr;gap:1.4rem}}
+dl>div:last-child{border-bottom:none}
+dt{font-weight:600;font-size:.96rem}
+dd{margin:0;color:var(--muted);font-size:.94rem;line-height:1.72}
+
+.closing{
+  margin-top:3rem;padding-top:1.6rem;border-top:1px solid var(--line);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.75rem;color:var(--muted);
+}
+
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="page">
+
+<header class="masthead">
+  <div class="eyebrow">삼성 DS2과정 프로젝트 · 배경 설명</div>
+  <h1>흐린 이미지를<br>되돌리는 법</h1>
+  <p class="standfirst">망가진 사진을 원래대로 복원하는 과제입니다. 사전 지식 없이 읽을 수 있도록, 무엇을 하는지·왜 어려운지·어떻게 접근하는지 순서대로 풀어 썼습니다.</p>
+  <div class="byline">
+    <span>Image Restoration Challenge</span>
+    <span>출처 · Day 1–3 강의자료</span>
+    <span>읽는 데 약 10분</span>
+  </div>
+</header>
+
+<section>
+  <h2>한 문장으로</h2>
+  <p class="lede">누군가 깨끗한 사진을 <strong>일부러 흐리게 만들고 잡티까지 뿌려 놓았습니다.</strong> 우리는 그 망가진 사진만 보고 원본을 최대한 되살리는 프로그램을 만들면 됩니다.</p>
+
+  <div class="thesis">
+    <span class="k">과제의 정의</span>
+    <p>손상된 이미지 100장이 주어진다. 정답(원본)은 <strong>주지 않는다.</strong> 복원 결과가 원본에 얼마나 가까운지로 점수가 매겨진다.</p>
+  </div>
+
+  <p style="margin-top:1.8rem">여기서 두 가지가 마음에 걸릴 겁니다. "정답을 안 주면 어떻게 학습을 시키지?" 그리고 "흐리게 만든 걸 아니까 그냥 거꾸로 돌리면 되는 거 아닌가?" 이 두 질문이 정확히 이 과제의 전부입니다. 답부터 말하면, 첫 번째는 <em>우리가 직접 손상 데이터를 만들어내서</em> 해결하고, 두 번째는 <em>거꾸로 돌리는 게 수학적으로 불가능한 지점이 있어서</em> 이 과제가 챌린지가 됩니다.</p>
+</section>
+
+<section>
+  <h2>이미지는 어떻게 망가지는가</h2>
+  <p>사진이 망가지는 방식은 딱 두 가지가 겹쳐 있습니다. 하나는 <strong>번짐</strong>, 하나는 <strong>잡음</strong>입니다.</p>
+
+  <ol class="steps">
+    <li>
+      <span class="n">01</span>
+      <div>
+        <h4>번짐 — 한 점이 뭉개져 퍼진다</h4>
+        <p>초점이 안 맞은 카메라를 떠올리면 됩니다. 원래 한 점이어야 할 빛이 주변으로 퍼집니다. 이 "한 점이 어떤 모양으로 퍼지는가"를 적어 놓은 것이 <span class="m">커널</span>(PSF)이고, 이미지 전체에 이 퍼짐을 적용하는 연산이 <span class="m">컨볼루션</span>입니다.</p>
+      </div>
+    </li>
+    <li>
+      <span class="n">02</span>
+      <div>
+        <h4>잡음 — 무작위 얼룩이 더해진다</h4>
+        <p>오래된 TV의 지지직거림입니다. 센서의 열, 전기적 요동 때문에 픽셀 값마다 작은 난수가 더해집니다. 종류가 여러 가지라(가우시안, 소금·후추, 균등 등) 어떤 잡음인지부터 알아내야 제대로 지울 수 있습니다.</p>
+      </div>
+    </li>
+    <li>
+      <span class="n">03</span>
+      <div>
+        <h4>그 결과가 우리에게 주어진다</h4>
+        <p>번지고 잡음까지 낀 이미지 한 장. 이게 입력입니다. 우리가 만들 것은 이 화살표를 <em>거꾸로 되돌리는 파이프라인</em>입니다.</p>
+      </div>
+    </li>
+  </ol>
+
+  <figure>
+    <div class="scroll">
+      <svg viewBox="0 0 720 232" role="img" aria-label="깨끗한 원본에 번짐 커널을 씌우고 잡음을 더하면 손상 이미지가 되며, 과제는 그 반대 방향을 만드는 것이다">
+        <defs>
+          <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor" opacity=".65"/>
+          </marker>
+          <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+          </marker>
+        </defs>
+
+        <rect class="svg-box" x="15" y="30" width="150" height="66" rx="2"/>
+        <text class="svg-label" x="90" y="58" text-anchor="middle">깨끗한 원본</text>
+        <text class="svg-small" x="90" y="78" text-anchor="middle">f</text>
+
+        <rect class="svg-box" x="285" y="30" width="150" height="66" rx="2"/>
+        <text class="svg-label" x="360" y="58" text-anchor="middle">흐려진 이미지</text>
+        <text class="svg-small" x="360" y="78" text-anchor="middle">h * f</text>
+
+        <rect class="svg-box" x="555" y="30" width="150" height="66" rx="2"/>
+        <text class="svg-label" x="630" y="58" text-anchor="middle">손상 이미지</text>
+        <text class="svg-small" x="630" y="78" text-anchor="middle">g = h * f + n</text>
+
+        <line class="svg-line" x1="167" y1="63" x2="281" y2="63" marker-end="url(#a1)"/>
+        <text class="svg-small" x="224" y="52" text-anchor="middle">커널 h 로 번짐</text>
+        <line class="svg-line" x1="437" y1="63" x2="551" y2="63" marker-end="url(#a1)"/>
+        <text class="svg-small" x="494" y="52" text-anchor="middle">잡음 n 더함</text>
+
+        <path class="svg-accent" d="M630 100 L630 165 Q630 175 620 175 L100 175 Q90 175 90 165 L90 100" marker-end="url(#a2)"/>
+        <rect class="svg-accent-fill" x="255" y="158" width="210" height="34" rx="2"/>
+        <text class="svg-accent-text" x="360" y="180" text-anchor="middle">우리가 만들 복원 파이프라인</text>
+
+        <text class="svg-small" x="360" y="215" text-anchor="middle">주어지는 것: 오른쪽 상자 하나. 알아내야 하는 것: 왼쪽 상자.</text>
+      </svg>
+    </div>
+    <figcaption>위쪽 화살표는 주최측이 데이터를 만든 방향, 아래 구리색 화살표는 우리가 만들어야 할 방향입니다. 번짐 공식은 알려주지만 잡음의 성질은 알려주지 않습니다.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>그냥 거꾸로 나누면 안 되나요</h2>
+  <p>이론상으로는 됩니다. 번짐은 <span class="m">주파수 영역</span>(푸리에 변환)에서 보면 단순한 곱셈이 되기 때문에, 곱한 걸 나누기만 하면 원본이 나옵니다. 문제는 <strong>이 과제의 커널이 특정 방향에서 정확히 0</strong>이라는 점입니다.</p>
+  <p>0으로 나눌 수는 없습니다. 그리고 0에 가까운 값으로 나누면 그 자리에 있던 자잘한 잡음이 <em>수백 배로 증폭되어</em> 이미지 전체에 줄무늬로 번집니다. 복원이 아니라 파괴가 됩니다.</p>
+
+  <figure>
+    <div class="scroll">
+      <svg viewBox="0 0 720 260" role="img" aria-label="커널의 주파수 스펙트럼에는 값이 0인 나비넥타이 모양 영역이 있고, 그 영역으로 나누면 같은 방향으로 줄무늬 잡음이 폭발한다">
+        <defs>
+          <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor" opacity=".65"/>
+          </marker>
+        </defs>
+
+        <rect class="svg-box" x="60" y="34" width="180" height="180"/>
+        <text class="svg-small" x="150" y="26" text-anchor="middle">커널의 주파수 스펙트럼  H(k)</text>
+        <path class="svg-accent-fill" d="M150 124 L96 34 L204 34 Z"/>
+        <path class="svg-accent-fill" d="M150 124 L96 214 L204 214 Z"/>
+        <text class="svg-accent-text" x="150" y="128" text-anchor="middle">H = 0</text>
+        <text class="svg-small" x="150" y="234" text-anchor="middle">이 영역만 값이 0이다</text>
+
+        <line class="svg-line" x1="256" y1="124" x2="316" y2="124" marker-end="url(#a3)"/>
+        <text class="svg-small" x="286" y="112" text-anchor="middle">G ÷ H</text>
+
+        <rect class="svg-box" x="332" y="34" width="180" height="180"/>
+        <text class="svg-small" x="422" y="26" text-anchor="middle">나눈 결과</text>
+        <g class="svg-accent" opacity=".85">
+          <line x1="368" y1="34" x2="422" y2="124"/>
+          <line x1="386" y1="34" x2="422" y2="124"/>
+          <line x1="404" y1="34" x2="422" y2="124"/>
+          <line x1="440" y1="214" x2="422" y2="124"/>
+          <line x1="458" y1="214" x2="422" y2="124"/>
+          <line x1="476" y1="214" x2="422" y2="124"/>
+        </g>
+        <text class="svg-small" x="422" y="234" text-anchor="middle">같은 방향으로 줄무늬 폭발</text>
+
+        <line class="svg-line" x1="528" y1="124" x2="572" y2="124" marker-end="url(#a3)"/>
+        <rect class="svg-box" x="588" y="64" width="118" height="120" rx="2"/>
+        <text class="svg-label" x="647" y="106" text-anchor="middle">복원 실패</text>
+        <text class="svg-small" x="647" y="128" text-anchor="middle">잡음이 신호를</text>
+        <text class="svg-small" x="647" y="144" text-anchor="middle">덮어버린다</text>
+      </svg>
+    </div>
+    <figcaption>단순한 역연산이 왜 무너지는지 보여줍니다. 0인 영역의 방향과 결과물에 생기는 줄무늬의 방향이 같다는 점이 핵심입니다. 이 흔적을 보고 무엇이 잘못됐는지 역추적할 수 있습니다.</figcaption>
+  </figure>
+
+  <div class="aside">
+    <span class="k">배경</span>
+    <p>이 "특정 방향에서 0이 되는 커널"은 <strong>다이폴(dipole) 커널</strong>이라고 하며, 의료영상 분야의 자화율 영상 복원에서 20년 가까이 연구돼 온 문제입니다. 강의자료 3일차가 통째로 그 분야의 논문 리뷰인 이유입니다. 우리 과제는 같은 수학을 반도체 이미지로 옮겨 놓은 것입니다.</p>
+  </div>
+</section>
+
+<section>
+  <h2>그래서 어떻게 뚫는가</h2>
+  <p>0인 영역을 피해 가는 방법은 크게 두 갈래입니다. 강의자료는 두 갈래를 모두 소개하는데, 이 과제의 규칙이 사실상 <strong>첫 번째 길을 열어 두고 있습니다.</strong></p>
+
+  <h3>길 하나 — 방향을 바꿔 여러 번 찍는다</h3>
+  <p>커널을 회전시키면 0이 되는 영역도 같이 회전합니다. 방향을 달리해 세 번 이상 찍으면, 한 장에서 정보가 없던 자리를 다른 장이 채워 줍니다. 세 장을 겹쳐 보면 <em>모든 자리에 최소 한 번은 정보가 들어 있게</em> 됩니다.</p>
+
+  <figure>
+    <div class="scroll">
+      <svg viewBox="0 0 720 236" role="img" aria-label="방향이 다른 세 장의 스펙트럼은 0인 영역의 위치가 서로 다르고, 겹치면 0인 자리가 사라진다">
+        <defs>
+          <marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor" opacity=".65"/>
+          </marker>
+        </defs>
+
+        <g>
+          <rect class="svg-box" x="20" y="40" width="130" height="130"/>
+          <path class="svg-accent-fill" d="M85 105 L46 40 L124 40 Z"/>
+          <path class="svg-accent-fill" d="M85 105 L46 170 L124 170 Z"/>
+          <text class="svg-small" x="85" y="192" text-anchor="middle">방향 1</text>
+        </g>
+        <g>
+          <rect class="svg-box" x="170" y="40" width="130" height="130"/>
+          <path class="svg-accent-fill" d="M235 105 L170 66 L170 144 Z"/>
+          <path class="svg-accent-fill" d="M235 105 L300 66 L300 144 Z"/>
+          <text class="svg-small" x="235" y="192" text-anchor="middle">방향 2</text>
+        </g>
+        <g>
+          <rect class="svg-box" x="320" y="40" width="130" height="130"/>
+          <path class="svg-accent-fill" d="M385 105 L320 40 L376 40 L320 96 Z"/>
+          <path class="svg-accent-fill" d="M385 105 L450 170 L394 170 L450 114 Z"/>
+          <text class="svg-small" x="385" y="192" text-anchor="middle">방향 3</text>
+        </g>
+
+        <line class="svg-line" x1="466" y1="105" x2="516" y2="105" marker-end="url(#a4)"/>
+        <text class="svg-small" x="491" y="93" text-anchor="middle">합치면</text>
+
+        <rect class="svg-box" x="532" y="40" width="130" height="130"/>
+        <text class="svg-label" x="597" y="100" text-anchor="middle">0인 자리</text>
+        <text class="svg-label" x="597" y="122" text-anchor="middle">없음</text>
+        <text class="svg-small" x="597" y="192" text-anchor="middle">나눗셈이 성립한다</text>
+
+        <text class="svg-small" x="360" y="222" text-anchor="middle">구리색 = 정보가 사라진 영역. 방향마다 위치가 다르다.</text>
+      </svg>
+    </div>
+    <figcaption>여러 방향 데이터를 합치는 접근입니다. 과제 규칙이 "원본 한 장당 방향 6개까지 만들어도 된다"고 명시한 것은 이 방법을 염두에 둔 설계로 보입니다.</figcaption>
+  </figure>
+
+  <h3>길 둘 — 한 방향만으로 버틴다</h3>
+  <p>방향을 여러 개 못 쓰는 상황이라면, 0에 가까운 값은 <strong>아예 나누지 않고 잘라내거나</strong>(임계값 처리), <strong>"결과 이미지는 대체로 매끄러울 것"이라는 가정을 수식에 끼워 넣어</strong>(정규화) 빈자리를 메웁니다. 계산은 빠르지만 원본에 없던 오차가 섞입니다. 위너 필터가 이 계열의 고전적인 대표 선수입니다.</p>
+</section>
+
+<section>
+  <h2>파이프라인을 어떻게 짤 것인가</h2>
+  <p>강의자료가 허용한 설계는 세 갈래입니다. 셋 중 무엇을 고르든 되고, 섞어도 됩니다. 중요한 건 <strong>왜 그걸 골랐는지 설명할 수 있어야 한다</strong>는 점입니다.</p>
+
+  <div class="options">
+    <div class="option">
+      <span class="tag">A · 고전</span>
+      <h4>위너 필터</h4>
+      <p>학습 없이 수식만으로 복원합니다. 빠르고 설명하기 쉽고, 성능의 바닥을 알려주는 기준선이 됩니다. 튜닝 파라미터 하나로 "잡음을 얼마나 무서워할지"를 조절합니다.</p>
+    </div>
+    <div class="option">
+      <span class="tag">B · 한 번에</span>
+      <h4>단일 신경망</h4>
+      <p>손상 이미지를 넣으면 깨끗한 이미지가 바로 나오도록 하나의 망을 학습시킵니다. 구현이 가장 단순하지만, 안에서 무슨 일이 일어나는지 알기 어렵고 학습 데이터와 조금만 달라져도 무너집니다.</p>
+    </div>
+    <div class="option">
+      <span class="tag">C · 두 단계</span>
+      <h4>잡음 제거 + 번짐 제거</h4>
+      <p>먼저 잡티를 지우고, 깨끗해진 이미지에서 번짐을 되돌립니다. 단계별로 무엇이 잘되고 안되는지 확인할 수 있어 디버깅과 발표에 유리합니다.</p>
+    </div>
+  </div>
+
+  <figure>
+    <div class="scroll">
+      <svg viewBox="0 0 720 250" role="img" aria-label="세 가지 파이프라인 설계 비교: 위너 필터, 단일 신경망, 두 단계 신경망">
+        <defs>
+          <marker id="a5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor" opacity=".65"/>
+          </marker>
+        </defs>
+
+        <text class="svg-small" x="14" y="44" text-anchor="start">A</text>
+        <rect class="svg-box" x="46" y="22" width="104" height="42" rx="2"/>
+        <text class="svg-label" x="98" y="48" text-anchor="middle">손상 입력</text>
+        <line class="svg-line" x1="152" y1="43" x2="212" y2="43" marker-end="url(#a5)"/>
+        <rect class="svg-box" x="216" y="22" width="150" height="42" rx="2"/>
+        <text class="svg-label" x="291" y="48" text-anchor="middle">위너 필터 (수식)</text>
+        <line class="svg-line" x1="368" y1="43" x2="428" y2="43" marker-end="url(#a5)"/>
+        <rect class="svg-box" x="432" y="22" width="104" height="42" rx="2"/>
+        <text class="svg-label" x="484" y="48" text-anchor="middle">복원 결과</text>
+        <text class="svg-small" x="556" y="48" text-anchor="start">학습 불필요</text>
+
+        <line x1="14" y1="86" x2="706" y2="86" stroke="currentColor" stroke-width="1" opacity=".18"/>
+
+        <text class="svg-small" x="14" y="122" text-anchor="start">B</text>
+        <rect class="svg-box" x="46" y="100" width="104" height="42" rx="2"/>
+        <text class="svg-label" x="98" y="126" text-anchor="middle">손상 입력</text>
+        <line class="svg-line" x1="152" y1="121" x2="212" y2="121" marker-end="url(#a5)"/>
+        <rect class="svg-box" x="216" y="100" width="150" height="42" rx="2"/>
+        <text class="svg-label" x="291" y="126" text-anchor="middle">신경망 하나</text>
+        <line class="svg-line" x1="368" y1="121" x2="428" y2="121" marker-end="url(#a5)"/>
+        <rect class="svg-box" x="432" y="100" width="104" height="42" rx="2"/>
+        <text class="svg-label" x="484" y="126" text-anchor="middle">복원 결과</text>
+        <text class="svg-small" x="556" y="126" text-anchor="start">속은 블랙박스</text>
+
+        <line x1="14" y1="164" x2="706" y2="164" stroke="currentColor" stroke-width="1" opacity=".18"/>
+
+        <text class="svg-small" x="14" y="200" text-anchor="start">C</text>
+        <rect class="svg-box" x="46" y="178" width="104" height="42" rx="2"/>
+        <text class="svg-label" x="98" y="204" text-anchor="middle">손상 입력</text>
+        <line class="svg-line" x1="152" y1="199" x2="204" y2="199" marker-end="url(#a5)"/>
+        <rect class="svg-accent-fill" x="208" y="178" width="112" height="42" rx="2"/>
+        <text class="svg-accent-text" x="264" y="204" text-anchor="middle">잡음 제거</text>
+        <line class="svg-line" x1="322" y1="199" x2="374" y2="199" marker-end="url(#a5)"/>
+        <rect class="svg-accent-fill" x="378" y="178" width="112" height="42" rx="2"/>
+        <text class="svg-accent-text" x="434" y="204" text-anchor="middle">번짐 제거</text>
+        <line class="svg-line" x1="492" y1="199" x2="536" y2="199" marker-end="url(#a5)"/>
+        <rect class="svg-box" x="540" y="178" width="104" height="42" rx="2"/>
+        <text class="svg-label" x="592" y="204" text-anchor="middle">복원 결과</text>
+
+        <text class="svg-small" x="360" y="240" text-anchor="middle">C만 중간 결과를 눈으로 확인할 수 있다 — 어느 단계가 망가졌는지 짚어낼 수 있다는 뜻이다.</text>
+      </svg>
+    </div>
+    <figcaption>세 설계의 차이는 상자 개수가 아니라 <strong>중간을 들여다볼 수 있는가</strong>입니다. A는 파라미터가 하나뿐이라 투명하고, C는 단계가 나뉘어 진단이 가능하며, B는 결과만 나옵니다.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>진짜 함정 — 정답지가 없다</h2>
+  <p>테스트 데이터 100장에는 원본이 딸려 있지 않습니다. 현실이 원래 그렇기 때문입니다. 반도체 계측이든 의료 영상이든, "완벽하게 깨끗한 정답 이미지"는 대개 얻을 수 없거나 너무 비쌉니다. 그래서 강의자료는 정답에 의존하지 않는 방식에 <strong>가산점을 주겠다</strong>고 명시합니다.</p>
+
+  <p>학습용 원본 <span class="num">7,368</span>장은 주어지니 여기에 직접 번짐과 잡음을 씌워 짝을 만들 수는 있습니다. 다만 만들 수 있는 양에 제한이 걸려 있고, 이 제한의 모양이 의미심장합니다.</p>
+
+  <div class="aside">
+    <span class="k">규칙 안에 숨은 힌트</span>
+    <p><strong>원본 1장당 방향 6개 × 각 방향마다 잡음 2장 = 최대 12장.</strong> 방향 6개는 앞서 본 "0인 자리 메우기"에 필요한 수입니다. 그리고 <em>같은 조건에 잡음만 다른 2장</em>은, 정답 없이 잡음만 지우는 자기지도 학습이 요구하는 데이터 형태와 정확히 일치합니다. 둘 다 우연으로 보기는 어렵습니다.</p>
+  </div>
+
+  <p>같은 장면을 잡음만 다르게 두 번 찍으면, 한 장으로 다른 한 장을 맞히도록 학습시킬 수 있습니다. 잡음은 매번 무작위라 학습이 불가능하고, 공통된 장면만 남습니다. <em>정답 없이 잡음이 지워집니다.</em></p>
+</section>
+
+<section>
+  <h2>딥러닝을 쓴다면 알고 있어야 할 것</h2>
+  <p>3일차 자료의 절반은 딥러닝 자랑이 아니라 <strong>딥러닝이 조용히 실패하는 방식</strong>에 대한 경고입니다. 발표에서 이 지점을 짚으면 이해도가 드러납니다.</p>
+
+  <ol class="steps">
+    <li>
+      <span class="n">01</span>
+      <div>
+        <h4>학습 범위 밖에서 무너진다</h4>
+        <p>같은 분야의 사례에서, 학습 데이터에 없던 밝기 대의 병변이 실제보다 훨씬 흐리게 복원됐습니다. 값을 틀리게 낸 게 아니라 <em>그럴듯하게 틀리게</em> 냈다는 점이 위험합니다. 해상도가 조금만 달라져도 같은 일이 일어납니다.</p>
+      </div>
+    </li>
+    <li>
+      <span class="n">02</span>
+      <div>
+        <h4>공정한 비교가 거의 불가능하다</h4>
+        <p>공개 데이터셋이 없어 각자 자기 데이터로 성능을 주장합니다. 남의 학습된 망을 그대로 쓰면 데이터가 달라 불리하고, 다시 학습시키면 더 이상 원래의 그 망이 아닙니다. 학습 순서나 초기값만 바꿔도 결과가 달라진다는 보고도 있습니다.</p>
+      </div>
+    </li>
+    <li>
+      <span class="n">03</span>
+      <div>
+        <h4>점수가 높다고 좋은 복원이 아니다</h4>
+        <p>같은 분야의 공개 경진대회에서, 딥러닝이 눈으로는 훨씬 깨끗해 보였는데 <strong>정량 지표에서는 고전 기법이 이겼습니다.</strong> "보기 좋음"과 "값이 정확함"은 다른 문제입니다.</p>
+      </div>
+    </li>
+  </ol>
+
+  <p style="margin-top:2rem">여기서 갈라지는 두 전략이 <strong>일반화</strong>와 <strong>정규화(맞춰주기)</strong>입니다. 어떤 입력이 와도 처리하도록 망을 넓게 만들 것인가, 아니면 들어오는 입력을 학습 데이터와 비슷한 모습으로 먼저 고쳐 넣을 것인가. 전자는 학습이 오래 걸리고, 후자는 추론이 느려집니다. 정해진 정답은 없습니다.</p>
+</section>
+
+<section>
+  <h2>채점 기준</h2>
+  <p>점수는 두 갈래로 매겨집니다. 숫자와 설명입니다.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th>항목</th><th>내용</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>학습 데이터</td>
+          <td>깨끗한 흑백 이미지 <span class="num">7,368</span>장. 번짐 공식은 제공되고, 잡음의 성질은 제공되지 않습니다.</td>
+        </tr>
+        <tr>
+          <td>생성 제한</td>
+          <td>원본 1장당 <span class="num">방향 6개 × 잡음 2장 = 12장</span>을 넘길 수 없습니다.</td>
+        </tr>
+        <tr>
+          <td>테스트 데이터</td>
+          <td>손상 이미지 <span class="num">100</span>장. 정답 없음. 채점 코드는 암호화되어 제공되며 Colab에서 실행합니다.</td>
+        </tr>
+        <tr>
+          <td>정량 지표</td>
+          <td><strong>PSNR</strong> — 원본과 얼마나 어긋났는지. <strong>SSIM</strong> — 구조가 얼마나 살아 있는지. 둘 다 높을수록 좋습니다.</td>
+        </tr>
+        <tr>
+          <td>발표</td>
+          <td>파이프라인 전체 설명, 복원 전후 예시, <strong>왜 그 방법을 골랐는지에 대한 근거.</strong></td>
+        </tr>
+        <tr>
+          <td>가산점</td>
+          <td>정답 라벨에 의존하지 않는 파이프라인.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="thesis">
+    <span class="k">정리</span>
+    <p>점수를 올리는 일과 <strong>왜 그 방법이어야 했는지를 말할 수 있는 일</strong>은 별개이며, 이 과제는 둘 다 요구합니다. 고전 기법으로 기준선을 먼저 잡아 두면 두 번째가 훨씬 쉬워집니다.</p>
+  </div>
+</section>
+
+<section>
+  <h2>용어</h2>
+  <dl>
+    <div><dt>커널 · PSF</dt><dd>한 점의 빛이 어떤 모양으로 퍼지는지 적어 놓은 작은 표. 번짐의 설계도입니다.</dd></div>
+    <div><dt>컨볼루션</dt><dd>커널을 이미지 전체에 훑어 적용하는 연산. 번지게 만드는 쪽입니다.</dd></div>
+    <div><dt>디컨볼루션</dt><dd>그 반대. 번짐을 되돌리는 쪽이고, 이 과제의 본체입니다.</dd></div>
+    <div><dt>푸리에 변환</dt><dd>이미지를 "무늬의 굵기별 세기"로 바꿔 보는 방법. 여기서는 번짐이 곱셈이 되어 다루기 쉬워집니다.</dd></div>
+    <div><dt>다이폴 커널</dt><dd>이 과제가 쓰는 커널. 주파수 영역에서 특정 방향의 값이 0이라 단순 역연산이 무너집니다.</dd></div>
+    <div><dt>방향(orientation)</dt><dd>커널을 돌려서 찍은 것. 돌리면 0이 되는 자리도 같이 돌아갑니다.</dd></div>
+    <div><dt>위너 필터</dt><dd>잡음의 세기를 고려해 "위험한 나눗셈"을 알아서 눌러 주는 고전 복원 필터.</dd></div>
+    <div><dt>정규화</dt><dd>정보가 없는 자리를 "결과는 대체로 매끄러울 것"같은 가정으로 메우는 것.</dd></div>
+    <div><dt>자기지도 학습</dt><dd>정답 없이, 데이터끼리 서로를 맞히게 해서 배우는 방식.</dd></div>
+    <div><dt>PSNR</dt><dd>원본과의 오차를 데시벨로 나타낸 값. 높을수록 어긋남이 적습니다.</dd></div>
+    <div><dt>SSIM</dt><dd>밝기·대비·구조가 얼마나 닮았는지를 0~1로 본 값. 사람 눈에 가깝습니다.</dd></div>
+  </dl>
+
+  <p class="closing">삼성 DS2과정 프로젝트 · Image Restoration Challenge · Day 1–3 강의자료 정리</p>
+</section>
+
+</div>
+
+</body>
+</html>

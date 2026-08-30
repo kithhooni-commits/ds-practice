@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>실습5 — 정답 없이 흐린 이미지 되돌리기</title>
+<style>
+:root{
+  --paper:#FAF9F5; --band:#F5F2EA; --card:#FFFFFF; --ink:#1F1E1D; --ink2:#55524C;
+  --ink3:#8A867E; --line:#E3DED2; --coral:#C15F3C; --coral-soft:#F3E4DC; --ochre:#8A6A2F;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --paper:#171614; --band:#1E1D1A; --card:#211F1C; --ink:#F2EFE8; --ink2:#BDB8AE;
+  --ink3:#8A867E; --line:#33302A; --coral:#E08256; --coral-soft:#3A2620; --ochre:#C9A54F;
+}}
+:root[data-theme="dark"]{
+  --paper:#171614; --band:#1E1D1A; --card:#211F1C; --ink:#F2EFE8; --ink2:#BDB8AE;
+  --ink3:#8A867E; --line:#33302A; --coral:#E08256; --coral-soft:#3A2620; --ochre:#C9A54F;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:15px/1.72 -apple-system,"Segoe UI","Malgun Gothic","맑은 고딕",system-ui,sans-serif;
+  word-break:keep-all;}
+.wrap{max-width:980px;margin:0 auto;padding:0 24px 80px}
+header.top{background:var(--band);border-bottom:1px solid var(--line);margin-bottom:34px}
+header.top .wrap{padding-top:38px;padding-bottom:30px}
+.eyebrow{font:600 12px/1 ui-monospace,Consolas,monospace;letter-spacing:.09em;
+  color:var(--coral);text-transform:uppercase}
+h1{font-size:30px;line-height:1.28;margin:14px 0 12px;letter-spacing:-.01em}
+h2{font-size:21px;margin:38px 0 12px;padding-top:16px;border-top:1px solid var(--line)}
+h3{font-size:16.5px;margin:26px 0 8px}
+p{margin:0 0 13px;color:var(--ink2)}
+h1+p,.lede{color:var(--ink2);font-size:16px}
+a{color:var(--coral)}
+code{font:13px ui-monospace,Consolas,monospace;background:var(--band);
+  border:1px solid var(--line);border-radius:3px;padding:1px 5px}
+pre{background:var(--band);border:1px solid var(--line);border-radius:4px;
+  padding:13px 15px;overflow-x:auto}
+pre code{background:none;border:0;padding:0}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px;display:block;
+  overflow-x:auto;white-space:nowrap}
+th,td{border:1px solid var(--line);padding:7px 11px;text-align:left}
+th{background:var(--coral-soft);color:var(--ink);font-weight:600}
+blockquote{border-left:2px solid var(--coral);margin:14px 0;padding:2px 0 2px 15px;color:var(--ink2)}
+ul,ol{color:var(--ink2);padding-left:22px}
+li{margin:4px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:13px;margin:16px 0}
+.card{display:block;background:var(--card);border:1px solid var(--line);border-radius:4px;
+  padding:14px 15px;text-decoration:none;color:inherit;transition:border-color .12s}
+.card:hover{border-color:var(--coral)}
+.card .k{font:600 14.5px/1.3 ui-monospace,Consolas,monospace;color:var(--ink)}
+.card .d{font-size:12px;color:var(--ink3);margin-top:5px;line-height:1.5}
+.note{border-left:2px solid var(--coral);background:var(--card);padding:12px 16px;
+  margin:18px 0;font-size:13.5px;color:var(--ink2)}
+.note.warn{border-left-color:var(--ochre);background:var(--band)}
+.note b{color:var(--ink)}
+nav.crumb{font-size:12.5px;color:var(--ink3);margin-bottom:6px}
+nav.crumb a{color:var(--ink3)}
+footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--ink3)}
+.todo{list-style:none;padding-left:0}
+.todo li{padding-left:24px;position:relative}
+.todo li::before{content:"○";position:absolute;left:4px;color:var(--ink3)}
+.todo li.done::before{content:"●";color:var(--coral)}
+:focus-visible{outline:2px solid var(--coral);outline-offset:2px}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <nav class="crumb"><a href="../">데이터 사이언스 실습</a> / 실습5</nav>
+  <div class="eyebrow">Image Restoration Challenge</div>
+  <h1>정답 없이 흐린 이미지 되돌리기</h1>
+  <p class="lede">번짐과 잡음으로 망가진 흑백 이미지를 복원한다.
+  테스트 데이터에는 정답 이미지가 없다.</p>
+</div></header>
+
+<div class="wrap">
+
+<div class="grid">
+  <a class="card" href="explainer.html"><div class="k">배경 설명</div>
+    <div class="d">사전 지식 없이 읽는 입문 자료 — 무엇을, 왜 어렵게, 어떻게</div></a>
+  <a class="card" href="https://github.com/kithhooni-commits/ds-practice/tree/main/%EC%8B%A4%EC%8A%B55"><div class="k">코드</div>
+    <div class="d">GitHub 저장소의 실습5 폴더</div></a>
+</div>
+
+<h2>문제 한 줄</h2>
+<p>주파수 영역에서 <b>커널이 정확히 0이 되는 영역</b>이 있어 단순 역연산이 발산한다.
+그 자리를 무엇으로 메울 것인가가 이 과제의 전부다.</p>
+
+<h2>열화 모델</h2>
+<pre><code>g = h * f + n</code></pre>
+<table>
+  <thead><tr><th>기호</th><th>의미</th><th>주어지는가</th></tr></thead>
+  <tbody>
+    <tr><td><code>f</code></td><td>깨끗한 원본</td><td>학습셋만 (7,368장)</td></tr>
+    <tr><td><code>h</code></td><td>2D dipole 커널</td><td>모델 제공</td></tr>
+    <tr><td><code>n</code></td><td>잡음</td><td>성질 미제공 — 직접 추정</td></tr>
+    <tr><td><code>g</code></td><td>손상 이미지</td><td>테스트 100장</td></tr>
+  </tbody>
+</table>
+<p>dipole 커널은 푸리에 영역에서 magic-angle cone 위의 값이 0이다.
+<code>G/H</code>를 그대로 계산하면 그 cone 방향으로 줄무늬가 폭발한다.</p>
+
+<h2>과제 스펙</h2>
+<table>
+  <thead><tr><th>항목</th><th>값</th></tr></thead>
+  <tbody>
+    <tr><td>학습/검증 clean 이미지</td><td>7,368장</td></tr>
+    <tr><td>테스트</td><td>corrupted 100장, clean 라벨 없음</td></tr>
+    <tr><td>데이터 생성 제한</td><td>clean 1장당 orientation ≤ 6 × 노이즈 ≤ 2 = 최대 12장</td></tr>
+    <tr><td>평가 지표</td><td>PSNR, SSIM</td></tr>
+    <tr><td>채점</td><td>암호화된 evaluator 포함 test code, Colab 실행</td></tr>
+    <tr><td>발표</td><td>파이프라인 설명 · before/after · 방법 선택 근거</td></tr>
+    <tr><td>가산점</td><td>label-free 파이프라인</td></tr>
+  </tbody>
+</table>
+
+<h2>규칙에 숨은 힌트</h2>
+<p>생성 제한 <code>6 × 2</code>는 임의의 숫자가 아니다.</p>
+<ul>
+  <li><b>orientation 6개</b> — 3개 이상의 방향 데이터를 합치면 커널의 0 영역이 서로 다른 자리에
+    놓여 k-space의 빈칸이 사라진다 (COSMOS 계열).</li>
+  <li><b>같은 orientation에 노이즈 2장</b> — 장면은 같고 잡음만 다른 쌍.
+    Noise2Noise가 요구하는 데이터 형태와 정확히 일치한다. 정답 없이 잡음을 지울 수 있다.</li>
+</ul>
+<div class="note">규칙 자체가 <b>label-free 경로를 열어 두고 가산점까지 걸어 놓은</b> 구조다.</div>
+
+<h2>접근 후보</h2>
+<table>
+  <thead><tr><th>안</th><th>내용</th><th>쓸모</th></tr></thead>
+  <tbody>
+    <tr><td>A</td><td>Wiener filter / TKD / L2 정규화</td><td>기준선. 학습 없이 바닥 성능 확정</td></tr>
+    <tr><td>B</td><td>End-to-end 신경망</td><td>단순하지만 블랙박스, 분포 밖에서 무너진다</td></tr>
+    <tr><td>C</td><td>2-stage (denoise → deconvolution)</td><td>중간 산출물을 볼 수 있어 진단에 유리</td></tr>
+    <tr><td>D</td><td>Self-supervised denoise + multi-orientation deconv</td><td>가산점 경로. C의 label-free 버전</td></tr>
+  </tbody>
+</table>
+<div class="note warn">Day 3 자료가 경고하는 딥러닝의 실패 양상 — 학습 분포 밖 과소추정, 비교 불공정성,
+QSM Challenge 2.0에서 <b>고전 기법이 딥러닝을 이긴 사례</b> — 는 발표에서 짚을 지점이다.</div>
+
+<h2>진행 상황</h2>
+<ul class="todo">
+  <li class="done">강의자료 3일치 정리, 과제 스펙 확정</li>
+  <li class="done">배경 설명 자료 작성</li>
+  <li>데이터셋 · evaluator 코드 확보 (위치 미확인)</li>
+  <li>forward 시뮬레이터 구현 (dipole convolution + 노이즈)</li>
+  <li>잡음 특성 추정 — 평탄 영역 / 히스토그램</li>
+  <li>A안 기준선: Wiener / TKD</li>
+  <li>D안: Noise2Noise 디노이저 + multi-orientation 디컨볼루션</li>
+  <li>PSNR/SSIM 비교표, before/after 그림</li>
+  <li>발표 자료</li>
+</ul>
+
+<h2>아직 모르는 것</h2>
+<ul>
+  <li>학습 데이터와 test code를 어디서 받는지</li>
+  <li>잡음의 종류와 세기 (설계상 미제공 — 데이터에서 추정해야 한다)</li>
+  <li>제공되는 dipole 모델의 정확한 형태와 orientation 파라미터화 방식</li>
+</ul>
+
+<footer>삼성 DS2과정 프로젝트 · Image Restoration Challenge · Day 1–3 강의자료 정리 ·
+github.com/kithhooni-commits/ds-practice</footer>
+</div>
+</body>
+</html>
