@@ -48,6 +48,41 @@ NOISE_KO = {"gaussian": "Gaussian", "rician": "Rician",
             "uniform": "Uniform", "salt_and_pepper": "Salt & Pepper"}
 BASE = {"psnr": 30.510, "ssim": 0.8950}
 
+# 모델별 표기 — 슬라이드 문구가 실제로 학습한 구조를 따라가게 한다
+MODELS = {
+    "dncnn": {
+        "name": "DnCNN",
+        "box": "DnCNN 17층" + chr(10) + "64ch · 전역 잔차",
+        "rf": "35px",
+        "params": "0.59M",
+    },
+    "dncnn_plus": {
+        "name": "DnCNN + median 채널",
+        "box": "DnCNN + median 채널" + chr(10) + "17층 · 64ch",
+        "rf": "35px",
+        "params": "0.59M",
+    },
+    "drunet": {
+        "name": "DRUNet",
+        "box": "DRUNet (U-Net + res block)" + chr(10) + "4스케일 · 수용영역 ~180px",
+        "rf": "~180px",
+        "params": "32.6M",
+    },
+}
+
+
+def read_model(run_dir: Path) -> dict:
+    """run 폴더의 config.json 에서 실제 학습한 구조를 읽는다."""
+    cfg = run_dir / "config.json"
+    key = "dncnn"
+    if cfg.exists():
+        try:
+            key = json.loads(cfg.read_text(encoding="utf-8")).get("model", "dncnn")
+        except Exception:
+            pass
+    return MODELS.get(key, MODELS["dncnn"]) | {"key": key}
+
+
 # 시도 이력 — (상태, 시도, 결과, 배운 것)
 # 채택/기각을 한 장에 같이 둔다. 무엇을 했는지보다 무엇이 틀렸는지가 근거로 강하다.
 HISTORY = [
@@ -204,7 +239,7 @@ def footer(slide, s):
 # ------------------------------------------------------------------ slides
 
 
-def build(prs, M, name: str, lf: dict | None, rej: dict | None):
+def build(prs, M, name: str, lf: dict | None, rej: dict | None, mi: dict):
     se, base = M["se"], M["base"]
 
     def by_noise(rows, key):
@@ -231,7 +266,8 @@ def build(prs, M, name: str, lf: dict | None, rej: dict | None):
     text(s, Inches(1.0), Inches(2.85), Inches(11), Inches(0.7),
          "종류도 세기도 모른 채 복원하기", size=42, color=ACCENT, bold=True)
     text(s, Inches(1.0), Inches(3.95), Inches(10), Inches(0.5),
-         "반도체 이미지 denoising · test 100장 · DnCNN + 학습 레시피 + self-ensemble", size=15, color=MUTED)
+         f"반도체 이미지 denoising · test 100장 · {mi['name']} + 학습 레시피 + self-ensemble",
+         size=15, color=MUTED)
 
     c = card(s, Inches(1.0), Inches(4.75), Inches(4.4), Inches(1.5), ACCENT_SOFT, ACCENT)
     text(s, Inches(1.25), Inches(4.95), Inches(4), Inches(0.3), "제출값", size=12, color=ACCENT, bold=True, font=MONO)
@@ -304,7 +340,7 @@ def build(prs, M, name: str, lf: dict | None, rej: dict | None):
         ("clean 7,268장", "train/", 2.05),
         ("랜덤 크롭 128\nflip · rot90", "증강", 1.75),
         ("노이즈 4종 중\n1개 랜덤 + σ 랜덤", "합성", 2.1),
-        ("DnCNN 17층\n64ch · 전역 잔차", "모델", 2.5),
+        (mi["box"], "모델", 2.5),
         ("Charbonnier loss\nvs clean", "학습 신호", 2.0),
     ]
     x = Inches(0.7)
@@ -370,7 +406,7 @@ def build(prs, M, name: str, lf: dict | None, rej: dict | None):
          "배포 설정은 10 epoch 에 plateau×0.88 —\n감쇠가 사실상 안 걸림",
          "끝까지 부드럽게 낮춰 수렴"],
         ["patch 128 랜덤 크롭\n+ rot90",
-         "DnCNN 수용영역은 35px.\n256² 로 학습할 이유가 없다",
+         f"완전 합성곱이라 학습 패치와\n추론 크기를 맞출 이유가 없다",
          "크롭 자체가 증강.\nstep 수도 2배"],
         ["8× self-ensemble",
          "flip/rot90 로 학습했으니\n8개 변환을 같게 다뤄야 맞다",
@@ -383,7 +419,9 @@ def build(prs, M, name: str, lf: dict | None, rej: dict | None):
                      f"넣은 이유였던 s&p 에서 오히려 {abs(rej['dp_snp']):.2f} dB 손해.\n"
                      f"17층이면 임펄스는 스스로 처리한다"])
     table(s, Inches(0.7), y, Inches(11.9), Inches(4.1), rows, col_w=[2.5, 5.2, 4.2], size=11)
-    footer(s, "모델 구조는 배포된 DnCNN 그대로. 바꾼 것은 학습 절차뿐이고, 구조를 건드린 유일한 시도는 검증 끝에 기각했다.")
+    footer(s, "median 채널은 배포 구조에 국소 필터를 덧댄 시도였고 검증 끝에 기각했다. "
+              + ("구조 자체를 바꾸는 쪽(수용영역 확장)이 답이었다." if mi["key"] == "drunet"
+                 else "구조는 배포된 그대로 두고 학습 절차만 바꿨다."))
 
     # ---------------------------------------------------------- 5. 결과
     s = blank(prs); bg(s)
@@ -501,7 +539,7 @@ def build(prs, M, name: str, lf: dict | None, rej: dict | None):
     ay = y + Inches(2.6)
     if rej:
         rows = [["구성 (같은 학습 레시피)", "전체 PSNR", "전체 SSIM", "s&p PSNR"]]
-        rows.append(["순정 DnCNN + self-ensemble  (제출)",
+        rows.append([f"{mi['name']} + self-ensemble  (제출)",
                      f"{se['psnr_total']:.2f}", f"{se['ssim_total']:.4f}",
                      f"{p_model['salt_and_pepper']:.2f}"])
         rows.append(["+ median 3×3 입력 채널  (기각)",
@@ -576,9 +614,12 @@ def build(prs, M, name: str, lf: dict | None, rej: dict | None):
     items = [
         ("종류를 모른다는 제약이 이 문제의 전부",
          "고정 필터 하나로는 아무것도 안 한 것과 다를 바 없다 (mean 24.86 vs 입력 24.67). 학습이 필요한 이유."),
-        ("구조가 아니라 학습 절차가 답이었다",
-         f"배포된 DnCNN 그대로 두고 loss·스케줄·증강·self-ensemble 만 바꿔 "
-         f"{BASE['psnr']:.2f} → {se['psnr_total']:.2f} dB. 구조를 건드린 유일한 시도는 ablation 끝에 기각했다."),
+        (("좁은 시야가 진짜 제약이었다" if mi["key"] == "drunet" else "구조가 아니라 학습 절차가 답이었다"),
+         (f"학습 절차만 바꿔 {BASE['psnr']:.2f} → 34.13 dB, 수용영역을 35px 에서 {mi['rf']} 로 넓혀 "
+          f"{se['psnr_total']:.2f} dB. median 채널을 덧대려던 시도가 기각된 이유도 같다 — 시야를 안 건드렸다."
+          if mi["key"] == "drunet" else
+          f"배포된 구조 그대로 두고 loss·스케줄·증강·self-ensemble 만 바꿔 "
+          f"{BASE['psnr']:.2f} → {se['psnr_total']:.2f} dB. 구조를 건드린 유일한 시도는 ablation 끝에 기각했다.")),
         ("숫자를 믿을 수 있게 먼저 맞췄다",
          "배포 예시 로그와 PSNR 최대 차이 0.0000 dB. 검증 없이 낸 숫자는 근거가 아니다."),
         ("안 되는 것도 확인했다",
@@ -659,7 +700,7 @@ def main() -> None:
 
     prs = Presentation()
     prs.slide_width, prs.slide_height = W, H
-    build(prs, M, args.name, lf, rej)
+    build(prs, M, args.name, lf, rej, read_model(args.run))
     args.out.parent.mkdir(parents=True, exist_ok=True)
     prs.save(str(args.out))
     print(f"슬라이드 {len(prs.slides.__iter__.__self__._sldIdLst)}장 → {args.out}")
