@@ -1,0 +1,178 @@
+{
+  "summary": [
+    {
+      "method": "direct",
+      "psnr": -11.771276285531416,
+      "ssim": 0.0009136413479140221
+    },
+    {
+      "method": "tkd(t=0.15)",
+      "psnr": 24.976889433290847,
+      "ssim": 0.5045316217491057
+    },
+    {
+      "method": "wiener(λ=0.00316)",
+      "psnr": 24.076981875889736,
+      "ssim": 0.5551924014085233
+    },
+    {
+      "method": "tikhonov(λ=1e-3)",
+      "psnr": 19.099913830383247,
+      "ssim": 0.2602466976377876
+    },
+    {
+      "method": "cosmos(6 orient)",
+      "psnr": 39.615924763923736,
+      "ssim": 0.9391993006933372
+    },
+    {
+      "method": "cosmos(6 orient, λ=1e-3)",
+      "psnr": 39.62271015055271,
+      "ssim": 0.9393021620930541
+    }
+  ],
+  "per_image": [
+    {
+      "image": "camera",
+      "method": "direct",
+      "psnr": -11.615349292900948,
+      "ssim": 0.0009529519735928759
+    },
+    {
+      "image": "camera",
+      "method": "tkd(t=0.15)",
+      "psnr": 24.568839319155792,
+      "ssim": 0.5226203199680478
+    },
+    {
+      "image": "camera",
+      "method": "wiener(λ=0.00316)",
+      "psnr": 24.4045635225182,
+      "ssim": 0.5175933946327297
+    },
+    {
+      "image": "camera",
+      "method": "tikhonov(λ=1e-3)",
+      "psnr": 19.05939077082327,
+      "ssim": 0.26971867844495623
+    },
+    {
+      "image": "camera",
+      "method": "cosmos(6 orient)",
+      "psnr": 39.61496012548494,
+      "ssim": 0.942461622788039
+    },
+    {
+      "image": "camera",
+      "method": "cosmos(6 orient, λ=1e-3)",
+      "psnr": 39.620059811389595,
+      "ssim": 0.9425512868273035
+    },
+    {
+      "image": "coins",
+      "method": "direct",
+      "psnr": -10.896708940975174,
+      "ssim": 0.0016893650135553946
+    },
+    {
+      "image": "coins",
+      "method": "tkd(t=0.15)",
+      "psnr": 23.644422395105206,
+      "ssim": 0.5939351899688265
+    },
+    {
+      "image": "coins",
+      "method": "wiener(λ=0.00316)",
+      "psnr": 23.74940022926127,
+      "ssim": 0.592791408184317
+    },
+    {
+      "image": "coins",
+      "method": "tikhonov(λ=1e-3)",
+      "psnr": 19.08836992401992,
+      "ssim": 0.38374793603662344
+    },
+    {
+      "image": "coins",
+      "method": "cosmos(6 orient)",
+      "psnr": 39.61094004966106,
+      "ssim": 0.9583530775676081
+    },
+    {
+      "image": "coins",
+      "method": "cosmos(6 orient, λ=1e-3)",
+      "psnr": 39.6168192488886,
+      "ssim": 0.9584217144511953
+    },
+    {
+      "image": "moon",
+      "method": "direct",
+      "psnr": -12.801770622718129,
+      "ssim": 9.860705659379558e-05
+    },
+    {
+      "image": "moon",
+      "method": "tkd(t=0.15)",
+      "psnr": 26.717406585611535,
+      "ssim": 0.39703935531044254
+    },
+    {
+      "image": "moon",
+      "method": "wiener(λ=0.0316)",
+      "psnr": 30.04769634018154,
+      "ssim": 0.676013436194708
+    },
+    {
+      "image": "moon",
+      "method": "tikhonov(λ=1e-3)",
+      "psnr": 19.151980796306553,
+      "ssim": 0.1272734784317832
+    },
+    {
+      "image": "moon",
+      "method": "cosmos(6 orient)",
+      "psnr": 39.62187411662522,
+      "ssim": 0.9167832017243644
+    },
+    {
+      "image": "moon",
+      "method": "cosmos(6 orient, λ=1e-3)",
+      "psnr": 39.63125139137994,
+      "ssim": 0.9169334850006633
+    }
+  ],
+  "noise": [
+    {
+      "mad": 0.011021926480775632,
+      "flat": 0.010119269472432114,
+      "null": 0.010146431397533694,
+      "consensus": 0.010146431397533694,
+      "image": "camera",
+      "true_sigma": 0.01
+    },
+    {
+      "mad": 0.011616902784500581,
+      "flat": 0.01456041356411427,
+      "null": 0.010032475403669179,
+      "consensus": 0.011616902784500581,
+      "image": "coins",
+      "true_sigma": 0.01
+    },
+    {
+      "mad": 0.01016727835016978,
+      "flat": 0.009780286914119762,
+      "null": 0.010347691890941287,
+      "consensus": 0.01016727835016978,
+      "image": "moon",
+      "true_sigma": 0.01
+    }
+  ],
+  "config": {
+    "images": "None",
+    "size": 256,
+    "sigma": 0.01,
+    "n_orient": 6,
+    "seed": 0,
+    "figures": true
+  }
+}

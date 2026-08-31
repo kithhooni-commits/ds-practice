@@ -1,4 +1,4 @@
-﻿__pycache__/
+__pycache__/
 *.pyc
 .ipynb_checkpoints/
 venv/
@@ -9,3 +9,11 @@ data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 .DS_Store
+
+# 실습5 — 과제 제공 데이터/로그는 용량이 커서 git 에 넣지 않는다 (dataset 1.9GB)
+실습5/data/dataset/
+실습5/data/log_denoising_example/
+실습5/data/code_denoising/
+실습5/runs/
+*.ckpt
+*.log
