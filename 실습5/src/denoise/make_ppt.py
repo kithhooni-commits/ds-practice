@@ -48,6 +48,32 @@ NOISE_KO = {"gaussian": "Gaussian", "rician": "Rician",
             "uniform": "Uniform", "salt_and_pepper": "Salt & Pepper"}
 BASE = {"psnr": 30.510, "ssim": 0.8950}
 
+# 시도 이력 — (상태, 시도, 결과, 배운 것)
+# 채택/기각을 한 장에 같이 둔다. 무엇을 했는지보다 무엇이 틀렸는지가 근거로 강하다.
+HISTORY = [
+    ("전제", "지표 구현을 배포 코드에서 그대로 이식",
+     "0.0000 dB", "배포 로그와 넷째자리까지 일치. 여기가 맞기 전엔 어떤 숫자도 근거가 아니다"),
+    ("채택", "Charbonnier · cosine LR 40ep · 크롭 128 · rot90",
+     "30.51 → 33.58", "구조를 안 건드리고 학습 절차만 바꿔 +3.07 dB. 개선의 대부분이 여기서 나왔다"),
+    ("채택", "8× self-ensemble (dihedral 평균)",
+     "33.58 → 34.13", "학습 비용 0. 모델이 좋아질수록 여지는 준다 (DRUNet 에선 +0.26)"),
+    ("채택", "60 epoch 으로 연장",
+     "34.13 → 34.56", "val best 가 마지막 epoch 이면 아직 수렴 전이라는 신호다"),
+    ("채택", "DRUNet — 수용영역 35px → 180px",
+     "34.56 → 36.50", "넓게 봐야 하는 문제였다. s&p 에서만 +5.82 dB"),
+    ("기각", "median 3×3 을 두 번째 입력 채널로",
+     "−0.39 / −0.87 dB", "진단은 맞고 처방이 틀렸다. 좁은 시야를 둔 채 국소 도구를 더한 셈"),
+    ("기각", "σ 게이트 — 깨끗한 입력은 그대로 통과",
+     "오라클 +0.52", "σ̂ 이 실제 0.001 을 0.037 로 추정. 제약이 실제 비용을 만든다는 증거"),
+    ("기각", "patch 256 · batch 32 (A100 이니까)",
+     "val −0.11 dB", "배치 2배 = epoch 당 step 절반. 이득은 배치가 아니라 step 수다"),
+    ("기각", "label-free 를 train 7,268장으로",
+     "step 2000 후 하락", "데이터 73배인데 3 dB 나쁘다. 평가 대상에 적응하는 쪽이 유리"),
+    ("가산점", "label-free (Noise2Void, clean 0장)",
+     "30.95 / 0.8992", "clean 7,268장 지도학습 기준선(30.51)을 넘었다"),
+]
+
+
 
 # ------------------------------------------------------------------ helpers
 
@@ -139,7 +165,7 @@ def table(slide, x, y, w, h, rows, col_w=None, head=True, size=12, highlight_row
         for i, cw in enumerate(col_w):
             tbl.columns[i].width = Emu(int(w * cw / total))
     for r, row in enumerate(rows):
-        tbl.rows[r].height = Inches(0.34)
+        tbl.rows[r].height = Inches(0.3)
         for c, val in enumerate(row):
             cell = tbl.cell(r, c)
             cell.text = str(val)
@@ -384,6 +410,46 @@ def build(prs, M, name: str, lf: dict | None, rej: dict | None):
          {"size": 12, "space_before": Pt(8)}),
     ], color=INK2)
     footer(s, "conventional 3종은 배포 코드 구현 그대로 · self-ensemble 적용")
+
+
+    # ---------------------------------------------------------- 5b. 시도 요약
+    s = blank(prs); bg(s)
+    y = title(s, "여기까지 어떻게 왔나", "채택한 것과 기각한 것을 같이 둔다", "TRACK RECORD")
+
+    rows = [["", "시도", "결과", "배운 것"]]
+    for st, what, res, learn in HISTORY:
+        rows.append([st, what, res, learn])
+    shape = table(s, Inches(0.7), y, Inches(11.9), Inches(3.5), rows,
+                  col_w=[0.8, 3.15, 1.75, 6.2], size=9.5)
+
+    # 상태별로 색을 달리해 채택/기각이 한눈에 갈리게 한다
+    tone = {"채택": ACCENT, "기각": WARN, "전제": MUTED, "가산점": ACCENT}
+    tbl = shape.table
+    for r in range(1, len(rows)):
+        st = rows[r][0]
+        for c in range(4):
+            cell = tbl.cell(r, c)
+            cell.fill.solid()
+            cell.fill.fore_color.rgb = ACCENT_SOFT if st == "가산점" else WHITE
+            for run in cell.text_frame.paragraphs[0].runs:
+                if c == 0:
+                    run.font.color.rgb = tone[st]
+                    run.font.bold = True
+                elif c == 2:
+                    run.font.color.rgb = tone[st]
+                    run.font.bold = st in ("채택", "가산점")
+
+    ny = y + Inches(3.72)
+    card(s, Inches(0.7), ny, Inches(11.9), Inches(1.18), ACCENT_SOFT, ACCENT)
+    text(s, Inches(0.95), ny + Inches(0.13), Inches(11.4), Inches(0.95), [
+        ("기각한 넷이 채택한 다섯을 설명한다", {"size": 14, "bold": True, "color": INK}),
+        ("median 채널은 s&p 가 약하다는 진단에서 나왔다. 진단은 옳았고 처방이 틀렸다 — "
+         "35px 시야를 그대로 둔 채 국소 필터를 하나 더 준 것이었기 때문이다. "
+         "같은 문제를 수용영역 확장(DRUNet)이 풀었고 그 구간에서만 +5.82 dB. "
+         "ablation 을 안 돌렸으면 손해 본 채 'median 덕분'이라고 발표할 뻔했다.",
+         {"size": 11.5, "space_before": Pt(5)}),
+    ], color=INK2)
+    footer(s, "모든 수치는 test 100장 기준 · conventional 비교군과 지표 구현은 배포 코드 그대로")
 
     # ---------------------------------------------------------- 6-9. 4패널
     for nz in NOISE_ORDER:
