@@ -429,7 +429,9 @@ def build(prs, M, name: str, lf: dict | None, rej: dict | None, mi: dict):
          "크롭 자체가 증강.\nstep 수도 2배"],
         ["8× self-ensemble",
          "flip/rot90 로 학습했으니\n8개 변환을 같게 다뤄야 맞다",
-         f"실제로는 어긋남. 평균이 그것을 지움\n(+{se['psnr_total'] - base['psnr_total']:.2f} dB, 학습 비용 0)"],
+         "실제로는 어긋남. 평균이 그것을 지움\n"
+         + (f"(+{se['psnr_total'] - base['psnr_total']:.2f} dB, 학습 비용 0)"
+            if M.get("has_base", True) else "(학습 비용 0)")],
     ]
     if rej:
         rows.append(["입력에 median 3×3\n채널 추가  → 기각",
@@ -683,10 +685,18 @@ def main() -> None:
     ap.add_argument("--out", type=Path, default=ROOT / "실습5_denoising_발표.pptx")
     args = ap.parse_args()
 
-    M = {
-        "se": json.loads((args.run / "test_metrics_se.json").read_text(encoding="utf-8")),
-        "base": json.loads((args.run / "test_metrics.json").read_text(encoding="utf-8")),
-    }
+    se_path, base_path = args.run / "test_metrics_se.json", args.run / "test_metrics.json"
+    if not se_path.exists():
+        raise SystemExit(
+            f"{se_path} 가 없다. 먼저 평가를 돌릴 것:\n"
+            f"  python evaluate.py <run>/checkpoints/checkpoint_best.ckpt --self-ensemble"
+        )
+    M = {"se": json.loads(se_path.read_text(encoding="utf-8"))}
+    # self-ensemble 없는 결과는 그 기여도를 계산하는 데만 쓴다. 없으면 그 칸만 비운다.
+    M["base"] = json.loads(base_path.read_text(encoding="utf-8")) if base_path.exists() else M["se"]
+    M["has_base"] = base_path.exists()
+    if not M["has_base"]:
+        print(f"참고: {base_path.name} 이 없어 self-ensemble 기여도는 표시하지 않는다")
 
     lf = {}
     for key, path, label, clean in (
