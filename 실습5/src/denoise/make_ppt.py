@@ -178,7 +178,7 @@ def footer(slide, s):
 # ------------------------------------------------------------------ slides
 
 
-def build(prs, M, name: str, lf: dict | None, abl: dict | None):
+def build(prs, M, name: str, lf: dict | None, rej: dict | None):
     se, base = M["se"], M["base"]
 
     def by_noise(rows, key):
@@ -205,7 +205,7 @@ def build(prs, M, name: str, lf: dict | None, abl: dict | None):
     text(s, Inches(1.0), Inches(2.85), Inches(11), Inches(0.7),
          "종류도 세기도 모른 채 복원하기", size=42, color=ACCENT, bold=True)
     text(s, Inches(1.0), Inches(3.95), Inches(10), Inches(0.5),
-         "반도체 이미지 denoising · test 100장 · DnCNN + median 채널", size=15, color=MUTED)
+         "반도체 이미지 denoising · test 100장 · DnCNN + 학습 레시피 + self-ensemble", size=15, color=MUTED)
 
     c = card(s, Inches(1.0), Inches(4.75), Inches(4.4), Inches(1.5), ACCENT_SOFT, ACCENT)
     text(s, Inches(1.25), Inches(4.95), Inches(4), Inches(0.3), "제출값", size=12, color=ACCENT, bold=True, font=MONO)
@@ -278,7 +278,7 @@ def build(prs, M, name: str, lf: dict | None, abl: dict | None):
         ("clean 7,268장", "train/", 2.05),
         ("랜덤 크롭 128\nflip · rot90", "증강", 1.75),
         ("노이즈 4종 중\n1개 랜덤 + σ 랜덤", "합성", 2.1),
-        ("DnCNN + median 채널\n17층 · 64ch · 잔차", "모델", 2.5),
+        ("DnCNN 17층\n64ch · 전역 잔차", "모델", 2.5),
         ("Charbonnier loss\nvs clean", "학습 신호", 2.0),
     ]
     x = Inches(0.7)
@@ -337,10 +337,6 @@ def build(prs, M, name: str, lf: dict | None, abl: dict | None):
 
     rows = [["바꾼 것", "관찰", "그래서"]]
     rows += [
-        ["입력에 median 3×3\n채널 추가",
-         f"s&p 입력이 {p_in['salt_and_pepper']:.1f} dB 로 혼자 10 dB 아래.\n"
-         f"고전 필터 중 median 만 통함 ({p_med['salt_and_pepper']:.1f} vs mean {p_mean['salt_and_pepper']:.1f})",
-         "임펄스가 이미 지워진 버전을 같이 준다.\n파라미터는 576개만 증가"],
         ["Charbonnier loss\n(L2 → smooth L1)",
          "L2 는 s&p 의 극단값 몇 픽셀에\ngradient 가 끌려간다",
          "큰 오차의 영향을 선형으로 제한"],
@@ -354,8 +350,14 @@ def build(prs, M, name: str, lf: dict | None, abl: dict | None):
          "flip/rot90 로 학습했으니\n8개 변환을 같게 다뤄야 맞다",
          f"실제로는 어긋남. 평균이 그것을 지움\n(+{se['psnr_total'] - base['psnr_total']:.2f} dB, 학습 비용 0)"],
     ]
+    if rej:
+        rows.append(["입력에 median 3×3\n채널 추가  → 기각",
+                     f"s&p 입력이 {p_in['salt_and_pepper']:.1f} dB 로 혼자 10 dB 아래.\n"
+                     f"고전 필터 중 median 만 통함 ({p_med['salt_and_pepper']:.1f} vs mean {p_mean['salt_and_pepper']:.1f})",
+                     f"넣은 이유였던 s&p 에서 오히려 {abs(rej['dp_snp']):.2f} dB 손해.\n"
+                     f"17층이면 임펄스는 스스로 처리한다"])
     table(s, Inches(0.7), y, Inches(11.9), Inches(4.1), rows, col_w=[2.5, 5.2, 4.2], size=11)
-    footer(s, "모델 구조·층수·채널·활성함수는 배포된 DnCNN 그대로. 바꾼 것은 입력 채널 하나와 학습 절차뿐이다.")
+    footer(s, "모델 구조는 배포된 DnCNN 그대로. 바꾼 것은 학습 절차뿐이고, 구조를 건드린 유일한 시도는 검증 끝에 기각했다.")
 
     # ---------------------------------------------------------- 5. 결과
     s = blank(prs); bg(s)
@@ -378,7 +380,7 @@ def build(prs, M, name: str, lf: dict | None, abl: dict | None):
          {"size": 13, "font": MONO, "space_before": Pt(8)}),
         (f"SSIM {q_in['salt_and_pepper']:.4f} → {q_model['salt_and_pepper']:.4f} — 4종 중 최고",
          {"size": 12, "font": MONO}),
-        ("배포 기준선 DnCNN 은 여기서 29.69 였다. median 채널을 넣은 근거가 그대로 숫자로 나왔다.",
+        ("배포 기준선 DnCNN 은 여기서 29.69 였다. 구조를 바꾼 게 아니라 학습 절차만 바꿔 6 dB 를 더 벌었다.",
          {"size": 12, "space_before": Pt(8)}),
     ], color=INK2)
     footer(s, "conventional 3종은 배포 코드 구현 그대로 · self-ensemble 적용")
@@ -431,21 +433,25 @@ def build(prs, M, name: str, lf: dict | None, abl: dict | None):
     ], color=INK2)
 
     ay = y + Inches(2.6)
-    if abl:
-        rows = [["구성", "test PSNR", "test SSIM"]]
-        rows.append(["DnCNN (배포 구조, 같은 레시피)", f"{abl['psnr']:.2f}", f"{abl['ssim']:.4f}"])
-        rows.append(["+ median 채널 (제안)", f"{base['psnr_total']:.2f}", f"{base['ssim_total']:.4f}"])
-        rows.append(["+ 8× self-ensemble", f"{se['psnr_total']:.2f}", f"{se['ssim_total']:.4f}"])
-        table(s, Inches(0.7), ay, Inches(6.4), Inches(1.4), rows, col_w=[3.6, 1.4, 1.4],
-              size=12, highlight_row=3)
-        text(s, Inches(7.4), ay + Inches(0.1), Inches(5.2), Inches(1.3),
-             "같은 학습 레시피로 구조만 원본으로 돌린 ablation. "
-             "median 채널과 self-ensemble 각각의 기여를 분리해서 본다.",
-             size=12.5, color=MUTED)
+    if rej:
+        rows = [["구성 (같은 학습 레시피)", "전체 PSNR", "전체 SSIM", "s&p PSNR"]]
+        rows.append(["순정 DnCNN + self-ensemble  (제출)",
+                     f"{se['psnr_total']:.2f}", f"{se['ssim_total']:.4f}",
+                     f"{p_model['salt_and_pepper']:.2f}"])
+        rows.append(["+ median 3×3 입력 채널  (기각)",
+                     f"{rej['psnr']:.2f}", f"{rej['ssim']:.4f}", f"{rej['snp']:.2f}"])
+        table(s, Inches(0.7), ay, Inches(7.1), Inches(1.05), rows, col_w=[3.6, 1.2, 1.2, 1.1],
+              size=11.5, highlight_row=1)
+        text(s, Inches(8.1), ay - Inches(0.05), Inches(4.4), Inches(1.6), [
+            ("가설을 세웠고, 틀렸다", {"size": 14, "bold": True, "color": WARN}),
+            (f"median 채널을 넣은 이유가 s&p 였는데 정작 거기서 {abs(rej['dp_snp']):.2f} dB 를 잃었다. "
+             "ablation 을 안 돌렸으면 손해 본 채 'median 덕분'이라고 발표할 뻔했다.",
+             {"size": 12, "space_before": Pt(6)}),
+        ], color=INK2)
     else:
         card(s, Inches(0.7), ay, Inches(11.9), Inches(1.3))
         text(s, Inches(0.95), ay + Inches(0.25), Inches(11.4), Inches(0.9),
-             "ablation (median 채널 없는 순정 DnCNN, 같은 레시피) 학습 진행 중 — 완료 후 이 표를 채운다.",
+             "구조 ablation (median 채널) 학습 진행 중 — 완료 후 이 표를 채운다.",
              size=13, color=MUTED)
     footer(s, "check_baselines.py · analyze_gate.py 로 재현 가능")
 
@@ -504,8 +510,9 @@ def build(prs, M, name: str, lf: dict | None, abl: dict | None):
     items = [
         ("종류를 모른다는 제약이 이 문제의 전부",
          "고정 필터 하나로는 아무것도 안 한 것과 다를 바 없다 (mean 24.86 vs 입력 24.67). 학습이 필요한 이유."),
-        ("가장 약한 고리를 겨냥해 구조를 바꿨다",
-         f"s&p 를 위해 median 채널 하나 추가. 파라미터 576개로 {p_in['salt_and_pepper']:.1f} → {p_model['salt_and_pepper']:.1f} dB."),
+        ("구조가 아니라 학습 절차가 답이었다",
+         f"배포된 DnCNN 그대로 두고 loss·스케줄·증강·self-ensemble 만 바꿔 "
+         f"{BASE['psnr']:.2f} → {se['psnr_total']:.2f} dB. 구조를 건드린 유일한 시도는 ablation 끝에 기각했다."),
         ("숫자를 믿을 수 있게 먼저 맞췄다",
          "배포 예시 로그와 PSNR 최대 차이 0.0000 dB. 검증 없이 낸 숫자는 근거가 아니다."),
         ("안 되는 것도 확인했다",
@@ -542,7 +549,8 @@ def main() -> None:
     ap.add_argument("--name", default="")
     ap.add_argument("--lf", type=Path, default=None, help="label-free 결과 json (evaluate.py 출력)")
     ap.add_argument("--lf-train", type=Path, default=None)
-    ap.add_argument("--ablation", type=Path, default=None, help="ablation 결과 json")
+    ap.add_argument("--rejected", type=Path, default=None,
+                    help="기각된 변형(median 채널)의 결과 json — 대조군으로 슬라이드에 넣는다")
     ap.add_argument("--out", type=Path, default=ROOT / "실습5_denoising_발표.pptx")
     args = ap.parse_args()
 
@@ -561,14 +569,19 @@ def main() -> None:
             lf[key] = {"label": label, "clean": clean, "psnr": d["psnr_total"], "ssim": d["ssim_total"]}
     lf = lf or None
 
-    abl = None
-    if args.ablation and args.ablation.exists():
-        d = json.loads(args.ablation.read_text(encoding="utf-8"))
-        abl = {"psnr": d["psnr_total"], "ssim": d["ssim_total"]}
+    rej = None
+    if args.rejected and args.rejected.exists():
+        d = json.loads(args.rejected.read_text(encoding="utf-8"))
+        snp = float(np.mean([r["psnr_model"] for r in d["rows"]
+                             if r["noise_type"] == "salt_and_pepper"]))
+        main_snp = float(np.mean([r["psnr_model"] for r in M["se"]["rows"]
+                                  if r["noise_type"] == "salt_and_pepper"]))
+        rej = {"psnr": d["psnr_total"], "ssim": d["ssim_total"], "snp": snp,
+               "dp_snp": snp - main_snp}
 
     prs = Presentation()
     prs.slide_width, prs.slide_height = W, H
-    build(prs, M, args.name, lf, abl)
+    build(prs, M, args.name, lf, rej)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     prs.save(str(args.out))
     print(f"슬라이드 {len(prs.slides.__iter__.__self__._sldIdLst)}장 → {args.out}")
