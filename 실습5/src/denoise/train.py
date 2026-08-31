@@ -68,7 +68,7 @@ def main() -> None:
         pass
 
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", default="dncnn_plus", choices=["dncnn", "dncnn_plus"])
+    ap.add_argument("--model", default="dncnn", choices=["dncnn", "dncnn_plus", "drunet"])
     ap.add_argument("--epochs", type=int, default=40)
     ap.add_argument("--batch", type=int, default=16)
     ap.add_argument("--patch", type=int, default=128)
