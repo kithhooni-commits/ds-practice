@@ -85,28 +85,47 @@ def read_model(run_dir: Path) -> dict:
 
 # 시도 이력 — (상태, 시도, 결과, 배운 것)
 # 채택/기각을 한 장에 같이 둔다. 무엇을 했는지보다 무엇이 틀렸는지가 근거로 강하다.
-HISTORY = [
-    ("전제", "지표 구현을 배포 코드에서 그대로 이식",
-     "0.0000 dB", "배포 로그와 넷째자리까지 일치. 여기가 맞기 전엔 어떤 숫자도 근거가 아니다"),
-    ("채택", "Charbonnier · cosine LR 40ep · 크롭 128 · rot90",
-     "30.51 → 33.58", "구조를 안 건드리고 학습 절차만 바꿔 +3.07 dB. 개선의 대부분이 여기서 나왔다"),
-    ("채택", "8× self-ensemble (dihedral 평균)",
-     "33.58 → 34.13", "학습 비용 0. 모델이 좋아질수록 여지는 준다 (DRUNet 에선 +0.26)"),
-    ("채택", "60 epoch 으로 연장",
-     "34.13 → 34.56", "val best 가 마지막 epoch 이면 아직 수렴 전이라는 신호다"),
-    ("채택", "DRUNet — 수용영역 35px → 180px",
-     "34.56 → 36.50", "넓게 봐야 하는 문제였다. s&p 에서만 +5.82 dB"),
-    ("기각", "median 3×3 을 두 번째 입력 채널로",
-     "−0.39 / −0.87 dB", "진단은 맞고 처방이 틀렸다. 좁은 시야를 둔 채 국소 도구를 더한 셈"),
-    ("기각", "σ 게이트 — 깨끗한 입력은 그대로 통과",
-     "오라클 +0.52", "σ̂ 이 실제 0.001 을 0.037 로 추정. 제약이 실제 비용을 만든다는 증거"),
-    ("기각", "patch 256 · batch 32 (A100 이니까)",
-     "val −0.11 dB", "배치 2배 = epoch 당 step 절반. 이득은 배치가 아니라 step 수다"),
-    ("기각", "label-free 를 train 7,268장으로",
-     "step 2000 후 하락", "데이터 73배인데 3 dB 나쁘다. 평가 대상에 적응하는 쪽이 유리"),
-    ("가산점", "label-free (Noise2Void, clean 0장)",
-     "30.95 / 0.8992", "clean 7,268장 지도학습 기준선(30.51)을 넘었다"),
-]
+# 시도 이력 — 지나간 실험은 상수로, 제출 모델 칸은 실측값으로 채운다.
+# (상태, 시도, 결과, 배운 것) 중 결과가 None 이면 history_rows 가 계산해 넣는다.
+DNCNN_BEST = 34.56  # A100 60 epoch DnCNN + self-ensemble. 구조 비교의 기준점
+
+
+def history_rows(se, p_model, mi: dict, p_dncnn_snp: float = 36.78, lf: dict | None = None) -> list[tuple]:
+    """시도 요약 표. 마지막 두 칸은 실제 결과에서 계산한다."""
+    final = se["psnr_total"]
+    snp = p_model["salt_and_pepper"]
+    rows = [
+        ("전제", "지표 구현을 배포 코드에서 그대로 이식",
+         "0.0000 dB", "배포 로그와 넷째자리까지 일치. 여기가 맞기 전엔 어떤 숫자도 근거가 아니다"),
+        ("채택", "Charbonnier · cosine LR · 크롭 128 · rot90",
+         "30.51 → 33.58", "구조를 안 건드리고 학습 절차만 바꿔 +3.07 dB. 개선의 대부분이 여기서 나왔다"),
+        ("채택", "8× self-ensemble (dihedral 평균)",
+         "33.58 → 34.13", "학습 비용 0. 모델이 좋아질수록 여지는 준다"),
+        ("채택", "epoch 연장 (40 → 60 → 180)",
+         f"34.13 → {DNCNN_BEST:.2f}", "val best 가 마지막 epoch 이면 아직 수렴 전이라는 신호다"),
+    ]
+    if mi["key"] == "drunet":
+        rows.append(
+            ("채택", "DRUNet — 수용영역 35px → 180px",
+             f"{DNCNN_BEST:.2f} → {final:.2f}",
+             f"넓게 봐야 하는 문제였다. s&p 에서만 {snp - p_dncnn_snp:+.2f} dB"))
+    rows += [
+        ("기각", "median 3×3 을 두 번째 입력 채널로",
+         "−0.39 / −0.87 dB", "진단은 맞고 처방이 틀렸다. 좁은 시야를 둔 채 국소 도구를 더한 셈"),
+        ("기각", "σ 게이트 — 깨끗한 입력은 그대로 통과",
+         "오라클 +0.52", "σ̂ 이 실제 0.001 을 0.037 로 추정. 제약이 실제 비용을 만든다는 증거"),
+        ("기각", "patch 256 · batch 32 (A100 이니까)",
+         "val −0.11 dB", "배치 2배 = epoch 당 step 절반. 이득은 배치가 아니라 step 수다"),
+        ("기각", "label-free 를 train 7,268장으로",
+         "step 2000 후 하락", "데이터 73배인데 3 dB 나쁘다. 평가 대상에 적응하는 쪽이 유리"),
+    ]
+    if lf:
+        v = next(iter(lf.values()))
+        rows.append(("가산점", "label-free (Noise2Void, clean 0장)",
+                     f"{v['psnr']:.2f} / {v['ssim']:.4f}",
+                     "clean 7,268장 지도학습 기준선(30.51)을 넘었다"))
+    return rows
+
 
 
 
@@ -455,7 +474,7 @@ def build(prs, M, name: str, lf: dict | None, rej: dict | None, mi: dict):
     y = title(s, "여기까지 어떻게 왔나", "채택한 것과 기각한 것을 같이 둔다", "TRACK RECORD")
 
     rows = [["", "시도", "결과", "배운 것"]]
-    for st, what, res, learn in HISTORY:
+    for st, what, res, learn in history_rows(se, p_model, mi, lf=lf):
         rows.append([st, what, res, learn])
     shape = table(s, Inches(0.7), y, Inches(11.9), Inches(3.5), rows,
                   col_w=[0.8, 3.15, 1.75, 6.2], size=9.5)
