@@ -3,6 +3,8 @@
 삼성 DS2과정 **Image Restoration Challenge**. 4종의 노이즈로 망가진 흑백 반도체
 이미지를 복원한다. 제출물은 test 100장에 대한 **PSNR_total / SSIM_total 두 숫자**다.
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kithhooni-commits/ds-practice/blob/main/%EC%8B%A4%EC%8A%B55/colab_denoising.ipynb)
+
 **설명 자료(사전 지식 없이 읽는 배경) →** [explainer.html](explainer.html)
 **출처 →** Day 1–3 강의자료 (Jongho Lee, SNU LIST) + 배포 코드 `code_denoising/`
 
