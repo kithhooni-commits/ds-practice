@@ -102,14 +102,18 @@ def history_rows(se, p_model, mi: dict, p_dncnn_snp: float = 36.78, lf: dict | N
          "30.51 → 33.58", "구조를 안 건드리고 학습 절차만 바꿔 +3.07 dB. 개선의 대부분이 여기서 나왔다"),
         ("채택", "8× self-ensemble (dihedral 평균)",
          "33.58 → 34.13", "학습 비용 0. 모델이 좋아질수록 여지는 준다"),
-        ("채택", "epoch 연장 (40 → 60 → 180)",
+        ("채택", "epoch 연장 (DnCNN 40 → 60)",
          f"34.13 → {DNCNN_BEST:.2f}", "val best 가 마지막 epoch 이면 아직 수렴 전이라는 신호다"),
     ]
     if mi["key"] == "drunet":
         rows.append(
             ("채택", "DRUNet — 수용영역 35px → 180px",
-             f"{DNCNN_BEST:.2f} → {final:.2f}",
-             f"넓게 봐야 하는 문제였다. s&p 에서만 {snp - p_dncnn_snp:+.2f} dB"))
+             f"{DNCNN_BEST:.2f} → {DRUNET_60EP:.2f}",
+             f"같은 60 epoch 에서 +{DRUNET_60EP - DNCNN_BEST:.2f} dB. s&p 에서만 {snp - p_dncnn_snp:+.2f} dB"))
+        rows.append(
+            ("채택", "DRUNet 을 180 epoch 까지",
+             f"{DRUNET_60EP:.2f} → {final:.2f}",
+             "파라미터가 55배인 모델은 더 오래 걸린다. 여기서도 best 가 173 epoch"))
     rows += [
         ("기각", "median 3×3 을 두 번째 입력 채널로",
          "−0.39 / −0.87 dB", "진단은 맞고 처방이 틀렸다. 좁은 시야를 둔 채 국소 도구를 더한 셈"),
@@ -117,8 +121,9 @@ def history_rows(se, p_model, mi: dict, p_dncnn_snp: float = 36.78, lf: dict | N
          "오라클 +0.52", "σ̂ 이 실제 0.001 을 0.037 로 추정. 제약이 실제 비용을 만든다는 증거"),
         ("기각", "patch 256 · batch 32 (A100 이니까)",
          "val −0.11 dB", "배치 2배 = epoch 당 step 절반. 이득은 배치가 아니라 step 수다"),
-        ("기각", "label-free 를 train 7,268장으로",
-         "step 2000 후 하락", "데이터 73배인데 3 dB 나쁘다. 평가 대상에 적응하는 쪽이 유리"),
+        ("정정", "label-free 학습 데이터: test 100장 vs train 7,268장",
+         "30.95 vs 30.35", "처음엔 fp16 불안정으로 망가진 실행을 보고 '데이터가 안 통한다'고 "
+                           "단정했다. 제대로 돌리니 −0.60 dB — 방향은 같아도 근거가 없었다"),
     ]
     if lf:
         v = next(iter(lf.values()))
@@ -483,7 +488,7 @@ def build(prs, M, name: str, lf: dict | None, rej: dict | None, mi: dict):
                   col_w=[0.8, 3.15, 1.75, 6.2], size=9.5)
 
     # 상태별로 색을 달리해 채택/기각이 한눈에 갈리게 한다
-    tone = {"채택": ACCENT, "기각": WARN, "전제": MUTED, "가산점": ACCENT}
+    tone = {"채택": ACCENT, "기각": WARN, "전제": MUTED, "가산점": ACCENT, "정정": WARN}
     tbl = shape.table
     for r in range(1, len(rows)):
         st = rows[r][0]
