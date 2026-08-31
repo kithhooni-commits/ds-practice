@@ -106,27 +106,30 @@ class RandomNoiseSimulator:
 def resolve_test_noisy(data_root: Path) -> Path:
     """`test_noise_only` 의 실제 위치를 찾는다.
 
-    배포 zip 을 풀면 `dataset/test_noise_only/test_noise_only/` 로 한 겹 더 들어가지만,
-    Colab 안내대로 Drive 에 올리면 `dataset/test_noise_only/` 한 겹이다. 둘 다 받는다.
+    배포 zip 을 풀면 `test_noise_only/test_noise_only/` 로 한 겹 더 들어가고, Drive 에
+    올리는 방식에 따라 한 겹이기도 하다. 압축을 어떻게 풀었느냐에 따라 더 깊을 수도 있어서,
+    `.npy` 가 실제로 들어 있는 폴더를 아래로 훑어 찾는다. 후보가 여럿이면 `.npy` 가
+    가장 많은 폴더를 고른다 — 그게 100장짜리 test 세트다.
     """
     root = Path(data_root)
     base = root / "test_noise_only"
-    nested = base / "test_noise_only"
-    if nested.is_dir() and any(nested.glob("*.npy")):
-        return nested
-    if base.is_dir() and any(base.glob("*.npy")):
-        return base
 
-    # 어디가 틀렸는지 바로 보이게 실제로 뭐가 있는지 찍어 준다
-    lines = [f"test_noise_only 안에 .npy 가 없다.", f"  data root : {root}"]
+    if base.is_dir():
+        # base 자신과 그 아래 모든 폴더 중 .npy 를 가진 것을 모은다
+        cands = [d for d in [base, *(x for x in base.rglob("*") if x.is_dir())] if any(d.glob("*.npy"))]
+        if cands:
+            return max(cands, key=lambda d: len(list(d.glob("*.npy"))))
+
+    lines = ["test_noise_only 안에 .npy 가 없다.", f"  data root : {root}"]
     if not root.is_dir():
         lines.append("  -> 이 경로 자체가 없다. --data 나 DS_DATA 를 확인할 것")
     else:
-        entries = sorted(x.name + ("/" if x.is_dir() else "") for x in list(root.iterdir())[:20])
+        entries = sorted(x.name + ("/" if x.is_dir() else "") for x in list(root.iterdir())[:30])
         lines.append(f"  안에 있는 것: {', '.join(entries) or '(비어 있음)'}")
         if base.is_dir():
-            sub = sorted(x.name + ("/" if x.is_dir() else "") for x in list(base.iterdir())[:20])
-            lines.append(f"  test_noise_only/ 안: {', '.join(sub) or '(비어 있음)'}")
+            for d in [base, *(x for x in base.rglob("*") if x.is_dir())][:10]:
+                names = sorted(x.name for x in list(d.iterdir())[:8])
+                lines.append(f"  {d} -> {', '.join(names) or '(비어 있음)'}")
         else:
             lines.append("  test_noise_only/ 가 없다 — data root 가 dataset 폴더를 가리키는지 확인할 것")
     raise FileNotFoundError(chr(10).join(lines))
