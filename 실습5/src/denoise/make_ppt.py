@@ -549,6 +549,9 @@ def main() -> None:
     ap.add_argument("--name", default="")
     ap.add_argument("--lf", type=Path, default=None, help="label-free 결과 json (evaluate.py 출력)")
     ap.add_argument("--lf-train", type=Path, default=None)
+    ap.add_argument("--lf-manual", default=None, metavar="PSNR,SSIM[,라벨]",
+                    help="json 없이 숫자만 넣는다. 다른 기계에서 돌린 결과를 옮겨 적을 때. "
+                         "예: --lf-manual 30.95,0.8992")
     ap.add_argument("--rejected", type=Path, default=None,
                     help="기각된 변형(median 채널)의 결과 json — 대조군으로 슬라이드에 넣는다")
     ap.add_argument("--out", type=Path, default=ROOT / "실습5_denoising_발표.pptx")
@@ -567,6 +570,15 @@ def main() -> None:
         if path and path.exists():
             d = json.loads(path.read_text(encoding="utf-8"))
             lf[key] = {"label": label, "clean": clean, "psnr": d["psnr_total"], "ssim": d["ssim_total"]}
+    if args.lf_manual:
+        parts = [x.strip() for x in args.lf_manual.split(",")]
+        lf["manual"] = {
+            "label": parts[2] if len(parts) > 2 else "label-free · test 100장만",
+            "clean": "전혀 안 씀",
+            "psnr": float(parts[0]),
+            "ssim": float(parts[1]),
+        }
+
     lf = lf or None
 
     rej = None
