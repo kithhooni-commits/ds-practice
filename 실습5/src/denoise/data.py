@@ -109,13 +109,27 @@ def resolve_test_noisy(data_root: Path) -> Path:
     배포 zip 을 풀면 `dataset/test_noise_only/test_noise_only/` 로 한 겹 더 들어가지만,
     Colab 안내대로 Drive 에 올리면 `dataset/test_noise_only/` 한 겹이다. 둘 다 받는다.
     """
-    base = Path(data_root) / "test_noise_only"
+    root = Path(data_root)
+    base = root / "test_noise_only"
     nested = base / "test_noise_only"
     if nested.is_dir() and any(nested.glob("*.npy")):
         return nested
     if base.is_dir() and any(base.glob("*.npy")):
         return base
-    raise FileNotFoundError(f"test_noise_only 안에 .npy 가 없다: {base}")
+
+    # 어디가 틀렸는지 바로 보이게 실제로 뭐가 있는지 찍어 준다
+    lines = [f"test_noise_only 안에 .npy 가 없다.", f"  data root : {root}"]
+    if not root.is_dir():
+        lines.append("  -> 이 경로 자체가 없다. --data 나 DS_DATA 를 확인할 것")
+    else:
+        entries = sorted(x.name + ("/" if x.is_dir() else "") for x in list(root.iterdir())[:20])
+        lines.append(f"  안에 있는 것: {', '.join(entries) or '(비어 있음)'}")
+        if base.is_dir():
+            sub = sorted(x.name + ("/" if x.is_dir() else "") for x in list(base.iterdir())[:20])
+            lines.append(f"  test_noise_only/ 안: {', '.join(sub) or '(비어 있음)'}")
+        else:
+            lines.append("  test_noise_only/ 가 없다 — data root 가 dataset 폴더를 가리키는지 확인할 것")
+    raise FileNotFoundError(chr(10).join(lines))
 
 
 def name_seed(name: str) -> int:

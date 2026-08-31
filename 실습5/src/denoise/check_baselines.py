@@ -8,6 +8,7 @@ mean / median / adaptive 필터의 test 성적이 들어 있다. 같은 데이�
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import sys
@@ -22,7 +23,7 @@ from metrics import calculate_psnr, calculate_ssim
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
-DATA = Path(os.environ.get("DS_DATA", ROOT / "data" / "dataset"))
+DEFAULT_DATA = Path(os.environ.get("DS_DATA", ROOT / "data" / "dataset"))
 REF = ROOT / "data" / "log_denoising_example" / "00012_train" / "baseline_metrics.json"
 NOISE_ORDER = ["gaussian", "rician", "uniform", "salt_and_pepper"]
 
@@ -32,6 +33,12 @@ def main() -> None:
         sys.stdout.reconfigure(encoding="utf-8")
     except Exception:
         pass
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--data", type=Path, default=DEFAULT_DATA, help="dataset 폴더")
+    args = ap.parse_args()
+    DATA = args.data
+    print(f"data root: {DATA}")
 
     noisy_dir = resolve_test_noisy(DATA)
     meta = json.loads((noisy_dir / "noise_meta.json").read_text())
