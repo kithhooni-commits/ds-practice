@@ -151,6 +151,7 @@ class DenoiseDataset(Dataset):
         patch: int | None = None,
         max_images: int | None = None,
         pattern: str = "*.npy",
+        already_noisy: bool = False,
     ) -> None:
         super().__init__()
         files: list[str] = []
@@ -167,6 +168,9 @@ class DenoiseDataset(Dataset):
         self.noisy_dir = Path(noisy_dir) if noisy_dir is not None else None
         self.patch = patch
         self.sim = RandomNoiseSimulator()
+        # already_noisy: 파일 자체가 이미 손상된 이미지다. 노이즈를 더 얹지 않고
+        # (noisy, noisy) 로 돌려준다 — label-free 학습에서 clean 이 아예 없을 때 쓴다.
+        self.already_noisy = already_noisy
 
     @staticmethod
     def _load(path: str | Path) -> torch.Tensor:
@@ -200,6 +204,13 @@ class DenoiseDataset(Dataset):
         path = self.files[idx]
         name = Path(path).name
         label = self._load(path)
+
+        if self.already_noisy:
+            noisy = label
+            if self.training_mode:
+                label, noisy = self._augment(label, noisy)
+                label, noisy = self._crop(label, noisy)
+            return label, noisy, name
 
         if self.noisy_dir is None:
             if self.training_mode:

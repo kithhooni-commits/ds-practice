@@ -30,8 +30,18 @@ DEFAULT_DATA = Path(os.environ.get("DS_DATA", ROOT / "data" / "dataset"))
 NOISE_ORDER = ["gaussian", "rician", "uniform", "salt_and_pepper"]
 
 
+def pick_device(name: str | None = None) -> torch.device:
+    """`is_available()` 이 True 라도 `device_count()` 가 0 인 경우가 있다.
+    (Windows 에서 CUDA_VISIBLE_DEVICES 를 빈 문자열로 막았을 때) 둘 다 확인한다."""
+    if name:
+        return torch.device(name)
+    ok = torch.cuda.is_available() and torch.cuda.device_count() > 0
+    return torch.device("cuda" if ok else "cpu")
+
+
 def load_net(ckpt_path: Path, device) -> torch.nn.Module:
-    ck = torch.load(ckpt_path, map_location=device, weights_only=False)
+    # 항상 cpu 로 읽고 나서 옮긴다. 체크포인트에 박힌 device 에 끌려가지 않게.
+    ck = torch.load(ckpt_path, map_location="cpu", weights_only=False)
     net = build_model(ck.get("model", "dncnn"), num_of_layers=ck.get("layers", 17), features=ck.get("features", 64))
     net.load_state_dict(ck["state_dict"])
     return net.to(device).eval(), ck
@@ -71,10 +81,11 @@ def main() -> None:
     ap.add_argument("--clip", action="store_true", help="출력을 [0, label_max] 로 자른다")
     ap.add_argument("--figures", action="store_true")
     ap.add_argument("--data", type=Path, default=DEFAULT_DATA)
+    ap.add_argument("--device", default=None, help="cpu / cuda (기본: 쓸 수 있으면 cuda)")
     ap.add_argument("--out", type=Path, default=None, help="결과 저장 폴더 (기본: ckpt 의 run 폴더)")
     args = ap.parse_args()
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = pick_device(args.device)
     net, ck = load_net(args.ckpt, device)
     out_dir = args.out or args.ckpt.parent.parent
     out_dir.mkdir(parents=True, exist_ok=True)

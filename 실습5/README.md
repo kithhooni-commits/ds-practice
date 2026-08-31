@@ -6,11 +6,12 @@
 **설명 자료(사전 지식 없이 읽는 배경) →** [explainer.html](explainer.html)
 **출처 →** Day 1–3 강의자료 (Jongho Lee, SNU LIST) + 배포 코드 `code_denoising/`
 
-> **전제 수정 기록.** 강의자료만 보고 이 과제를 dipole deconvolution(QSM 계열, 커널의
-> 0 영역을 메우는 문제)으로 잡았었다. 실제 배포된 데이터와 코드를 받아 보니 과제는
-> **denoising** 이었다. 커널도, orientation 제한도, label-free 가산점도 없다.
-> 그때 만든 dipole 코드와 실험은 지우지 않고 [`src/deconv/`](src/deconv/) 에 남겨 뒀다
-> — 그쪽은 그쪽대로 굴러가고, 왜 빗나갔는지가 발표에서 할 이야기 중 하나다.
+> **3일 구조.** 이 챌린지는 3일짜리다 — **1일차 denoising**, 2일차 deconvolution,
+> 3일차 둘의 결합(`g = h * f + n`). 이 문서는 1일차를 다룬다.
+> 처음에 강의자료만 보고 과제를 dipole deconvolution 으로 잡았던 것은 오판이 아니라
+> **2일차를 먼저 본 것**이었다. 그때 만든 forward 시뮬레이터·TKD·Wiener·Tikhonov·
+> 노이즈 추정은 [`src/deconv/`](src/deconv/) 에 그대로 있고 2일차에 쓴다.
+> label-free 가산점도 실재한다 — 아래 결과 참고.
 
 ## 문제 한 줄
 
@@ -84,14 +85,15 @@ gaussian 에는 mean/adaptive 가 맞다.
 
 배포 코드와 **같은 데이터 · 같은 노이즈 합성 · 같은 지표**를 쓰고, 학습 쪽만 손봤다.
 
-| 바꾼 것 | 이유 |
-|---|---|
-| 입력에 **median 3×3 채널 추가** (`DnCNNPlus`) | s&p 에서 median 이 mean 을 5 dB 앞선다. 네트워크가 임펄스를 스스로 배우게 두는 대신 "이미 임펄스가 지워진 버전"을 같이 준다. 파라미터는 576개(첫 층 채널 하나)만 는다 |
-| **Charbonnier** loss (L2 → smooth L1) | L2 는 s&p 의 극단값 몇 픽셀에 gradient 가 끌려간다 |
-| **cosine LR, 40 epoch** (기본 10 epoch, plateau×0.88) | 10 epoch 에서는 감쇠가 사실상 안 걸린다 |
-| **patch 128 랜덤 크롭** | 6GB GPU 에 256² batch 16 이 안 올라간다. DnCNN 은 완전 합성곱이라 패치로 배우고 256² 로 추론해도 된다 |
-| **rot90 증강** 추가 | 기본은 flip 만. 방향 다양성이 부족하다 |
-| 추론 시 **8× self-ensemble** | dihedral 8종으로 추론해 되돌려 평균. 학습 비용 0 |
+| 바꾼 것 | 이유 | 결과 |
+|---|---|---|
+| **Charbonnier** loss (L2 → smooth L1) | L2 는 s&p 의 극단값 몇 픽셀에 gradient 가 끌려간다 | 채택 |
+| **cosine LR, 40 epoch** (기본 10 epoch, plateau×0.88) | 10 epoch 에서는 감쇠가 사실상 안 걸린다 | 채택 |
+| **patch 128 랜덤 크롭 + rot90** | 크롭 자체가 증강이고 step 수도 2배가 된다 | 채택 |
+| 추론 시 **8× self-ensemble** | dihedral 8종으로 추론해 되돌려 평균. 학습 비용 0 | **+0.30 dB** |
+| 입력에 **median 3×3 채널 추가** (`DnCNNPlus`) | s&p 에서 median 이 mean 을 5 dB 앞선다. "이미 임펄스가 지워진 버전"을 같이 주면 유리할 것이라 봤다 | **기각 (−0.39 dB)** |
+
+**구조는 배포된 DnCNN 그대로가 최선이었다.** 기준선 대비 개선은 전부 학습 절차에서 나왔다.
 
 ### 파이프라인 검증
 
@@ -114,8 +116,104 @@ glob 이 역슬래시를 돌려주므로 **경로 전체가 파일명이 된다.
 
 ## 결과
 
-> 학습 진행 중 — 40 epoch × 2 (dncnn_plus 제출 후보 / dncnn 동일 레시피 ablation).
-> 끝나면 이 절에 test 표와 제출값을 채운다.
+### 제출값
+
+```
+PSNR_total 34.13    SSIM_total 0.9445
+```
+
+배포 기준선(DnCNN 10 epoch) 30.51 / 0.8950 대비 **+3.62 dB / +0.0495**.
+
+| 파이프라인 | clean 사용 | PSNR | SSIM |
+|---|---|---|---|
+| 복원 안 함 (입력) | — | 24.67 | 0.6659 |
+| mean 3×3 | — | 24.86 | 0.7615 |
+| adaptive 5×5 | — | 27.20 | 0.7919 |
+| median 3×3 | — | 26.68 | 0.8076 |
+| **label-free (test 100장만)** | **0장** | **30.08** | **0.8882** |
+| 배포 기준선 DnCNN 10 epoch | 7,268장 | 30.51 | 0.8950 |
+| DnCNN + median 채널 + SE | 7,268장 | 33.75 | 0.9424 |
+| **DnCNN + 학습 레시피 + SE (제출)** | 7,268장 | **34.13** | **0.9445** |
+
+### 노이즈 종류별
+
+| noise | 입력 | 제출 모델 | Δ |
+|---|---|---|---|
+| gaussian | 27.67 | 34.67 | +7.00 |
+| rician | 24.08 | 31.03 | +6.95 |
+| uniform | 29.63 | 34.87 | +5.24 |
+| **salt & pepper** | **17.30** | **35.95** | **+18.65** |
+
+### median 채널 가설은 기각됐다
+
+s&p 입력이 17.3 dB 로 혼자 10 dB 아래고 고전 필터 중 median 만 통하니(28.5 vs mean 23.2),
+median 결과를 두 번째 입력 채널로 주면 도움이 될 것이라는 가설이었다. ablation 결과:
+
+| | 전체 | s&p 구간 |
+|---|---|---|
+| 순정 DnCNN | **34.13 / 0.9445** | **35.95 / 0.9842** |
+| + median 채널 | 33.75 / 0.9424 | 34.74 / 0.9821 |
+
+**넣은 이유였던 s&p 에서 오히려 1.21 dB 를 잃었다.** median 이 임펄스를 지우면서 미세
+계조도 뭉개고, 네트워크가 그 뭉개진 채널에 일부 의존하게 된 것으로 보인다. 17층 3×3 이면
+임펄스는 스스로 처리할 수 있었다 — 네트워크의 능력을 과소평가하고 불필요한 유도 편향을
+넣은 셈이다. ablation 을 안 돌렸으면 0.39 dB 를 손해 본 채 "median 채널 덕분"이라고
+발표할 뻔했다.
+
+### 되지 않은 것 — σ 게이트
+
+입력이 이미 50~62 dB 인 이미지에서는 모델이 손해다 (100장 중 8장). 정답을 보고 매번
+유리한 쪽을 고르면 **+0.52 dB**. 그런데 σ̂ 로는 그 8장을 못 고른다 — MAD 추정기가
+이미지의 미세 질감을 노이즈로 착각해, 실제 σ=0.001 인 이미지를 0.037 로 추정한다.
+임계값을 어디에 두든 손해였다 (τ=0.004 에서 −0.017 dB, τ=0.02 에서 −2.89 dB).
+
+blind 상태라는 제약이 실제 비용을 발생시킨다는 구체적 증거다. `analyze_gate.py` 로 재현된다.
+
+## Label-free 파이프라인 (가산점)
+
+clean 이미지를 loss 에 **한 번도 쓰지 않고** 학습한다 (Noise2Void, `train_n2v.py`).
+
+어떤 픽셀의 값을 주변 값으로 덮어써 입력에서 지운 다음 그 자리를 맞히게 하고, 정답으로
+덮어쓰기 전의 **noisy 값**을 준다. 노이즈가 픽셀마다 독립이면 주변에서 그 픽셀의 노이즈를
+알아낼 방법이 없으니, 네트워크가 맞힐 수 있는 건 구조뿐이다.
+
+우리 노이즈 4종은 전부 픽셀 독립이라 전제를 만족한다. 다만 L2 loss 는 조건부 **평균**을
+학습하므로 노이즈 평균이 0 이어야 하는데 **s&p 는 0/max 로 덮으니 아니고, rician 은
+절댓값 때문에 위로 들린다.** 그래서 L1 을 쓴다 — 조건부 **중앙값**은 임펄스에 끌려가지 않는다.
+
+**체크포인트 선택도 label-free 로 한다.** val noisy 의 마스킹 loss 로 고른다. clean 기반
+PSNR 로 고르면 파이프라인 전체가 label-free 가 아니게 되기 때문이다.
+
+```
+label-free (test 100장만, clean 0장)   PSNR 30.08   SSIM 0.8882
+배포 기준선 (clean 7,268장 supervised)  PSNR 30.51   SSIM 0.8950
+```
+
+정답을 한 장도 안 쓰고 기준선에 **0.43 dB** 까지 붙었다. median 3×3 필터(26.68)는 3.4 dB 앞선다.
+
+`--source train` (train clean 으로 noisy 를 합성해 그 noisy 만 학습) 도 해 봤지만 step 2000 이
+최고점이고 그 뒤로 하락했다 (진단 PSNR 25.9). 데이터가 73배 많은데 3 dB 나쁘다. 평가 대상
+100장에 적응하는 쪽이 일반 디노이저를 배우는 것보다 유리했다.
+
+## 다음 — DRUNet
+
+DnCNN 의 한계는 파라미터가 아니라 **수용영역**이다. 17층 3×3 은 35픽셀밖에 못 본다.
+
+| 모델 | 파라미터 | 수용영역 | 6GB GPU 속도 |
+|---|---|---|---|
+| DnCNN | 0.59M | 35px | 212 ms/iter (patch128 b16) |
+| DRUNet | 32.6M | ~180px | 729 ms/iter (patch128 b16, peak 1.68GB) |
+
+DRUNet 은 U-Net + res block 으로 3번 다운샘플해 같은 깊이로 훨씬 넓게 본다. 메모리는
+오히려 DnCNN 보다 적게 쓰지만 연산량이 3.4배라 로컬에서는 60 epoch 에 5.5시간이다 —
+A100 에서 돌리는 게 맞다.
+
+**성능보다 중요한 선택 이유는 3일차다.** DRUNet 은 DPIR(Plug-and-Play Image Restoration
+with Deep Denoiser Prior)의 디노이저 프라이어로 설계된 구조다. 3일차의 deconvolution +
+denoising 결합에서 데이터 정합 단계와 사전지식 단계를 번갈아 푸는 구조를 쓰려면,
+사전지식 자리에 들어갈 디노이저가 바로 이것이다. `sigma_map=True` 로 노이즈 세기를
+채널로 받는 모드도 넣어 뒀다 — 그 반복에서 매 단계 "이번엔 이만큼만 지워라"라고
+지시하는 데 쓴다. 1일차는 σ 를 모르므로 blind 로 쓴다.
 
 ## 폴더 구조
 
@@ -129,10 +227,15 @@ glob 이 역슬래시를 돌려주므로 **경로 전체가 파일명이 된다.
 │   │   ├── metrics.py       PSNR·SSIM (배포 구현 그대로)
 │   │   ├── filters.py       mean / median / adaptive (배포 구현 그대로)
 │   │   ├── data.py          노이즈 4종 합성 + 데이터셋
-│   │   ├── models.py        DnCNN / DnCNNPlus
-│   │   ├── train.py         학습
+│   │   ├── models.py        DnCNN / DnCNNPlus / DRUNet
+│   │   ├── train.py         supervised 학습
+│   │   ├── train_n2v.py     label-free 학습 (Noise2Void)
 │   │   ├── evaluate.py      test 평가 · 제출값 산출
-│   │   └── check_baselines.py  배포 로그와 지표 대조
+│   │   ├── check_baselines.py  배포 로그와 지표 대조
+│   │   ├── analyze_gate.py  σ 게이트 검증 (기각된 아이디어)
+│   │   ├── report_per_image.py  이미지 100장 개별 표 → figures/per_image.csv
+│   │   ├── make_figures.py  발표용 그림
+│   │   └── make_ppt.py      발표 슬라이드 생성
 │   └── deconv/         dipole deconvolution 실험 (과제 전제를 잘못 잡았던 흔적)
 ├── data/               dataset · code_denoising · log_denoising_example (git 미포함)
 ├── runs/               학습 로그·체크포인트 (git 미포함)
@@ -144,8 +247,11 @@ glob 이 역슬래시를 돌려주므로 **경로 전체가 파일명이 된다.
 ```bash
 cd src/denoise
 python check_baselines.py                              # 지표가 배포 로그와 맞는지 먼저 확인
-python train.py --model dncnn_plus --epochs 40         # 학습
-python evaluate.py ../../runs/<run>/checkpoints/checkpoint_best.ckpt --self-ensemble --figures
+python train.py --model dncnn --epochs 40               # supervised 학습
+python train_n2v.py --source test --model dncnn        # label-free 학습
+python evaluate.py <run>/checkpoints/checkpoint_best.ckpt --self-ensemble --figures
+python make_figures.py <run>/checkpoints/checkpoint_best.ckpt
+python make_ppt.py --name "이름"                        # 발표 슬라이드
 ```
 
 ## 진행 상황
@@ -155,9 +261,13 @@ python evaluate.py ../../runs/<run>/checkpoints/checkpoint_best.ckpt --self-ense
 - [x] 배포 예시 로그와 지표 일치 확인 (0.0000 dB)
 - [x] conventional 기준선 재현 (mean / median / adaptive)
 - [x] DnCNN / DnCNNPlus 학습 코드
-- [ ] 40 epoch 학습 · test 평가 · 제출값 확정
-- [ ] before/after 그림, 노이즈 종류별 비교
-- [ ] 발표 자료
+- [x] 40 epoch 학습 · test 평가 · 제출값 확정 (34.13 / 0.9445)
+- [x] median 채널 ablation — 기각
+- [x] before/after · error map · 노이즈 종류별 비교 그림
+- [x] label-free 파이프라인 (30.08 / 0.8882, clean 0장)
+- [x] 발표 자료 (`실습5_denoising_발표.pptx`, 13장)
+- [ ] DRUNet 학습 (A100)
+- [ ] label-free 를 DRUNet 으로 재실행 — 구조를 맞춰 공정 비교
 
 ## 아직 모르는 것
 
