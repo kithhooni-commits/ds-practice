@@ -9,3 +9,4 @@ notebook
 scikit-image
 torch
 tqdm
+python-pptx
