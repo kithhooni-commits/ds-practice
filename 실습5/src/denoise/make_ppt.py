@@ -88,6 +88,7 @@ def read_model(run_dir: Path) -> dict:
 # 시도 이력 — 지나간 실험은 상수로, 제출 모델 칸은 실측값으로 채운다.
 # (상태, 시도, 결과, 배운 것) 중 결과가 None 이면 history_rows 가 계산해 넣는다.
 DNCNN_BEST = 34.56  # A100 60 epoch DnCNN + self-ensemble. 구조 비교의 기준점
+DRUNET_60EP = 36.50  # 같은 조건 DRUNet 60 epoch. 학습 길이 효과를 분리하는 기준점
 
 
 def history_rows(se, p_model, mi: dict, p_dncnn_snp: float = 36.78, lf: dict | None = None) -> list[tuple]:
