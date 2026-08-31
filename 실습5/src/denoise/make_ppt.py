@@ -609,14 +609,30 @@ def build(prs, M, name: str, lf: dict | None, rej: dict | None, mi: dict):
          {"size": 12.5, "bold": True, "color": ACCENT, "space_before": Pt(6)}),
     ], color=INK2)
 
-    ly = y + Inches(3.2)
+    ly = y + Inches(3.15)
     if lf:
-        rows = [["파이프라인", "clean 사용", "test PSNR", "test SSIM"]]
-        rows.append(["supervised (제출)", "loss 에 사용", f"{se['psnr_total']:.2f}", f"{se['ssim_total']:.4f}"])
-        for k, v in lf.items():
-            rows.append([v["label"], v["clean"], f"{v['psnr']:.2f}", f"{v['ssim']:.4f}"])
-        table(s, Inches(0.7), ly, Inches(11.9), Inches(1.5), rows,
-              col_w=[4.6, 2.6, 2.3, 2.4], size=12, highlight_row=len(rows) - 1)
+        rows = [["파이프라인", "clean", "test 입력", "PSNR", "SSIM"]]
+        rows.append(["supervised (제출)", "loss 에 사용", "미사용",
+                     f"{se['psnr_total']:.2f}", f"{se['ssim_total']:.4f}"])
+        rows.append(["배포 기준선 (supervised 10ep)", "loss 에 사용", "미사용",
+                     f"{BASE['psnr']:.2f}", f"{BASE['ssim']:.4f}"])
+        for v in lf.values():
+            rows.append([v["label"], "전혀 안 씀", v.get("test_in", "미사용"),
+                         f"{v['psnr']:.2f}", f"{v['ssim']:.4f}"])
+        shape = table(s, Inches(0.7), ly, Inches(11.9), Inches(1.5), rows,
+                      col_w=[4.5, 1.9, 1.6, 1.5, 1.6], size=11)
+
+        # 기준선을 넘은 label-free 행을 강조한다
+        tbl = shape.table
+        for r in range(3, len(rows)):
+            if float(rows[r][3]) > BASE["psnr"]:
+                for c in range(5):
+                    cell = tbl.cell(r, c)
+                    cell.fill.solid()
+                    cell.fill.fore_color.rgb = ACCENT_SOFT
+                    for run in cell.text_frame.paragraphs[0].runs:
+                        run.font.bold = True
+                        run.font.color.rgb = INK
     else:
         card(s, Inches(0.7), ly, Inches(11.9), Inches(1.6))
         text(s, Inches(0.95), ly + Inches(0.2), Inches(11.4), Inches(1.2), [
@@ -628,7 +644,8 @@ def build(prs, M, name: str, lf: dict | None, rej: dict | None, mi: dict):
             ("체크포인트 선택도 val noisy 의 마스킹 loss 로 한다. clean 기반 PSNR 로 고르면 파이프라인이 "
              "label-free 가 아니게 되기 때문이다.", {"size": 12, "color": MUTED, "space_before": Pt(6)}),
         ], color=INK2)
-    footer(s, "src/denoise/train_n2v.py")
+    footer(s, "test 입력을 학습에 쓰면 supervised 와 나란히 놓을 수 없다 — supervised 는 test 를 본 적이 없다. "
+              "대표값은 test 무접촉 쪽을 쓴다.")
 
     # ---------------------------------------------------------- 13. 정리
     s = blank(prs); bg(s)
@@ -678,9 +695,11 @@ def main() -> None:
     ap.add_argument("--name", default="")
     ap.add_argument("--lf", type=Path, default=None, help="label-free 결과 json (evaluate.py 출력)")
     ap.add_argument("--lf-train", type=Path, default=None)
-    ap.add_argument("--lf-manual", default=None, metavar="PSNR,SSIM[,라벨]",
-                    help="json 없이 숫자만 넣는다. 다른 기계에서 돌린 결과를 옮겨 적을 때. "
-                         "예: --lf-manual 30.95,0.8992")
+    ap.add_argument("--lf-manual", action="append", default=None,
+                    metavar="PSNR|SSIM|라벨|test입력",
+                    help="json 없이 숫자만 넣는다. 여러 번 줄 수 있다. 구분자는 '|' 다 "
+                         "(라벨에 쉼표가 들어가므로). "
+                         "예: --lf-manual '31.38|0.9056|DRUNet · train 7,268장|미사용'")
     ap.add_argument("--rejected", type=Path, default=None,
                     help="기각된 변형(median 채널)의 결과 json — 대조군으로 슬라이드에 넣는다")
     ap.add_argument("--out", type=Path, default=ROOT / "실습5_denoising_발표.pptx")
@@ -706,11 +725,16 @@ def main() -> None:
     ):
         if path and path.exists():
             d = json.loads(path.read_text(encoding="utf-8"))
-            lf[key] = {"label": label, "clean": clean, "psnr": d["psnr_total"], "ssim": d["ssim_total"]}
-    if args.lf_manual:
-        parts = [x.strip() for x in args.lf_manual.split(",")]
-        lf["manual"] = {
-            "label": parts[2] if len(parts) > 2 else "label-free · test 100장만",
+            lf[key] = {"label": label, "clean": clean,
+                       "test_in": "사용" if key == "test" else "미사용",
+                       "psnr": d["psnr_total"], "ssim": d["ssim_total"]}
+    for i, spec in enumerate(args.lf_manual or []):
+        # '|' 를 쓰되, 안 보이면 예전 방식(쉼표)으로도 받는다
+        sep = "|" if "|" in spec else ","
+        parts = [x.strip() for x in spec.split(sep)]
+        lf[f"manual{i}"] = {
+            "label": parts[2] if len(parts) > 2 else "label-free",
+            "test_in": parts[3] if len(parts) > 3 else "미사용",
             "clean": "전혀 안 씀",
             "psnr": float(parts[0]),
             "ssim": float(parts[1]),
