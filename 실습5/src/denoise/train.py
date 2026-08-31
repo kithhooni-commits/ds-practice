@@ -61,6 +61,26 @@ def validate(net: nn.Module, loader, device) -> tuple[float, float]:
     return sum(psnrs) / len(psnrs), sum(ssims) / len(ssims)
 
 
+
+def setup_amp(args, device):
+    """(autocast dtype, GradScaler, 설명 문자열) 을 돌려준다.
+
+    bf16 은 지수부가 fp32 와 같아 스케일링이 필요 없다 — GradScaler 를 끈다.
+    """
+    if not (getattr(args, "amp", True) and device.type == "cuda"):
+        return torch.float32, torch.amp.GradScaler("cuda", enabled=False), "off"
+
+    want = args.amp_dtype
+    if want == "auto":
+        want = "bf16" if torch.cuda.is_bf16_supported() else "fp16"
+    if want == "bf16" and not torch.cuda.is_bf16_supported():
+        print("경고: 이 GPU 는 bf16 을 지원하지 않는다. fp16 으로 내려간다")
+        want = "fp16"
+
+    if want == "bf16":
+        return torch.bfloat16, torch.amp.GradScaler("cuda", enabled=False), "bf16"
+    return torch.float16, torch.amp.GradScaler("cuda", enabled=True), "fp16"
+
 def main() -> None:
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -80,6 +100,11 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--amp", action="store_true", default=True)
     ap.add_argument("--no-amp", dest="amp", action="store_false")
+    ap.add_argument("--amp-dtype", default="auto", choices=["auto", "bf16", "fp16"],
+                    help="auto: 지원하면 bf16. DRUNet 처럼 정규화 계층이 없는 큰 모델은 "
+                         "fp16 에서 오버플로로 NaN 이 난다")
+    ap.add_argument("--clip-grad", type=float, default=1.0,
+                    help="gradient norm 상한. 0 이면 자르지 않는다")
     ap.add_argument("--tag", default="")
     ap.add_argument("--data", type=Path, default=DEFAULT_DATA, help="dataset 폴더 (train/ val/ 를 담고 있는)")
     ap.add_argument("--out", type=Path, default=None, help="run 저장 위치 (기본: <data>/../runs 가 아니라 저장소 runs/)")
@@ -110,17 +135,18 @@ def main() -> None:
     optim = torch.optim.AdamW(net.parameters(), lr=args.lr, weight_decay=1e-5)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=args.epochs * len(train_loader), eta_min=args.lr * 0.02)
     crit = LOSSES[args.loss]()
-    scaler = torch.amp.GradScaler("cuda", enabled=args.amp and device.type == "cuda")
+    amp_dtype, scaler, amp_name = setup_amp(args, device)
 
     print(f"run     : {run_dir}")
     print(f"device  : {device}  model: {args.model}  params: {n_param:,}")
     print(f"train   : {len(train_ds)} images, patch {args.patch}, batch {args.batch} -> {len(train_loader)} iters/epoch")
     print(f"valid   : {len(valid_ds)} images (파일명 고정 seed 노이즈)")
-    print(f"loss    : {args.loss}   lr: {args.lr} (cosine)   amp: {scaler.is_enabled()}\n")
+    print(f"loss    : {args.loss}   lr: {args.lr} (cosine)   amp: {amp_name}   clip: {args.clip_grad}\n")
 
     history: list[dict] = []
     best = {"psnr": -1.0, "epoch": -1}
     t0 = time.time()
+    skipped = 0  # loss 가 유한하지 않아 건너뛴 스텝
 
     for epoch in range(args.epochs):
         running, n = 0.0, 0
@@ -128,9 +154,24 @@ def main() -> None:
         for it, (label, noisy, _) in enumerate(train_loader):
             label, noisy = label.to(device, non_blocking=True), noisy.to(device, non_blocking=True)
             optim.zero_grad(set_to_none=True)
-            with torch.amp.autocast("cuda", enabled=scaler.is_enabled()):
+            with torch.amp.autocast("cuda", enabled=amp_name != "off", dtype=amp_dtype):
                 loss = crit(net(noisy), label)
+
+            # NaN 인 채로 몇 시간 더 도는 것보다 여기서 멈추는 게 낫다
+            if not torch.isfinite(loss):
+                skipped += 1
+                if skipped > 50:
+                    raise SystemExit(
+                        f"loss 가 {skipped}번 발산했다 (epoch {epoch}, iter {it}). "
+                        "--amp-dtype bf16 이나 --lr 을 낮춰서 다시 시도할 것."
+                    )
+                continue
+            skipped = 0
+
             scaler.scale(loss).backward()
+            if args.clip_grad > 0:
+                scaler.unscale_(optim)
+                torch.nn.utils.clip_grad_norm_(net.parameters(), args.clip_grad)
             scaler.step(optim)
             scaler.update()
             sched.step()

@@ -126,6 +126,26 @@ def diagnose_clean(net, loader, device) -> tuple[float, float]:
     return sum(ps) / len(ps), sum(ss) / len(ss)
 
 
+
+def setup_amp(args, device):
+    """(autocast dtype, GradScaler, 설명 문자열) 을 돌려준다.
+
+    bf16 은 지수부가 fp32 와 같아 스케일링이 필요 없다 — GradScaler 를 끈다.
+    """
+    if not (getattr(args, "amp", True) and device.type == "cuda"):
+        return torch.float32, torch.amp.GradScaler("cuda", enabled=False), "off"
+
+    want = args.amp_dtype
+    if want == "auto":
+        want = "bf16" if torch.cuda.is_bf16_supported() else "fp16"
+    if want == "bf16" and not torch.cuda.is_bf16_supported():
+        print("경고: 이 GPU 는 bf16 을 지원하지 않는다. fp16 으로 내려간다")
+        want = "fp16"
+
+    if want == "bf16":
+        return torch.bfloat16, torch.amp.GradScaler("cuda", enabled=False), "bf16"
+    return torch.float16, torch.amp.GradScaler("cuda", enabled=True), "fp16"
+
 def main() -> None:
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -147,6 +167,11 @@ def main() -> None:
     ap.add_argument("--features", type=int, default=64)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--amp-dtype", default="auto", choices=["auto", "bf16", "fp16"],
+                    help="auto: 지원하면 bf16. DRUNet 처럼 정규화 계층이 없는 큰 모델은 "
+                         "fp16 에서 오버플로로 NaN 이 난다")
+    ap.add_argument("--clip-grad", type=float, default=1.0,
+                    help="gradient norm 상한. 0 이면 자르지 않는다")
     ap.add_argument("--eval-every", type=int, default=500)
     ap.add_argument("--data", type=Path, default=DEFAULT_DATA)
     ap.add_argument("--out", type=Path, default=None)
@@ -179,7 +204,7 @@ def main() -> None:
     net = build_model(args.model, num_of_layers=args.layers, features=args.features).to(device)
     optim = torch.optim.AdamW(net.parameters(), lr=args.lr, weight_decay=1e-5)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=args.steps, eta_min=args.lr * 0.02)
-    scaler = torch.amp.GradScaler("cuda", enabled=ok_cuda)
+    amp_dtype, scaler, amp_name = setup_amp(args, device)
 
     run_dir = args.out / f"{time.strftime('%m%d-%H%M')}_n2v-{args.source}{'_' + args.tag if args.tag else ''}"
     (run_dir / "checkpoints").mkdir(parents=True, exist_ok=True)
@@ -189,12 +214,14 @@ def main() -> None:
     print(f"run     : {run_dir}")
     print(f"source  : {src_desc}")
     print(f"model   : {args.model}  loss: masked {args.loss}  mask {args.mask_ratio:.1%} / 반경 {args.mask_window}")
-    print(f"steps   : {args.steps}  batch {args.batch}  patch {args.patch}  lr {args.lr}")
+    print(f"steps   : {args.steps}  batch {args.batch}  patch {args.patch}  lr {args.lr}"
+          f"  amp {amp_name}  clip {args.clip_grad}")
     print("선택 기준: val noisy 마스킹 loss (label-free). clean PSNR 은 진단용이며 선택에 쓰지 않는다.\n")
 
     history: list[dict] = []
     best = {"lf": float("inf"), "step": -1, "psnr": float("nan"), "ssim": float("nan")}
     step, t0 = 0, time.time()
+    skipped = 0  # loss 가 유한하지 않아 건너뛴 스텝
     it = iter(train_loader)
 
     while step < args.steps:
@@ -208,9 +235,23 @@ def main() -> None:
         xin, mask = blind_spot_mask(noisy, args.mask_ratio, args.mask_window)
 
         optim.zero_grad(set_to_none=True)
-        with torch.amp.autocast("cuda", enabled=scaler.is_enabled()):
+        with torch.amp.autocast("cuda", enabled=amp_name != "off", dtype=amp_dtype):
             loss = masked_loss(net(xin), noisy, mask, args.loss)
+
+        if not torch.isfinite(loss):
+            skipped += 1
+            if skipped > 50:
+                raise SystemExit(
+                    f"loss 가 {skipped}번 발산했다 (step {step}). "
+                    "--amp-dtype bf16 이나 --lr 을 낮춰서 다시 시도할 것."
+                )
+            continue
+        skipped = 0
+
         scaler.scale(loss).backward()
+        if args.clip_grad > 0:
+            scaler.unscale_(optim)
+            torch.nn.utils.clip_grad_norm_(net.parameters(), args.clip_grad)
         scaler.step(optim)
         scaler.update()
         sched.step()
