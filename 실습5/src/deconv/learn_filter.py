@@ -96,9 +96,14 @@ def main() -> None:
     ap.add_argument("--data", type=Path, default=DEFAULT_DATA)
     ap.add_argument("--n-train", type=int, default=200, help="필터 학습에 쓸 train 장수")
     ap.add_argument("--noise", type=float, default=0.0, help="학습·평가 측정치에 얹을 노이즈 σ")
-    ap.add_argument("--out", type=Path, default=ROOT / "figures" / "learned_filter.json")
+    # 설정마다 다른 파일로 저장한다. 고정 경로면 반복 실행할 때 앞 결과가 덮어써진다.
+    ap.add_argument("--out", type=Path, default=None)
     ap.add_argument("--save-W", type=Path, default=None)
     args = ap.parse_args()
+
+    if args.out is None:
+        tag = f"n{args.n_train}" + (f"_s{args.noise:.0e}" if args.noise else "")
+        args.out = ROOT / "figures" / f"learned_filter_{tag}.json"
 
     ok = torch.cuda.is_available() and torch.cuda.device_count() > 0
     device = torch.device("cuda" if ok else "cpu")
