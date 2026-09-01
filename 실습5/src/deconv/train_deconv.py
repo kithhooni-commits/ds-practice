@@ -45,6 +45,7 @@ from metrics import calculate_psnr, calculate_ssim  # noqa: E402
 from models import build_model  # noqa: E402
 
 from challenge import dipole_otf  # noqa: E402
+from spectral import SpectralNet  # noqa: E402
 from run_challenge import adaptive_K  # noqa: E402
 
 DEFAULT_DATA = Path(os.environ.get("DS_DATA", ROOT / "data" / "dataset"))
@@ -182,7 +183,8 @@ def main() -> None:
         pass
 
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", default="drunet", choices=["dncnn", "unet", "drunet"])
+    ap.add_argument("--model", default="drunet",
+                    choices=["dncnn", "unet", "drunet", "spectral", "spectral_dncnn"])
     ap.add_argument("--input", default="measure", choices=["measure", "wiener", "both"])
     ap.add_argument("--loss", default="charbonnier", choices=["l2", "charbonnier", "model_loss"])
     ap.add_argument("--model-loss-weight", type=float, default=0.8)
@@ -207,8 +209,18 @@ def main() -> None:
     scaler = torch.amp.GradScaler("cuda", enabled=ok and amp_dtype is torch.float16)
 
     in_ch = 2 if args.input == "both" else 1
-    net = build_model(args.model, features=args.features, num_of_layers=17).to(device)
-    if in_ch == 2:  # 첫 층만 2채널로 갈아끼운다 (가중치는 복사해서 이어받는다)
+    if args.model.startswith("spectral"):
+        # 주파수 곱셈은 이미지 크기에 묶인다 — 크롭을 끈다
+        if args.patch:
+            print(f"[주의] spectral 은 크롭 학습을 못 한다. --patch {args.patch} 를 무시한다")
+            args.patch = None
+        if in_ch == 2:
+            raise SystemExit("spectral 은 --input both 를 지원하지 않는다")
+        refine = "dncnn" if args.model == "spectral_dncnn" else None
+        net = SpectralNet(shape=(256, 256), refine=refine, features=args.features).to(device)
+    else:
+        net = build_model(args.model, features=args.features, num_of_layers=17).to(device)
+    if in_ch == 2 and not args.model.startswith("spectral"):  # 첫 층만 2채널로 (가중치는 복사해서 이어받는다)
         if args.model == "dncnn":
             get, put = lambda: net.dncnn[0], lambda m: net.dncnn.__setitem__(0, m)
         elif args.model == "drunet":
