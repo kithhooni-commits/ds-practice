@@ -1,0 +1,9 @@
+{
+  "n_train": 200,
+  "noise": 0.01,
+  "psnr": 28.727713813781737,
+  "ssim": 0.8718865317106247,
+  "corr_with_inverse_kernel": 0.013254635967314243,
+  "closest_wiener_K": 0.1,
+  "corr_with_that_wiener": 0.7904524803161621
+}

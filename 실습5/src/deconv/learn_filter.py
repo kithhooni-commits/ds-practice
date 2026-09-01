@@ -141,17 +141,34 @@ def main() -> None:
     print(f"\ntest_deconv_only {len(meta)}장")
     print(f"  PSNR {np.mean(ps):.2f}   SSIM {np.mean(ss):.4f}")
 
-    # ---- 참고: 커널을 아는 해석적 답 ----
+    # ---- 학습된 필터가 무엇과 닮았는지 ----
+    #
+    # 노이즈가 없으면 최적해가 1/D 이지만, 있으면 D/(D²+K) 인 Wiener 다.
+    # 그래서 1/D 와의 상관만 보면 노이즈가 있을 때 "고장난 것처럼" 보인다.
+    # 어떤 K 의 Wiener 와 가장 닮았는지도 같이 찾아 보고한다.
     from challenge import dipole_otf
-    D = torch.from_numpy(dipole_otf((256, 256))).float().to(device)
-    Wopt = 1.0 / torch.where(D.abs() < 1e-12, torch.full_like(D, 1e-12), D)
-    corr = torch.corrcoef(torch.stack([W.flatten(), Wopt.flatten()]))[0, 1].item()
-    print(f"  해석적 1/D 와 상관 {corr:.6f}  ← 커널을 안 보고 커널의 역을 찾았다")
+
+    Dk = torch.from_numpy(dipole_otf((256, 256))).float().to(device)
+
+    def corr(a, b):
+        return torch.corrcoef(torch.stack([a.flatten(), b.flatten()]))[0, 1].item()
+
+    Winv = 1.0 / torch.where(Dk.abs() < 1e-12, torch.full_like(Dk, 1e-12), Dk)
+    c_inv = corr(W, Winv)
+    best_K, c_wien = max(((K, corr(W, Dk / (Dk**2 + K)))
+                          for K in (1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-8, 1e-12)),
+                         key=lambda t: t[1])
+    print(f"  1/D 와 상관            {c_inv:.6f}")
+    print(f"  가장 닮은 Wiener       K={best_K:.0e}  (상관 {c_wien:.6f})")
+    if args.noise:
+        print("  → 노이즈가 있으면 최적해가 1/D 가 아니라 Wiener 다. 낮은 1/D 상관은 정상이다.")
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(
         {"n_train": len(tr), "noise": args.noise, "psnr": float(np.mean(ps)),
-         "ssim": float(np.mean(ss)), "corr_with_inverse_kernel": corr},
+         "ssim": float(np.mean(ss)),
+         "corr_with_inverse_kernel": c_inv,
+         "closest_wiener_K": best_K, "corr_with_that_wiener": c_wien},
         ensure_ascii=False, indent=2), encoding="utf-8")
     if args.save_W:
         np.save(args.save_W, W.cpu().numpy())
