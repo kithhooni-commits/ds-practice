@@ -19,3 +19,4 @@ data/processed/*
 *.log
 실습5/data/code_deconvolution/
 실습5/data/logs_deconvolution/
+실습5/data/runs_day2/

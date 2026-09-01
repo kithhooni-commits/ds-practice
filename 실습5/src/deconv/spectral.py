@@ -45,23 +45,26 @@ __all__ = ["SpectralFilter", "SpectralNet"]
 class SpectralFilter(nn.Module):
     """학습 가능한 주파수 영역 곱셈. 이것 하나가 곧 역필터다.
 
-    `log_gain` 으로 저장해 항상 양수가 되게 하고 1(항등)에서 시작한다. Wiener 의
-    최적해는 |D| 가 작은 곳에서 1/|D| 가 수천까지 가므로, 곱셈이 아니라 지수로 두면
-    그 범위를 안정적으로 오간다.
+    **1(항등)에서 시작한다.** 처음엔 입력을 그대로 통과시키고, 학습이 각 주파수의
+    이득을 키워 나간다. dipole 은 D 가 음수인 영역이 있어 역필터도 부호가 바뀌므로
+    실수 파라미터로 두어 자유롭게 음수가 되게 한다.
 
-    부호는 따로 둔다 — dipole 은 D 가 음수인 영역이 있어 역필터도 부호가 바뀐다.
+    이전 판은 `tanh(sign)·exp(log_gain)` 으로 두고 sign 을 0 에서 시작했는데,
+    그러면 W 가 통째로 0 이 되고 gain 의 gradient 도 0 이라 **아무것도 학습되지 않는다**.
+    실제로 60 epoch 내내 loss 가 미동도 안 했다. 단순한 파라미터화가 옳았다.
+
+    학습률이 결정적이다. 이득이 44,000 까지 가야 해서 나머지 층과 같은 lr 을 쓰면
+    4.8 배에서 멈춘다 (`--lr-spectral` 참고).
     """
 
-    def __init__(self, shape: tuple[int, int] = (256, 256), max_gain: float = 1e4) -> None:
+    def __init__(self, shape: tuple[int, int] = (256, 256), max_gain: float = 1e5) -> None:
         super().__init__()
         self.shape = shape
         self.max_gain = max_gain
-        self.log_gain = nn.Parameter(torch.zeros(shape))
-        self.sign_raw = nn.Parameter(torch.zeros(shape))  # tanh 로 -1..1
+        self.w = nn.Parameter(torch.ones(shape))
 
     def weight(self) -> Tensor:
-        gain = self.log_gain.clamp(max=float(torch.log(torch.tensor(self.max_gain)))).exp()
-        return torch.tanh(self.sign_raw) * gain
+        return self.w.clamp(-self.max_gain, self.max_gain)
 
     def forward(self, x: Tensor) -> Tensor:
         if x.shape[-2:] != self.shape:
