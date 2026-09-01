@@ -45,6 +45,7 @@ from metrics import calculate_psnr, calculate_ssim  # noqa: E402
 from models import build_model  # noqa: E402
 
 from challenge import dipole_otf  # noqa: E402
+from dcnet import DCNet  # noqa: E402
 from spectral import SpectralNet  # noqa: E402
 from run_challenge import adaptive_K  # noqa: E402
 
@@ -184,7 +185,8 @@ def main() -> None:
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="drunet",
-                    choices=["dncnn", "unet", "drunet", "spectral", "spectral_dncnn"])
+                    choices=["dncnn", "unet", "drunet", "spectral", "spectral_dncnn",
+                             "spectral_unet", "dcnet"])
     ap.add_argument("--input", default="measure", choices=["measure", "wiener", "both"])
     ap.add_argument("--loss", default="charbonnier", choices=["l2", "charbonnier", "model_loss"])
     ap.add_argument("--model-loss-weight", type=float, default=0.8)
@@ -192,15 +194,27 @@ def main() -> None:
     ap.add_argument("--noise-random", action="store_true", help="[0, σ] 에서 매번 다시 뽑는다")
     ap.add_argument("--epochs", type=int, default=30)
     ap.add_argument("--batch", type=int, default=8)
-    ap.add_argument("--patch", type=int, default=128)
+    ap.add_argument("--patch", type=int, default=0,
+                    help="0 이면 크롭하지 않는다 (기본). deconvolution 은 전역 연산이라 "
+                         "잘린 조각만 보면 복원에 필요한 정보가 조각 밖에 있다")
     ap.add_argument("--lr", type=float, default=2e-4)
     ap.add_argument("--features", type=int, default=32)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--clip-grad", type=float, default=1.0)
+    ap.add_argument("--tau", type=float, default=0.05,
+                    help="dcnet: |D| 가 이보다 크면 관측으로 정확히 복원하고 네트워크가 못 건드린다")
+    ap.add_argument("--refine", default="unet", choices=["unet", "dncnn", "drunet"],
+                    help="dcnet 이 null cone 을 채울 때 쓰는 신경망")
+    ap.add_argument("--lr-spectral", type=float, default=0.5,
+                    help="주파수 층 전용 학습률. 이득이 44,000 까지 가야 해서 훨씬 커야 한다")
+    ap.add_argument("--warmup", type=int, default=200, help="lr 을 0 에서 올리는 step 수")
     ap.add_argument("--data", type=Path, default=DEFAULT_DATA)
     ap.add_argument("--out", type=Path, default=ROOT / "runs")
     ap.add_argument("--tag", default="")
     args = ap.parse_args()
+
+    if args.patch == 0:
+        args.patch = None
 
     torch.manual_seed(0)
     ok = torch.cuda.is_available() and torch.cuda.device_count() > 0
@@ -209,14 +223,20 @@ def main() -> None:
     scaler = torch.amp.GradScaler("cuda", enabled=ok and amp_dtype is torch.float16)
 
     in_ch = 2 if args.input == "both" else 1
-    if args.model.startswith("spectral"):
+    if args.model == "dcnet":
+        if args.patch:
+            print(f"[주의] dcnet 은 전역 연산이라 크롭을 못 한다. --patch 를 무시한다")
+            args.patch = None
+        net = DCNet(model=args.refine, features=args.features, tau=args.tau).to(device)
+    elif args.model.startswith("spectral"):
         # 주파수 곱셈은 이미지 크기에 묶인다 — 크롭을 끈다
         if args.patch:
             print(f"[주의] spectral 은 크롭 학습을 못 한다. --patch {args.patch} 를 무시한다")
             args.patch = None
         if in_ch == 2:
             raise SystemExit("spectral 은 --input both 를 지원하지 않는다")
-        refine = "dncnn" if args.model == "spectral_dncnn" else None
+        refine = {"spectral": None, "spectral_dncnn": "dncnn",
+                  "spectral_unet": "unet"}[args.model]
         net = SpectralNet(shape=(256, 256), refine=refine, features=args.features).to(device)
     else:
         net = build_model(args.model, features=args.features, num_of_layers=17).to(device)
@@ -248,9 +268,23 @@ def main() -> None:
 
     crit = {"l2": nn.MSELoss(), "charbonnier": Charbonnier(),
             "model_loss": ModelLoss(args.model_loss_weight)}[args.loss]
-    optim = torch.optim.AdamW(net.parameters(), lr=args.lr, weight_decay=1e-5)
-    sched = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optim, T_max=args.epochs * len(train_loader), eta_min=args.lr * 0.02)
+    # 주파수 층은 이득이 수만까지 가야 하므로 학습률을 따로 크게 준다.
+    # 같은 lr 을 쓰면 최대 4.8 배에서 멈춘다 (정답 44,074).
+    spec_params, other_params = [], []
+    for n_, p_ in net.named_parameters():
+        (spec_params if "spec." in n_ else other_params).append(p_)
+    groups = [{"params": other_params, "lr": args.lr}]
+    if spec_params:
+        groups.append({"params": spec_params, "lr": args.lr_spectral})
+        print(f"주파수 층 {sum(p_.numel() for p_ in spec_params):,}개 → lr {args.lr_spectral}")
+    optim = torch.optim.AdamW(groups, lr=args.lr, weight_decay=1e-5)
+
+    total_steps = args.epochs * len(train_loader)
+    cosine = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optim, T_max=max(total_steps - args.warmup, 1), eta_min=args.lr * 0.02)
+    warm = torch.optim.lr_scheduler.LinearLR(optim, 0.01, 1.0, total_iters=max(args.warmup, 1))
+    sched = torch.optim.lr_scheduler.SequentialLR(
+        optim, [warm, cosine], milestones=[max(args.warmup, 1)])
 
     run = args.out / f"{time.strftime('%m%d-%H%M')}_deconv-{args.input}{'_' + args.tag if args.tag else ''}"
     (run / "checkpoints").mkdir(parents=True, exist_ok=True)
