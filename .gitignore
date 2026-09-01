@@ -17,3 +17,5 @@ data/processed/*
 실습5/runs/
 *.ckpt
 *.log
+실습5/data/code_deconvolution/
+실습5/data/logs_deconvolution/
