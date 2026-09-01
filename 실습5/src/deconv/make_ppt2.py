@@ -186,6 +186,84 @@ def build(prs, name: str, R: dict) -> None:
     ], color=INK2)
     footer(sl, "src/deconv/learn_filter.py — 신경망이 아니라 선형 연산자 하나(65,536 파라미터)를 최소제곱으로 맞춘다")
 
+
+    # ---------------------------------------------------------- 5b. 모델을 안 썼다
+    sl = blank(prs); bg(sl)
+    y = title(sl, "모델을 안 썼다", "신경망도, 층도, 활성함수도 없다", "3 · MODEL")
+
+    card(sl, Inches(0.7), y, Inches(11.9), Inches(1.0), ACCENT_SOFT, ACCENT)
+    text(sl, Inches(0.95), y + Inches(0.1), Inches(11.4), Inches(0.85), [
+        ("y = ifft2( fft2(x) · W ),   W ∈ ℝ^(256×256)",
+         {"size": 15.5, "font": MONO, "bold": True, "color": INK}),
+        ("배열 하나가 모델의 전부다. 푸리에 기저의 대각 연산자 — 주파수마다 상수를 곱할 뿐 "
+         "주파수끼리 섞지 않는다. 공간 영역으로 옮기면 256×256 커널로 한 번 컨볼루션하는 것과 같다.",
+         {"size": 12, "space_before": Pt(5)}),
+    ], color=INK2)
+
+    ny = y + Inches(1.2)
+    rows = [["", "파라미터", "구조", "PSNR"],
+            ["배포 U-Net", "842,000", "ConvBlock ×9, 다운샘플 4단, skip", "25.59"],
+            ["DnCNN", "593,024", "3×3 conv 17층", "—"],
+            ["DRUNet", "32,638,080", "U-Net + res block", "—"],
+            ["학습된 역필터", "65,536", "배열 하나. 층 0개", "108.62"]]
+    table(sl, Inches(0.7), ny, Inches(11.9), Inches(1.5), rows,
+          col_w=[2.4, 2.0, 5.5, 2.0], size=11.5, highlight_row=4)
+
+    ny2 = ny + Inches(1.72)
+    c = card(sl, Inches(0.7), ny2, Inches(5.8), Inches(1.95), SURF, WARN)
+    text(sl, Inches(0.95), ny2 + Inches(0.14), Inches(5.3), Inches(1.7), [
+        ("신경망으로도 해봤고 실패했다", {"size": 15, "bold": True, "color": WARN}),
+        ("같은 W 를 파라미터로 두고 Adam 으로 경사하강 → 26.25 dB.",
+         {"size": 12.5, "space_before": Pt(8)}),
+        ("정답이 가설 공간 안에 정확히 있는데도 못 찾는다. 학습된 이득 최대 4.8, 정답은 44074.",
+         {"size": 12.5, "space_before": Pt(5)}),
+    ], color=INK2)
+
+    c = card(sl, Inches(6.8), ny2, Inches(5.8), Inches(1.95), ACCENT_SOFT, ACCENT)
+    text(sl, Inches(7.05), ny2 + Inches(0.14), Inches(5.3), Inches(1.7), [
+        ("이긴 건 최적화 방법을 바꾼 것", {"size": 15, "bold": True, "color": INK}),
+        ("같은 모델·같은 파라미터·같은 데이터인데 26.25 → 108.62.",
+         {"size": 12.5, "space_before": Pt(8)}),
+        ("G(k)=D(k)F(k) 가 주파수를 안 섞으니 65,536차원 문제가 아니라 1차원 문제 65,536개다. "
+         "각각 닫힌 해가 있어 반복도 학습률도 없다.", {"size": 12.5, "space_before": Pt(5)}),
+    ], color=INK2)
+    footer(sl, "모델 선택보다 문제 구조 파악이 먼저다 — 파라미터 65,536개 선형 모델이 84만 U-Net 을 83 dB 앞선다")
+
+    # ---------------------------------------------------------- 8b. 네 분류
+    sl = blank(prs); bg(sl)
+    y = title(sl, "무엇을 알아야 풀 수 있는가",
+              "같은 문제를 세 가지 조건에서 풀었다", "5 · CATEGORIES")
+
+    rows = [["분류", "방법", "clean 정답", "커널 D", "메타데이터", "PSNR", "SSIM"],
+            ["Others", "Wiener K→0 + 메타 방향", "안 씀", "사용", "사용", "109.86", "1.0000"],
+            ["Supervised", "학습된 역필터 (train 200장)", "사용", "안 씀", "안 씀", "108.62", "1.0000"],
+            ["Self-supervised", "방향 추정 + Wiener K=1e-5", "안 씀", "형태만", "안 씀", "44.30", "0.9907"],
+            ["Multi-orientation", "해당 없음 — 아래 참고", "—", "—", "—", "—", "—"]]
+    table(sl, Inches(0.7), y, Inches(11.9), Inches(1.65), rows,
+          col_w=[2.2, 3.7, 1.3, 1.2, 1.4, 1.2, 1.2], size=11, highlight_row=1)
+
+    ny = y + Inches(1.95)
+    c = card(sl, Inches(0.7), ny, Inches(5.8), Inches(2.2), ACCENT_SOFT, ACCENT)
+    text(sl, Inches(0.95), ny + Inches(0.18), Inches(5.3), Inches(1.9), [
+        ("Self-supervised 가 가장 적게 요구한다", {"size": 15, "bold": True, "color": INK}),
+        ("정답도 방향도 받지 않는다. dipole 커널의 형태(각도가 미지수인 족)만 알고, "
+         "그 각도를 측정치 스펙트럼에서 찾는다 — 평균 오차 0.198°.",
+         {"size": 12.5, "space_before": Pt(8)}),
+        ("44.30 에 그치는 건 방향 오차 때문이다. K 를 키워 그 오차를 흡수하는 지점(1e-5)에서 "
+         "최댓값이 생긴다 — 노이즈일 때와 같은 구조다.", {"size": 12.5, "space_before": Pt(5)}),
+    ], color=INK2)
+
+    c = card(sl, Inches(6.8), ny, Inches(5.8), Inches(2.2))
+    text(sl, Inches(7.05), ny + Inches(0.18), Inches(5.3), Inches(1.9), [
+        ("Multi-orientation 은 이 과제에 없다", {"size": 15, "bold": True, "color": INK}),
+        ("test_deconv_multi 는 이름과 달리 COSMOS 가 아니다. 0/45/90/135° 폴더끼리 "
+         "이미지가 하나도 겹치지 않는다 — 같은 장면을 여러 방향으로 찍은 게 아니라 "
+         "이미지마다 방향이 다른 것이다.", {"size": 12.5, "space_before": Pt(8)}),
+        ("여러 방향을 합쳐 0 영역을 메우는 건 배포 데이터로는 불가능하다.",
+         {"size": 12.5, "space_before": Pt(5)}),
+    ], color=INK2)
+    footer(sl, "Self-supervised 도 배포 Wiener(42.25)와 배포 U-Net(25.59)은 넘는다")
+
     # ---------------------------------------------------------- 6. 결과
     sl = blank(prs); bg(sl)
     y = title(sl, "결과", "test_deconv_only 100장 · 배포 지표 구현 그대로", "RESULTS")
