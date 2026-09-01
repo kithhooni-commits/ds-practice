@@ -179,12 +179,100 @@ class DRUNet(nn.Module):
         return inp + y if self.global_residual else y
 
 
+class ConvBlock(nn.Module):
+    """배포 deconvolution 노트북의 ConvBlock 그대로."""
+
+    def __init__(self, in_chans: int, out_chans: int) -> None:
+        super().__init__()
+        self.layers = nn.Sequential(
+            nn.Conv2d(in_chans, out_chans, kernel_size=3, padding=1),
+            nn.GroupNorm(4, out_chans),
+            nn.SiLU(inplace=True),
+            nn.Conv2d(out_chans, out_chans, kernel_size=3, padding=1),
+            nn.GroupNorm(4, out_chans),
+            nn.SiLU(inplace=True),
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.layers(x)
+
+
+class Unet(nn.Module):
+    """2일차 배포 노트북의 U-Net 그대로 (chans=16, num_pool_layers=4 가 배포 설정).
+
+    DnCNN 과 달리 4단 다운샘플이라 256² 입력의 병목이 16² 다 — 사실상 전역을 본다.
+    그런데도 배포 로그에서 25.59 dB 에 그친다. 수용영역 문제가 아니라 **조건수**
+    문제이기 때문이다: 디컨볼루션은 magic-angle cone 근처에서 특정 주파수를 1000배
+    넘게 증폭해야 하는데, 3×3 합성곱과 매끄러운 활성함수를 쌓아 그런 극단적으로
+    선택적인 증폭을 정확히 구현하기가 어렵다. FFT 는 나눗셈 한 번으로 한다.
+
+    그래서 이 구조는 **역연산을 시키는 대신 역연산이 남긴 것을 정리**하는 데 써야 한다
+    (`train_deconv.py --input wiener`).
+    """
+
+    def __init__(
+        self,
+        in_chans: int = 1,
+        out_chans: int = 1,
+        chans: int = 16,
+        num_pool_layers: int = 4,
+    ) -> None:
+        super().__init__()
+        self.num_pool_layers = num_pool_layers
+
+        self.down_sample_layers = nn.ModuleList([ConvBlock(in_chans, chans)])
+        ch = chans
+        for _ in range(num_pool_layers - 1):
+            self.down_sample_layers.append(ConvBlock(ch, ch * 2))
+            ch *= 2
+
+        self.bottleneck_conv = ConvBlock(ch, ch)
+
+        self.up_sample_layers = nn.ModuleList()
+        for _ in range(num_pool_layers - 1):
+            self.up_sample_layers.append(ConvBlock(ch * 2, ch // 2))
+            ch //= 2
+        self.up_sample_layers.append(ConvBlock(ch * 2, ch))
+
+        self.final_conv = nn.Sequential(
+            nn.Conv2d(chans, chans, kernel_size=3, padding=1),
+            nn.GroupNorm(4, chans),
+            nn.SiLU(inplace=True),
+            nn.Conv2d(chans, out_chans, kernel_size=1, padding=0),
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        if x.dim() != 4:
+            raise ValueError(f"Input tensor must be 4D, but got {x.dim()}D tensor.")
+        stack, out = [], x
+        for layer in self.down_sample_layers:
+            out = layer(out)
+            stack.append(out)
+            out = torch.nn.functional.max_pool2d(out, kernel_size=2)
+        out = self.bottleneck_conv(out)
+        for layer in self.up_sample_layers:
+            skip = stack.pop()
+            out = torch.nn.functional.interpolate(
+                out, size=skip.shape[-2:], mode="bilinear", align_corners=False)
+            out = layer(torch.cat([out, skip], dim=1))
+        return self.final_conv(out)
+
+
 def build_model(name: str, **kwargs) -> nn.Module:
     if name == "dncnn":
         return DnCNN(**kwargs)
     if name == "dncnn_plus":
         kwargs.pop("channels", None)
         return DnCNNPlus(**kwargs)
+    if name == "unet":
+        # 배포 설정은 chans=16, num_pool_layers=4. features 로 폭을 바꾼다.
+        ch = kwargs.pop("features", 16)
+        npl = kwargs.pop("num_pool_layers", 4)
+        kwargs.pop("num_of_layers", None)
+        kwargs.pop("kernel_size", None)
+        kwargs.pop("padding", None)
+        return Unet(in_chans=kwargs.pop("channels", 1), out_chans=1,
+                    chans=ch, num_pool_layers=npl)
     if name == "drunet":
         # train.py 는 DnCNN 용 인자(num_of_layers/features)를 넘긴다. 여기서는
         # features 로 폭을, num_of_layers 로 레벨당 res block 수를 정한다.

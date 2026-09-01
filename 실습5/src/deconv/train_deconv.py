@@ -182,7 +182,7 @@ def main() -> None:
         pass
 
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", default="drunet", choices=["dncnn", "drunet"])
+    ap.add_argument("--model", default="drunet", choices=["dncnn", "unet", "drunet"])
     ap.add_argument("--input", default="measure", choices=["measure", "wiener", "both"])
     ap.add_argument("--loss", default="charbonnier", choices=["l2", "charbonnier", "model_loss"])
     ap.add_argument("--model-loss-weight", type=float, default=0.8)
@@ -208,17 +208,23 @@ def main() -> None:
 
     in_ch = 2 if args.input == "both" else 1
     net = build_model(args.model, features=args.features, num_of_layers=17).to(device)
-    if in_ch == 2:  # 첫 층만 2채널로 갈아끼운다
-        first = net.dncnn[0] if args.model == "dncnn" else net.head
-        new = nn.Conv2d(2, first.out_channels, first.kernel_size, first.stride,
-                        first.padding, bias=False).to(device)
-        with torch.no_grad():
-            new.weight[:, :1] = first.weight
-            new.weight[:, 1:] = first.weight
+    if in_ch == 2:  # 첫 층만 2채널로 갈아끼운다 (가중치는 복사해서 이어받는다)
         if args.model == "dncnn":
-            net.dncnn[0] = new
-        else:
-            net.head = new
+            get, put = lambda: net.dncnn[0], lambda m: net.dncnn.__setitem__(0, m)
+        elif args.model == "drunet":
+            get, put = lambda: net.head, lambda m: setattr(net, "head", m)
+        else:  # unet
+            blk = net.down_sample_layers[0].layers
+            get, put = lambda: blk[0], lambda m: blk.__setitem__(0, m)
+        first = get()
+        new_conv = nn.Conv2d(2, first.out_channels, first.kernel_size, first.stride,
+                             first.padding, bias=first.bias is not None).to(device)
+        with torch.no_grad():
+            new_conv.weight[:, :1] = first.weight
+            new_conv.weight[:, 1:] = first.weight
+            if first.bias is not None:
+                new_conv.bias.copy_(first.bias)
+        put(new_conv)
 
     train_ds = DeconvDataset(args.data / "train", True, args.patch, args.noise,
                              args.noise_random, args.input)
