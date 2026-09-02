@@ -322,26 +322,49 @@ def build(prs, name: str, M: dict, R: dict) -> None:
     # ---------------------------------------------------------- 11. label-free (요구사항 4)
     sl = blank(prs); bg(sl)
     title(sl, "label-free — 정답을 한 장도 쓰지 않고", "보너스 점수", eyebrow="요구사항 4")
+    text(sl, Inches(0.9), Inches(1.7), Inches(11.5), Inches(0.9),
+         [("노이즈가 흐림 **뒤에** 붙어 측정치 위에서는 백색이다. 백색이면 Noise2Void 가 그대로 통한다.",
+           {"bold": True, "color": INK}),
+          ("g 의 일부 화소를 이웃으로 덮고 덮은 자리에서 g 를 맞히게 한다. 가린 화소를 못 보니 "
+           "이웃에서 신호를 추정할 수밖에 없고,", {}),
+          ("잡음은 화소마다 독립이라 예측할 수 없으므로 최적해가 곧 노이즈 없는 h*f 다.", {})],
+         size=13, color=INK2)
     xs = Inches(0.75)
-    for h1, h2 in [("측정치 g", "가진 것은 이것뿐"),
+    for h1, h2 in [("측정치 g", "가진 것은\n이것뿐"),
+                   ("N2V 디노이저", "가린 자리에서\ng 를 맞힌다\n정답 없음"),
                    ("σ 추정", "널 원뿔에서\n라벨 불필요"),
-                   ("N2V 디노이저", "1일차 blind-spot\n으로 학습\n정답 안 씀"),
-                   ("데이터 정합", "닫힌 해\n학습 없음"),
-                   ("복원", f"{R.get('lf_psnr', 18.87):.2f} dB")]:
-        card(sl, xs, Inches(2.2), Inches(2.0), Inches(1.6), ACCENT_SOFT, ACCENT)
-        text(sl, xs + Inches(0.1), Inches(2.35), Inches(1.8), Inches(0.4),
+                   ("역필터", "λ 도 측정치에서\n학습 없음"),
+                   ("복원", (f"{R['lf_psnr']:.2f} dB" if "lf_psnr" in R else "학습 중"))]:
+        card(sl, xs, Inches(3.0), Inches(2.0), Inches(1.5), ACCENT_SOFT, ACCENT)
+        text(sl, xs + Inches(0.1), Inches(3.13), Inches(1.8), Inches(0.4),
              h1, size=13, color=INK, bold=True, align=PP_ALIGN.CENTER)
-        text(sl, xs + Inches(0.1), Inches(2.8), Inches(1.8), Inches(0.9),
+        text(sl, xs + Inches(0.1), Inches(3.55), Inches(1.8), Inches(0.85),
              h2, size=10, color=MUTED, align=PP_ALIGN.CENTER, font=MONO)
         xs += Inches(2.25)
-    rows = [("경로", "정답 사용", "PSNR", "분류"),
-            ("1일차 label-free (N2V) → Wiener", "없음", "18.87", "Self-supervised"),
-            ("plug-and-play · label-free", "없음", "17.99", "Self-supervised"),
-            ("1일차 supervised → Wiener", "1일차만", "21.06", "Supervised"),
-            ("최종 모델", "3일차 학습", f"{p:.2f}", "Supervised")]
-    table(sl, Inches(0.9), Inches(4.2), Inches(11.5), Inches(1.7), rows,
-          col_w=[5.0, 2.0, 1.8, 2.7], highlight_row=1)
-    footer(sl, "label-free 경로는 3일차 정답을 한 장도 쓰지 않는다 — σ 추정도 측정치만 본다")
+    card(sl, Inches(0.9), Inches(4.8), Inches(11.5), Inches(1.5), ACCENT_SOFT, ACCENT)
+    text(sl, Inches(1.2), Inches(5.0), Inches(11), Inches(1.2),
+         [("λ 도 라벨 없이 정한다.", {"bold": True, "color": ACCENT}),
+          ("고전 Wiener 의 K = 잡음파워/신호파워 를 측정치에서 계산한다 — 잡음파워는 널 원뿔의 σ², "
+           "신호파워는 측정치 파워에서 잡음 몫을 뺀 것.", {}),
+          ("val 에서 고른 K 대비 −0.58 dB. 정답을 한 번도 쓰지 않고 그만큼 따라간다.",
+           {"bold": True, "color": INK})], size=13, color=INK2)
+    footer(sl, "학습 측정치는 train 의 clean 에서 합성하되 clean 은 손실에 한 번도 들어가지 않는다 · test 는 건드리지 않는다")
+
+    # ---------------------------------------------------------- 11b. 이미지 type 취약점
+    sl = blank(prs); bg(sl)
+    title(sl, "어떤 type 의 이미지에 취약한가", "노이즈 라벨은 있지만 이미지 라벨은 없다 — 이미지 자체 특징으로 가른다",
+          eyebrow="결과 분석")
+    f = FIG / "day3_image_types.png"
+    if f.exists():
+        pic(sl, f, Inches(0.7), Inches(1.6), w=Inches(11.9))
+    rows = [("특징", "하위 1/3 → 상위 1/3", "상관계수", "해석"),
+            ("대비 (std)", "−3.59 dB", "−0.459", "같은 σ 라도 구조가 많으면 잃을 것이 많다"),
+            ("에지 밀도", "−3.52 dB", "−0.405", "평탄하면 사전지식이 강하게 작동한다"),
+            ("동적범위", "−3.31 dB", "−0.310", "위와 같은 이유"),
+            ("무늬 조밀도", "+0.92 dB", "+0.053", "예상과 달리 거의 무관했다")]
+    table(sl, Inches(0.9), Inches(4.6), Inches(11.5), Inches(1.6), rows,
+          col_w=[2.2, 2.4, 1.6, 5.3])
+    footer(sl, "가장 못 살린 10장: σ 0.113(전체 0.074) · 대비 0.263(0.158) · 에지 0.083(0.050) · rician 5장")
 
     # ---------------------------------------------------------- 12. 시도별 요약 (한 페이지)
     sl = blank(prs); bg(sl)
@@ -398,6 +421,9 @@ def main() -> None:
     ap.add_argument("--name", default="")
     ap.add_argument("--psnr", type=float, required=True, help="최종 모델 test PSNR")
     ap.add_argument("--ssim", type=float, required=True)
+    ap.add_argument("--lf-psnr", type=float, default=None,
+                    help="label-free 최종 test PSNR (train_lf_day3.py 결과)")
+    ap.add_argument("--lf-ssim", type=float, default=None)
     ap.add_argument("--results", type=Path, default=FIG / "day3_results.json")
     ap.add_argument("--out", type=Path, default=ROOT / "실습5_day3_발표.pptx")
     args = ap.parse_args()
@@ -410,6 +436,9 @@ def main() -> None:
                      ("σ = 0 (없다고 알려줌)", (15.64, 0.3948)),
                      ("σ 2배 (과대평가)", (22.45, 0.7845))],
     }
+    if args.lf_psnr is not None:
+        R["lf_psnr"] = args.lf_psnr
+        R["lf_ssim"] = args.lf_ssim
     if args.results.exists():
         raw = json.loads(args.results.read_text(encoding="utf-8"))
         for k, v in raw.items():
