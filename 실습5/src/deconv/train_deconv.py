@@ -295,6 +295,9 @@ def main() -> None:
     ap.add_argument("--data", type=Path, default=DEFAULT_DATA)
     ap.add_argument("--out", type=Path, default=ROOT / "runs")
     ap.add_argument("--tag", default="")
+    ap.add_argument("--mirror", type=Path, default=None,
+                    help="best 가 갱신될 때마다 이 디렉터리로도 복사한다. Drive 를 주면 "
+                         "런타임이 끊겨도 남는다")
     args = ap.parse_args()
 
     if args.patch == 0:
@@ -556,6 +559,17 @@ def main() -> None:
                         "lam_map": args.lam_map, "refine_iters": args.refine_iters,
                         "noise_stats": args.noise_stats},
                        run / "checkpoints" / "checkpoint_best.ckpt")
+            if args.mirror:
+                # 런타임이 끊기면 /content 는 통째로 사라진다. 갱신될 때마다 Drive 로
+                # 복사해 둔다. 임시 이름으로 쓴 뒤 바꿔치기해서, 복사 도중 끊겨도
+                # 반쯤 쓰인 파일이 남지 않게 한다.
+                import shutil
+                args.mirror.mkdir(parents=True, exist_ok=True)
+                dst = args.mirror / f"{run.name}.ckpt"
+                tmp = dst.with_suffix(".ckpt.part")
+                shutil.copy(run / "checkpoints" / "checkpoint_best.ckpt", tmp)
+                tmp.replace(dst)
+                shutil.copy(run / "config.json", args.mirror / f"{run.name}_config.json")
             mark = "  <- best"
         print(f"[ep {ep:02d}] loss {hist[-1]['loss']:.5f}  val PSNR {psnr:.3f}  SSIM {ssim:.4f}"
               f"  {hist[-1]['sec']:.0f}s{mark}", flush=True)
