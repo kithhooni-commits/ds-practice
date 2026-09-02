@@ -125,11 +125,16 @@ class DRUNet(nn.Module):
         nb: int = 4,
         sigma_map: bool = False,
         global_residual: bool = True,
+        n_cond: int = 1,
     ) -> None:
         super().__init__()
         self.sigma_map = sigma_map
+        # 조건 채널 개수. 1 이면 σ 하나, 3 이면 (σ, 왜도, 첨도) 처럼 여러 통계를 받는다.
+        # 3일차에서 rician 만 밝기 편향이 300배 크고(+0.0396) 널 원뿔 첨도가 10.39 로
+        # 다른 종류(2.9~3.8)와 확연히 갈린다 — σ 하나로는 종류를 구분할 수 없다.
+        self.n_cond = n_cond if sigma_map else 0
         self.global_residual = global_residual
-        cin = in_nc + (1 if sigma_map else 0)
+        cin = in_nc + self.n_cond
 
         self.head = nn.Conv2d(cin, nc[0], 3, 1, 1, bias=False)
 
@@ -152,10 +157,13 @@ class DRUNet(nn.Module):
 
         inp = x
         if self.sigma_map:
+            c = self.n_cond
             if sigma is None:
-                sigma = torch.zeros_like(x[:, :1])
-            elif sigma.dim() == 1:
-                sigma = sigma.view(-1, 1, 1, 1).expand(-1, 1, *x.shape[2:])
+                sigma = x[:, :1].new_zeros(x.shape[0], c, *x.shape[2:])
+            elif sigma.dim() == 1:                      # (B,) — 통계 하나
+                sigma = sigma.view(-1, 1, 1, 1).expand(-1, c, *x.shape[2:])
+            elif sigma.dim() == 2:                      # (B, C) — 통계 여러 개
+                sigma = sigma.view(*sigma.shape, 1, 1).expand(-1, -1, *x.shape[2:])
             x = torch.cat([x, sigma], dim=1)
 
         # 3번 다운샘플하므로 8의 배수로 패딩한다 (256, 128 은 그대로 통과)

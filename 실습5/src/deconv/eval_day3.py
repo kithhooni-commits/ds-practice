@@ -68,7 +68,9 @@ def load_net(path: Path, device):
         net = UnrolledNet(n_iter=ck.get("unroll_iters", 5), model=ck.get("refine", "unet"),
                           features=ck.get("features", 32),
                           share_weights=ck.get("share_weights", True),
-                          sigma_map=ck.get("sigma_map", False))
+                          sigma_map=ck.get("sigma_map", False),
+                          lam_map=ck.get("lam_map", False),
+                          noise_stats=ck.get("noise_stats", False))
     elif name == "dcnet":
         from dcnet import DCNet
         net = DCNet(model=ck.get("refine", "unet"), features=ck.get("features", 32),

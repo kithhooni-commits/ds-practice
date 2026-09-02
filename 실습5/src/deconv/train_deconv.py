@@ -263,6 +263,9 @@ def main() -> None:
                     help="λ 초기값. 기본은 원시 측정치의 val 최적 K")
     ap.add_argument("--refine-iters", type=int, default=0,
                     help="twostage: 역필터 뒤 이미지 영역 다듬기 횟수")
+    ap.add_argument("--noise-stats", action="store_true",
+                    help="σ 하나 대신 (σ, 왜도, 첨도) 를 조건으로 준다. 널 원뿔의 모양이 노이즈 "
+                         "종류를 알려준다 — rician 첨도 10.39 vs 나머지 2.9~3.8. --sigma-map 필요")
     ap.add_argument("--sigma-map", action="store_true",
                     help="측정치에서 σ 를 읽어 디노이저에 조건으로 준다 (--refine drunet 전용). "
                          "3일차 σ 는 이미지마다 200배 차이가 난다")
@@ -368,7 +371,9 @@ def main() -> None:
             args.patch = None
         net = UnrolledNet(n_iter=args.unroll_iters, model=args.refine, features=args.features,
                           share_weights=args.share_weights, sigma_map=args.sigma_map,
-                          lam_map=args.lam_map).to(device)
+                          lam_map=args.lam_map, noise_stats=args.noise_stats).to(device)
+        if net.noise_stats:
+            print("noise-stats: 널 원뿔에서 (σ, 왜도, 첨도) 를 읽어 준다 — rician 을 구분하기 위해서")
         if args.sigma_map and not net.sigma_map:
             print("[주의] --sigma-map 은 --refine drunet 에서만 쓴다. 무시한다")
         elif net.sigma_map:
@@ -548,7 +553,8 @@ def main() -> None:
                         "val_psnr": psnr, "val_ssim": ssim, "target": args.target,
                         "tau": args.tau, "refine": args.refine, "unroll_iters": args.unroll_iters,
                         "sigma_map": args.sigma_map, "share_weights": args.share_weights,
-                        "lam_map": args.lam_map, "refine_iters": args.refine_iters},
+                        "lam_map": args.lam_map, "refine_iters": args.refine_iters,
+                        "noise_stats": args.noise_stats},
                        run / "checkpoints" / "checkpoint_best.ckpt")
             mark = "  <- best"
         print(f"[ep {ep:02d}] loss {hist[-1]['loss']:.5f}  val PSNR {psnr:.3f}  SSIM {ssim:.4f}"

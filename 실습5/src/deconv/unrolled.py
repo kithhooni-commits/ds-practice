@@ -47,7 +47,8 @@ from models import build_model  # noqa: E402
 
 from challenge import dipole_otf  # noqa: E402
 
-__all__ = ["UnrolledNet", "data_consistency", "estimate_sigma", "self_ensemble"]
+__all__ = ["UnrolledNet", "data_consistency", "estimate_sigma",
+           "estimate_noise_stats", "self_ensemble"]
 
 _CACHE: dict = {}
 
@@ -73,6 +74,49 @@ def estimate_sigma(measure: Tensor, tol: float = 0.02,
     G = torch.fft.fft2(measure.float())
     n_pix = measure.shape[-1] * measure.shape[-2]
     return ((G.abs() ** 2)[..., mask].mean(-1) / n_pix).sqrt().view(-1)
+
+
+def estimate_noise_stats(measure: Tensor, tol: float = 0.02,
+                         b0: tuple[float, float] = (0.0, 1.0)) -> Tensor:
+    """널 원뿔에서 (σ, 왜도, 첨도) 를 읽는다. (B, 3) 을 돌려준다.
+
+    σ 하나로는 **노이즈 종류를 구분할 수 없다.** 3일차에서 그것이 실제 손해로
+    나타난다 — rician 만 22.47 dB 로 나머지(29~35)보다 7 dB 뒤진다.
+
+    ## 왜 rician 만 약한가
+
+    rician 은 정류(rectification) 라 밝기를 위로 민다. val 40장에서 잰 평균 편향:
+
+        gaussian +0.00014   rician +0.03959   uniform -0.00010   s&p -0.00388
+
+    rician 만 300배 크다. dipole 은 DC 를 1/3 로 보존하므로 역산에서 3배가 되어
+    복원 이미지에 0.119 의 밝기 오차로 남는다 — 이미지 std 가 0.222 인데 그렇다.
+
+    ## 그런데 종류를 알아낼 수 있다
+
+    널 원뿔에는 신호가 없으므로 거기 남은 값의 **모양** 이 곧 노이즈의 모양이다.
+    같은 40장에서 잰 첨도:
+
+        gaussian 2.91   rician 10.39   uniform 3.84   s&p 3.38
+
+    rician 이 확연히 갈린다. 이 통계들을 조건으로 주면 네트워크가 종류를 알아보고
+    각각에 맞게 지울 수 있다. **정답도 noise_meta.json 도 쓰지 않는다** — 측정치
+    하나에서 전부 나온다.
+    """
+    D = _otf(tuple(measure.shape[-2:]), b0, measure.device, torch.float32)
+    mask = D.abs() < tol
+    G = torch.fft.fft2(measure.float())
+    n_pix = measure.shape[-1] * measure.shape[-2]
+    v = G.abs()[..., mask].flatten(1)                 # (B, M) 널 원뿔의 크기들
+    sigma = ((v**2).mean(-1) / n_pix).sqrt()
+    # 크기를 평균으로 정규화해 σ 와 무관한 '모양' 만 남긴다
+    u = v / (v.mean(-1, keepdim=True) + 1e-12)
+    m = u.mean(-1, keepdim=True)
+    s = (u - m).pow(2).mean(-1).sqrt() + 1e-12
+    skew = (u - m).pow(3).mean(-1) / s.pow(3)
+    kurt = (u - m).pow(4).mean(-1) / s.pow(4)
+    # 첨도는 2.9~10.4 로 범위가 넓다. 대략 0~1 로 눌러 다른 통계와 크기를 맞춘다
+    return torch.stack([sigma, skew * 0.1, (kurt - 3.0) * 0.1], dim=1)
 
 
 # dipole 이 견디는 대칭. transpose·90도 회전은 B0 방향을 돌려버려서 못 쓴다
@@ -146,6 +190,7 @@ class UnrolledNet(nn.Module):
         sigma_map: bool = False,
         lam_map: bool = False,
         shape: tuple[int, int] = (256, 256),
+        noise_stats: bool = False,
     ) -> None:
         super().__init__()
         self.n_iter = n_iter
@@ -153,7 +198,9 @@ class UnrolledNet(nn.Module):
         self.share_weights = share_weights
         # σ 조건화는 DRUNet 만 받는다 (여분 채널로 σ 를 넣는 구조)
         self.sigma_map = sigma_map and model == "drunet"
-        kw = {"sigma_map": True} if self.sigma_map else {}
+        # σ 하나(1채널) 대신 (σ, 왜도, 첨도) 세 개를 준다. rician 을 구분하기 위해서다
+        self.noise_stats = noise_stats and self.sigma_map
+        kw = {"sigma_map": True, "n_cond": 3 if self.noise_stats else 1} if self.sigma_map else {}
         self.nets = nn.ModuleList(
             [build_model(model, features=features, num_of_layers=17, **kw) for _ in range(n_net)]
         )
@@ -172,7 +219,10 @@ class UnrolledNet(nn.Module):
             torch.zeros_like(measure), measure, self.log_lam[0].exp().expand(measure.shape[0]), b0)
 
         # σ 는 측정치에서 읽는다 — 정답도, 메타데이터도 쓰지 않는다
-        sigma = estimate_sigma(measure, b0=b0) if self.sigma_map else None
+        sigma = None
+        if self.sigma_map:
+            sigma = (estimate_noise_stats(measure, b0=b0) if self.noise_stats
+                     else estimate_sigma(measure, b0=b0))
 
         for k in range(self.n_iter):
             z = self.net(k)(x, sigma) if self.sigma_map else self.net(k)(x)
