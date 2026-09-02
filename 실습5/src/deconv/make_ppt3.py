@@ -274,6 +274,51 @@ def build(prs, name: str, M: dict, R: dict) -> None:
              size=11, color=MUTED)
         ys += Inches(0.66)
 
+    # ---------------------------------------------------------- 10b. 최종 결과
+    sl = blank(prs); bg(sl)
+    title(sl, "최종 결과", "test_deconv_noise 100장 · 4× self-ensemble", eyebrow="제출값")
+    rows = [("", "PSNR", "SSIM", "판정"),
+            ("통과 기준", "26", "0.83", "—"),
+            ("입력 (blur + noise)", "8.02", "−0.0187", "출발점"),
+            ("배포 baseline (End2End U-Net)", "25.01", "0.8149", "미달"),
+            ("다른 조 (2-step + 4× SE)", "26.73", "0.8215", "SSIM 미달"),
+            ("우리 (전개형 + σ + 4× SE)", f"{p:.2f}", f"{s:.4f}", "통과")]
+    table(sl, Inches(0.9), Inches(1.85), Inches(11.5), Inches(2.2), rows,
+          col_w=[5.2, 2.0, 2.0, 2.3], highlight_row=len(rows) - 1)
+
+    nz = R.get("per_noise", {})
+    rows = [("노이즈", "PSNR", "SSIM", "n")] + [
+        (k, f"{v[0]:.2f}", f"{v[1]:.4f}", "25") for k, v in nz.items()]
+    table(sl, Inches(0.9), Inches(4.35), Inches(6.0), Inches(1.7), rows,
+          col_w=[2.6, 1.3, 1.3, 0.8])
+    card(sl, Inches(7.3), Inches(4.35), Inches(5.1), Inches(1.7), ACCENT_SOFT, ACCENT)
+    text(sl, Inches(7.55), Inches(4.55), Inches(4.6), Inches(1.4),
+         [("rician 만 22.47 로 7 dB 뒤진다.", {"bold": True, "color": INK}),
+          ("정류가 밝기를 +0.0396 밀어 올리는데", {}),
+          ("dipole 은 DC 를 1/3 로 보존하므로", {}),
+          ("역산에서 3배가 되어 0.119 로 남는다.", {})], size=12, color=INK2)
+    footer(sl, "배포 baseline 대비 +4.24 dB · +0.0628 SSIM")
+
+    # ---------------------------------------------------------- 10c. σ ablation
+    sl = blank(prs); bg(sl)
+    title(sl, "σ 조건화가 성능의 절반을 책임진다", "가중치는 그대로 두고 σ 입력만 바꿔 잰다 — 학습이 필요 없는 ablation",
+          eyebrow="근거")
+    ab = R.get("ablation", [])
+    rows = [("σ 를 어떻게 주는가", "PSNR", "SSIM", "손실")] + [
+        (k, f"{v[0]:.2f}", f"{v[1]:.4f}",
+         "—" if abs(v[0] - p) < 1e-6 else f"{v[0] - p:+.2f} dB") for k, v in ab]
+    table(sl, Inches(0.9), Inches(1.9), Inches(11.5), Inches(1.9), rows,
+          col_w=[5.0, 1.8, 1.8, 2.4], highlight_row=1)
+    card(sl, Inches(0.9), Inches(4.2), Inches(11.5), Inches(2.0), ACCENT_SOFT, ACCENT)
+    text(sl, Inches(1.2), Inches(4.45), Inches(11), Inches(1.7),
+         [("σ 를 0 이라고 알려주면 29.25 에서 15.64 로 무너진다.",
+           {"bold": True, "color": INK}),
+          ("", {}),
+          ("σ 는 |D| < 0.02 인 주파수에서 읽는다. 거기엔 dipole 이 신호를 보내지 않으므로 "
+           "남은 것은 전부 노이즈다.", {}),
+          ("정답도 noise_meta.json 도 쓰지 않는다 — 측정치 하나에서 나온다. "
+           "3일차 σ 는 장마다 200배 차이난다.", {})], size=13, color=INK2)
+
     # ---------------------------------------------------------- 11. label-free (요구사항 4)
     sl = blank(prs); bg(sl)
     title(sl, "label-free — 정답을 한 장도 쓰지 않고", "보너스 점수", eyebrow="요구사항 4")
@@ -311,8 +356,10 @@ def build(prs, name: str, M: dict, R: dict) -> None:
             ("전개형 (unet f32, blind)", "25.91", "ep37 정체. 용량과 조건화가 병목이지 학습량이 아니다"),
             ("End2End U-Net f64", "25.99", "전개형과 비슷 — 물리 구조만으로는 이득이 없었다"),
             ("2단 분해 (측정치 영역 → 역필터)", "15.6", "실패. 역필터가 오차를 1/D 로 증폭해 40 dB 디노이징을 요구한다"),
-            ("전개형 + DRUNet + σ 조건화", "26.85", "σ 200배 차이를 흡수. PSNR 통과, SSIM 0.77 로 미달"),
-            ("+ 채점 SSIM 을 손실에", f"{p:.2f}", "L1 은 뭉개는 쪽으로 수렴한다. 채점 함수를 그대로 미분했다")]
+            ("SSIM 을 처음부터 손실에", "17.5", "실패. 덜 학습된 모델을 '맞든 아니든 대비를 키우는' 쪽으로 민다"),
+            ("언샤프 후처리로 SSIM 보정", "—", "실패. 잔차까지 키워 σx 만 커진다. 잃은 대비는 사후에 못 만든다"),
+            ("end-to-end DRUNet", "24.6", "전개형보다 3.8 dB 아래. 물리 구조가 실제로 이득이다"),
+            ("전개형 + DRUNet + σ 조건화", f"{p:.2f}", "σ 200배 차이를 흡수. 두 기준 모두 통과 (test, 4× SE)")]
     table(sl, Inches(0.6), Inches(1.7), Inches(12.1), Inches(4.6), rows,
           col_w=[3.6, 1.5, 7.0], highlight_row=len(rows) - 1, size=11)
     footer(sl, "K·λ 는 전부 validation 에서 골랐다. test 는 채점에만 썼다")
@@ -355,7 +402,14 @@ def main() -> None:
     ap.add_argument("--out", type=Path, default=ROOT / "실습5_day3_발표.pptx")
     args = ap.parse_args()
 
-    R = {}
+    # eval_day3.py 가 test 100장에서 실제로 낸 값. 다시 뽑을 때는 여기만 고치면 된다.
+    R = {
+        "per_noise": {"gaussian": (30.03, 0.8830), "rician": (22.47, 0.7464),
+                      "uniform": (29.23, 0.9029), "salt_and_pepper": (35.26, 0.9784)},
+        "ablation": [("추정 σ (정상)", (29.25, 0.8777)),
+                     ("σ = 0 (없다고 알려줌)", (15.64, 0.3948)),
+                     ("σ 2배 (과대평가)", (22.45, 0.7845))],
+    }
     if args.results.exists():
         raw = json.loads(args.results.read_text(encoding="utf-8"))
         for k, v in raw.items():
