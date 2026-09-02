@@ -10,7 +10,7 @@
 
     1일차 정답 (디노이저)  37.42 dB
     2일차 정답 (Wiener)   109.86 dB
-    둘을 이어 붙이면        21.06 dB   <- 배포 baseline 25.01 에도 진다
+    둘을 이어 붙이면        21.06 dB   <- 배포 baseline 25.02 에도 진다
 
 각자 최고인 도구인데 합치면 진다. 그 이유가 이 발표의 내용이고, 답은
 "선형 역산이 포기한 주파수를 비선형 사전지식으로 메운다" 다.
@@ -52,8 +52,9 @@ from make_ppt import (  # noqa: E402
 )
 
 FIG = ROOT / "figures"
-BASELINE = 25.01          # 배포 End2End U-Net (test)
-BASELINE_S = 0.8149
+# 조교가 공지한 배포 baseline (End2End U-Net, test 100장)
+BASELINE = 25.02
+BASELINE_S = 0.815
 
 
 def build(prs, name: str, M: dict, R: dict) -> None:
@@ -136,7 +137,7 @@ def build(prs, name: str, M: dict, R: dict) -> None:
         ("문제", "흐림과 노이즈가 겹쳤다  g = h * f + n",
          "1일차는 노이즈만, 2일차는 흐림만이었다. 3일차는 둘이 겹쳐 각자의 답이 통하지 않는다."),
         ("발견", "각자 최고인 도구를 이어 붙이면 진다 — 21.06 dB",
-         "1일차 디노이저(37.42)와 2일차 Wiener(109.86)를 이어도 배포 baseline(25.01)에 진다. "
+         "1일차 디노이저(37.42)와 2일차 Wiener(109.86)를 이어도 배포 baseline(25.02)에 진다. "
          "역산이 노이즈를 +51.5 dB 증폭하기 때문이다."),
         ("한계", "선형 방법의 천장은 19.80 dB",
          "정답을 알고 만든 최고의 선형 필터(오라클 위너)조차 그렇다. 그 위는 비선형 사전지식의 몫이다."),
@@ -155,7 +156,7 @@ def build(prs, name: str, M: dict, R: dict) -> None:
 
     card(sl, Inches(0.9), Inches(6.05), Inches(11.5), Inches(0.85), ACCENT_SOFT, ACCENT)
     text(sl, Inches(1.15), Inches(6.22), Inches(11), Inches(0.5),
-         f"결과   {p:.2f} dB / {s:.4f}   ·   배포 baseline {BASELINE:.2f} / {BASELINE_S:.4f} 대비 "
+         f"결과   {p:.2f} dB / {s:.4f}   ·   배포 baseline {BASELINE:.2f} / {BASELINE_S:.3f} 대비 "
          f"{gain:+.2f} dB · {s - BASELINE_S:+.4f}   ·   통과 기준 26 / 0.83",
          size=13, color=INK, bold=True)
 
@@ -353,7 +354,7 @@ def build(prs, name: str, M: dict, R: dict) -> None:
     rows = [("", "PSNR", "SSIM", "판정"),
             ("통과 기준", "26", "0.83", "—"),
             ("입력 (blur + noise)", "8.02", "−0.0187", "출발점"),
-            ("배포 baseline (End2End U-Net)", "25.01", "0.8149", "미달"),
+            ("배포 baseline (End2End U-Net)", f"{BASELINE:.2f}", f"{BASELINE_S:.4f}", "미달"),
             ("다른 조 (2-step + 4× SE)", "26.73", "0.8215", "SSIM 미달"),
             ("모델 융합 (셋을 평균)", "29.66", "0.8824", "단독보다 못함"),
             ("우리 (전개형 + σ + 4× SE)", f"{p:.2f}", f"{s:.4f}", "통과")]
