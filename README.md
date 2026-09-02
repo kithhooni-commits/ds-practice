@@ -12,7 +12,7 @@
 | [실습3](실습3/) | 이미지 생성 모델 개인화 — SD3.5-medium에 TI/LoRA/DoRA/prior를 적용하고 CLIP·DINO 지표 자체를 검증 |
 | [실습4](실습4/) | 웹캠만으로 4인 실시간 AR 복싱 — 상체 7노드 모션 인식과 단안 3D 얼굴 복원, 그리고 조용한 실패들 |
 | [실습4_연습](실습4_연습/) | 실습4로 가는 길에 만든 연습 4편 — 제스처 잠금장치 · 비전 드럼 · 비전 복싱(WebRTC 대전) · 다음 단계 타당성 노트 |
-| [실습5](실습5/) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kithhooni-commits/ds-practice/blob/main/%EC%8B%A4%EC%8A%B55/colab_denoising.ipynb)  · Day2 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kithhooni-commits/ds-practice/blob/main/%EC%8B%A4%EC%8A%B55/colab_deconvolution.ipynb) | 정답 없이 흐린 이미지 되돌리기 — 삼성 DS2 Image Restoration Challenge, dipole 디컨볼루션과 label-free 복원 |
+| [실습5](실습5/) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kithhooni-commits/ds-practice/blob/main/%EC%8B%A4%EC%8A%B55/colab_denoising.ipynb)  · Day2 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kithhooni-commits/ds-practice/blob/main/%EC%8B%A4%EC%8A%B55/colab_deconvolution.ipynb)  · Day3 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kithhooni-commits/ds-practice/blob/main/%EC%8B%A4%EC%8A%B55/colab_day3.ipynb) | 정답 없이 흐린 이미지 되돌리기 — 삼성 DS2 Image Restoration Challenge, dipole 디컨볼루션과 label-free 복원 |
 
 ## 구조
 

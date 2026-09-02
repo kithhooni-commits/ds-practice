@@ -30,6 +30,7 @@ import json
 import os
 import random
 import sys
+import zlib
 import time
 from pathlib import Path
 
@@ -41,6 +42,7 @@ from torch.utils.data import DataLoader, Dataset
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE.parent / "denoise"))
+from data import RandomNoiseSimulator  # noqa: E402
 from metrics import calculate_psnr, calculate_ssim  # noqa: E402
 from models import build_model  # noqa: E402
 
@@ -48,6 +50,7 @@ from challenge import dipole_otf  # noqa: E402
 from dcnet import DCNet  # noqa: E402
 from spectral import SpectralNet  # noqa: E402
 from run_challenge import adaptive_K  # noqa: E402
+from unrolled import UnrolledNet  # noqa: E402
 
 DEFAULT_DATA = Path(os.environ.get("DS_DATA", ROOT / "data" / "dataset"))
 
@@ -83,7 +86,7 @@ class DeconvDataset(Dataset):
 
     def __init__(self, root: Path, training: bool, patch: int | None = None,
                  noise: float = 0.0, noise_random: bool = False,
-                 input_mode: str = "measure") -> None:
+                 input_mode: str = "measure", noise_model: str = "gaussian") -> None:
         self.files = sorted(glob.glob(str(root / "*.npy")))
         if not self.files:
             raise FileNotFoundError(root)
@@ -94,6 +97,10 @@ class DeconvDataset(Dataset):
         # Wiener 역산은 **크롭 전 전체 이미지**에서 해야 한다. dipole 은 전역 연산이라
         # 128² 조각의 FFT 는 256² 원본과 커널 자체가 다르다.
         self.input_mode = input_mode
+        # challenge: 1일차와 같은 4종(gaussian/rician/uniform/salt&pepper)을 흐림 뒤에 얹는다.
+        # 3일차 test_deconv_noise 가 정확히 그렇게 만들어졌다 (파일별 종류·σ 가 1일차와 동일).
+        self.noise_model = noise_model
+        self.sim = RandomNoiseSimulator() if noise_model == "challenge" else None
 
     def __len__(self) -> int:
         return len(self.files)
@@ -114,11 +121,17 @@ class DeconvDataset(Dataset):
         # 경계에서 실제와 다른 측정치가 만들어진다.
         g = forward_t(gt.unsqueeze(0)).squeeze(0)
 
-        sigma = self.noise
-        if self.noise_random and self.noise > 0:
-            sigma = random.uniform(0.0, self.noise)
-        if sigma > 0:
-            g = g + torch.randn_like(g) * sigma
+        if self.noise_model == "challenge":
+            # 검증은 파일명 seed 로 고정해 epoch 마다 값이 흔들리지 않게 한다 (1일차와 같은 방식)
+            seed = None if self.training else zlib.crc32(Path(self.files[i]).name.encode())
+            g = self.sim(g, seed=seed)
+            sigma = 0.0
+        else:
+            sigma = self.noise
+            if self.noise_random and self.noise > 0:
+                sigma = random.uniform(0.0, self.noise)
+            if sigma > 0:
+                g = g + torch.randn_like(g) * sigma
 
         # 네트워크 입력을 전체 해상도에서 만든다
         if self.input_mode == "measure":
@@ -186,12 +199,17 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="drunet",
                     choices=["dncnn", "unet", "drunet", "spectral", "spectral_dncnn",
-                             "spectral_unet", "dcnet"])
+                             "spectral_unet", "dcnet", "unrolled"])
     ap.add_argument("--input", default="measure", choices=["measure", "wiener", "both"])
     ap.add_argument("--loss", default="charbonnier", choices=["l2", "charbonnier", "model_loss"])
     ap.add_argument("--model-loss-weight", type=float, default=0.8)
     ap.add_argument("--noise", type=float, default=0.0, help="측정치에 얹을 노이즈 σ (0 이면 배포 조건)")
     ap.add_argument("--noise-random", action="store_true", help="[0, σ] 에서 매번 다시 뽑는다")
+    ap.add_argument("--noise-model", default="gaussian", choices=["gaussian", "challenge"],
+                    help="challenge: 1일차 4종 노이즈를 흐림 뒤에 얹는다 (3일차 조건)")
+    ap.add_argument("--unroll-iters", type=int, default=5)
+    ap.add_argument("--share-weights", action="store_true", default=True)
+    ap.add_argument("--no-share-weights", dest="share_weights", action="store_false")
     ap.add_argument("--epochs", type=int, default=30)
     ap.add_argument("--batch", type=int, default=8)
     ap.add_argument("--patch", type=int, default=0,
@@ -223,7 +241,13 @@ def main() -> None:
     scaler = torch.amp.GradScaler("cuda", enabled=ok and amp_dtype is torch.float16)
 
     in_ch = 2 if args.input == "both" else 1
-    if args.model == "dcnet":
+    if args.model == "unrolled":
+        if args.patch:
+            print("[주의] unrolled 는 전역 연산이라 크롭을 못 한다. --patch 를 무시한다")
+            args.patch = None
+        net = UnrolledNet(n_iter=args.unroll_iters, model=args.refine, features=args.features,
+                          share_weights=args.share_weights).to(device)
+    elif args.model == "dcnet":
         if args.patch:
             print(f"[주의] dcnet 은 전역 연산이라 크롭을 못 한다. --patch 를 무시한다")
             args.patch = None
@@ -259,8 +283,8 @@ def main() -> None:
         put(new_conv)
 
     train_ds = DeconvDataset(args.data / "train", True, args.patch, args.noise,
-                             args.noise_random, args.input)
-    valid_ds = DeconvDataset(args.data / "val", False, None, args.noise, False, args.input)
+                             args.noise_random, args.input, args.noise_model)
+    valid_ds = DeconvDataset(args.data / "val", False, None, args.noise, False, args.input, args.noise_model)
     train_loader = DataLoader(train_ds, batch_size=args.batch, shuffle=True,
                               num_workers=args.workers, pin_memory=True, drop_last=True,
                               persistent_workers=args.workers > 0)
@@ -293,7 +317,10 @@ def main() -> None:
 
     print(f"run    : {run}")
     print(f"model  : {args.model} f{args.features} | 입력 {args.input} ({in_ch}ch) | loss {args.loss}")
-    print(f"노이즈 : σ={args.noise}{' (매번 [0,σ] 에서 랜덤)' if args.noise_random else ''}")
+    if args.noise_model == "challenge":
+        print("노이즈 : 1일차 4종 (gaussian/rician/uniform/salt&pepper) 을 흐림 뒤에 — 3일차 조건")
+    else:
+        print(f"노이즈 : σ={args.noise}{' (매번 [0,σ] 에서 랜덤)' if args.noise_random else ''}")
     print(f"학습   : {len(train_ds)}장 patch {args.patch} batch {args.batch} -> {len(train_loader)} iter/ep, {args.epochs} ep")
     print(f"amp    : {amp_dtype} | clip {args.clip_grad}\n")
 
