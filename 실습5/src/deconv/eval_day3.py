@@ -109,6 +109,9 @@ def main() -> None:
     ap.add_argument("--sigma-ablation", action="store_true",
                     help="σ 조건화 모델에 일부러 틀린 σ 를 먹여 얼마나 쓰고 있는지 잰다. "
                          "학습이 필요 없는 ablation 이다")
+    ap.add_argument("--sweep-iters", action="store_true",
+                    help="추론 때 전개 반복 횟수를 바꿔 본다. share_weights 면 학습 때보다 "
+                         "많이 돌릴 수 있다. 학습이 필요 없고 **val 에서** 고른다")
     ap.add_argument("--self-ensemble", action="store_true",
                     help="4x self-ensemble. dipole 이 견디는 대칭만 쓴다 (좌우/상하/180도). "
                          "90도 회전은 B0 방향을 돌려버려 못 쓴다")
@@ -243,6 +246,37 @@ def main() -> None:
                       f"{np.mean([x[2] for x in r]):>10.4f}")
             setattr(_u, name_fn, real)
             res["sigma_ablation"] = True
+
+        if args.sweep_iters and hasattr(net, "n_iter") and getattr(net, "share_weights", False):
+            # λ 는 단계마다 따로 학습돼 log_lam 에 n_iter 개만 있다. 그보다 많이 돌리려면
+            # 마지막 λ 를 이어 쓴다 — 수렴 근처에서 같은 세기로 한 번 더 다듬는 셈이다.
+            from day3_common import load_val, score
+
+            vi = load_val(args.data, args.n_val, device)
+            base_n = net.n_iter
+            lam0 = net.log_lam.data.clone()
+            print()
+            print(f"[전개 반복 횟수 — val {len(vi)}장. 학습 때는 {base_n}번이었다]")
+            print(f"{'반복':>6}{'PSNR':>10}{'SSIM':>10}")
+            print("-" * 26)
+            best_n = (base_n, -1.0, 0.0)
+            for n in (base_n, base_n + 1, base_n + 2, base_n + 4):
+                net.n_iter = n
+                if n > base_n:
+                    net.log_lam.data = torch.cat(
+                        [lam0, lam0[-1:].repeat(n - base_n)])
+                else:
+                    net.log_lam.data = lam0.clone()
+                pv, sv = score(vi, infer)
+                print(f"{n:>6}{pv:>10.2f}{sv:>10.4f}")
+                if pv > best_n[1]:
+                    best_n = (n, pv, sv)
+            net.n_iter = best_n[0]
+            net.log_lam.data = (lam0.clone() if best_n[0] == base_n else
+                                torch.cat([lam0, lam0[-1:].repeat(best_n[0] - base_n)]))
+            print(f"→ val 이 고른 반복 횟수: {best_n[0]}")
+            print()
+            res["iters"] = best_n[0]
 
         if args.sharpen:
             # 후처리 계수도 val 에서 고른다 — test 로 고르면 test 를 쓴 것이다
