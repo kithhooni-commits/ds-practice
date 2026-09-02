@@ -1,32 +1,43 @@
-# 3일차 — 현황과 이어서 할 일
+# 3일차 — 최종 결과
 
 `g = dipole(f) + n`. 흐림과 노이즈가 겹쳤다.
 
-## 통과 기준과 현재 위치
+## 제출값
 
 | | PSNR | SSIM |
 |---|---|---|
-| 통과 기준 (조교) | 26 | **0.83** |
+| 통과 기준 (조교) | 26 | 0.83 |
 | 입력 (blur + noise) | 8.02 | −0.0187 |
 | 배포 baseline (End2End U-Net) | 25.01 | 0.8149 |
 | 다른 조 (2-step + 4× SE) | 26.73 | 0.8215 |
-| **우리 제출값 (test, 4× SE)** | **29.25** | **0.8777** |
+| **제출값 (test 100장, 4× SE)** | **29.70** | **0.8828** |
+| label-free (보너스, 정답 미사용) | 19.56 | 0.5793 |
 
-**둘 다 통과했다.** 배포 baseline 대비 +4.24 dB · +0.063.
+기준 대비 +3.70 dB / +0.053 · baseline 대비 +4.69 dB · 다른 조 대비 +2.97 dB.
 
-체크포인트: `Drive/MyDrive/ds_day3/0902-0418_deconv-measure_u_drunet_sig.ckpt`
-(val 28.44 / 0.8103, ep56)
+체크포인트: `Drive/MyDrive/ds_day3/0902-0725_deconv-measure_v1_more.ckpt` (ep56)
+발표: `실습5_day3_발표.pptx` 18장 · 그림 5장 `figures/day3_*.png`
 
-### 노이즈 종류별 (test 100장, 25장씩)
+### 노이즈 종류별 (25장씩)
 
 | | PSNR | SSIM |
 |---|---|---|
-| salt & pepper | 35.26 | 0.9784 |
-| gaussian | 30.03 | 0.8830 |
-| uniform | 29.23 | 0.9029 |
-| **rician** | **22.47** | **0.7464** |
+| salt & pepper | 36.27 | 0.9825 |
+| gaussian | 30.15 | 0.8843 |
+| uniform | 29.51 | 0.9084 |
+| **rician** | **22.87** | **0.7558** |
 
-rician 만 7 dB 뒤진다. **여기가 유일하게 남은 큰 구멍이다.**
+### 어떤 이미지에 약한가
+
+| 특징 | 하위 1/3 → 상위 1/3 | 상관계수 |
+|---|---|---|
+| 에지 밀도 | −7.63 dB | −0.458 |
+| 대비 | −4.33 dB | −0.299 |
+| 동적범위 | −3.55 dB | −0.248 |
+| 무늬 조밀도 | −2.77 dB | −0.170 |
+
+가장 못 살린 10장: rician 8 · uniform 2 · gaussian 0 · s&p 0. σ 평균 0.128 (전체 0.074).
+**약점은 "강한 rician + 복잡한 구조"** 다.
 
 ## 무엇을 쓰고 있나
 
@@ -45,41 +56,16 @@ x₀ = Wiener(g, λ₀)                        학습 없음
 
 평가는 항상 `--self-ensemble` (4×: 좌우·상하·180°).
 
-## 지금 돌고 있는 것 (2026-09-02 밤)
+## 30 을 넘기려던 시도 — 전부 실패했고 이유를 안다
 
-둘 다 `--mirror /content/drive/MyDrive/ds_day3` 로 best 를 Drive 에 실시간 복사한다.
-
-| 태그 | 무엇 | 노리는 것 |
+| 시도 | 결과 | 왜 |
 |---|---|---|
-| `stats3` | `--noise-stats` + v1 이어받기, 40ep lr 1e-4 | rician 22.47 → 25+, 전체 +0.6 dB |
-| `v1_more` | v1 이어받기, 60ep lr 1e-4 | v1 이 수렴 전이었다. +0.3~0.5 dB |
+| 노이즈 통계 조건화 (σ+왜도+첨도) | 29.59 | 첨도가 rician 을 가르지만 모델이 쓰지 않았다 (−0.03 dB) |
+| 모델 융합 (셋을 평균) | 29.66 | 같은 체크포인트의 형제라 틀리는 방식이 같다 |
+| 추론 때 반복 횟수 늘리기 | 20.99 | 4단계로 학습한 모델은 5단계에서 분포를 벗어난다 |
 
-## 아침에 할 일
-
-```python
-# 1. Drive 의 체크포인트 점수 확인
-import glob, torch
-for c in sorted(glob.glob("/content/drive/MyDrive/ds_day3/*.ckpt")):
-    ck = torch.load(c, map_location="cpu", weights_only=False)
-    print(f"{c.split('/')[-1]:<56}{ck.get('val_psnr',0):>8.2f}{ck.get('val_ssim',0):>9.4f}")
-```
-
-```bash
-# 2. 최고 모델을 test 로 채점 (이 숫자가 제출값이다)
-python eval_day3.py --data "$DATA" --ckpt "<최고>" --self-ensemble --sigma-ablation
-
-# 3. 융합 — 구조가 다르면 틀리는 방식도 달라 평균이 둘 다보다 좋다. 무게는 val 에서
-python fuse_day3.py --data "$DATA" --ckpts "<A>" "<B>" --self-ensemble
-
-# 4. 그림 (지금 발표의 8·9·10번 그림은 학습 모델이 안 들어간 옛날 것이다)
-python figures_day3.py --data "$DATA" --ckpt "<최고>" --self-ensemble --out "$FIG"
-
-# 5. 발표 다시 뽑기
-python make_ppt3.py --psnr <값> --ssim <값> --name "이름"
-```
-
-`make_ppt3.py` 의 `R = {...}` 에 노이즈별 수치와 σ ablation 값이 하드코딩돼 있다.
-새 숫자가 나오면 거기도 같이 고칠 것.
+**점수를 올린 것은 하나뿐이다 — 수렴할 때까지 더 학습하기** (29.25 → 29.70).
+v1 이 60 에폭에서 끝났는데 ep56 까지 계속 오르고 있었다.
 
 ## 왜 이 구조인가 — 발표의 줄기
 
