@@ -198,11 +198,24 @@ def main() -> None:
             import unrolled as _u
 
             real = _u.estimate_sigma
+            # 평가는 한 장씩 돌리므로 배치 안에서 뒤섞는 것은 무의미하다 (flip(0) 이
+            # 크기 1 텐서에서는 항등이다). 대신 **전체 평균 σ 로 고정**해 본다 —
+            # "장마다 다른 σ 를 주는 것" 대 "하나의 값으로 뭉뚱그리는 것" 을 비교하는
+            # 쪽이 조건화의 값어치를 훨씬 직접적으로 보여준다.
+            with torch.no_grad():
+                sig_all = torch.cat([real(g.float().to(device) if not torch.is_tensor(g)
+                                          else torch.from_numpy(g.astype(np.float32))[None, None].to(device))
+                                     for _, g, _ in items])
+            s_mean = float(sig_all.mean())
+            print(f"측정 σ: 최소 {sig_all.min():.4f} 중앙 {sig_all.median():.4f} "
+                  f"최대 {sig_all.max():.4f} 평균 {s_mean:.4f}")
             variants = {
                 "추정 σ (정상)": real,
                 "σ = 0 (없다고 알려줌)": lambda m, **kw: torch.zeros(m.shape[0], device=m.device),
-                "σ 뒤섞음 (다른 장의 값)": lambda m, **kw: real(m, **kw).flip(0),
+                f"σ 를 전체 평균 {s_mean:.3f} 로 고정":
+                    lambda m, **kw: torch.full((m.shape[0],), s_mean, device=m.device),
                 "σ 2배 (과대평가)": lambda m, **kw: real(m, **kw) * 2,
+                "σ 절반 (과소평가)": lambda m, **kw: real(m, **kw) * 0.5,
             }
             print()
             print("[σ ablation — 가중치는 그대로, σ 입력만 바꾼다]")
