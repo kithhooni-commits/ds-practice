@@ -306,6 +306,9 @@ def main() -> None:
     ap.add_argument("--limit-train", type=int, default=0,
                     help="학습에 쓸 장수를 제한한다 (0=전부 7268). 배포 tips 의 "
                          "'적은 수의 데이터로 학습하기'. 데이터가 얼마나 필요한지 잰다")
+    ap.add_argument("--val-every", type=int, default=1,
+                    help="몇 에폭마다 검증할지. --limit-train 으로 데이터를 줄이면 에폭이 짧아져 "
+                         "검증이 학습보다 오래 걸린다")
     ap.add_argument("--tag", default="")
     ap.add_argument("--mirror", type=Path, default=None,
                     help="best 가 갱신될 때마다 이 디렉터리로도 복사한다. Drive 를 주면 "
@@ -595,6 +598,12 @@ def main() -> None:
             if it % 100 == 0:
                 print(f"  ep {ep:02d} it {it:4d}/{len(train_loader)} loss {run_loss / max(n, 1):.5f}", flush=True)
 
+        # 데이터를 줄이면 에폭이 짧아져 검증이 학습보다 오래 걸린다. 건너뛸 수 있게 한다
+        # 스케줄러는 iteration 마다 돌므로 여기서 건드리지 않는다
+        if (ep + 1) % args.val_every and ep != args.epochs - 1:
+            print(f"  ep {ep:02d} loss {run_loss / max(n, 1):.5f}  ({time.time() - te:.0f}s)",
+                  flush=True)
+            continue
         psnr, ssim = validate(net, valid_loader, device, args.input)
         hist.append({"epoch": ep, "loss": run_loss / max(n, 1), "val_psnr": psnr,
                      "val_ssim": ssim, "lr": sched.get_last_lr()[0], "sec": time.time() - te})
