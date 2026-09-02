@@ -50,6 +50,7 @@ from challenge import dipole_otf  # noqa: E402
 from dcnet import DCNet  # noqa: E402
 from spectral import SpectralNet  # noqa: E402
 from run_challenge import adaptive_K  # noqa: E402
+from twostage import TwoStageNet  # noqa: E402
 from unrolled import UnrolledNet  # noqa: E402
 
 DEFAULT_DATA = Path(os.environ.get("DS_DATA", ROOT / "data" / "dataset"))
@@ -240,7 +241,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="drunet",
                     choices=["dncnn", "unet", "drunet", "spectral", "spectral_dncnn",
-                             "spectral_unet", "dcnet", "unrolled"])
+                             "spectral_unet", "dcnet", "unrolled", "twostage"])
     ap.add_argument("--input", default="measure", choices=["measure", "wiener", "both"])
     ap.add_argument("--loss", default="charbonnier",
                     choices=["l2", "charbonnier", "model_loss", "charbonnier_ssim"])
@@ -255,6 +256,10 @@ def main() -> None:
     ap.add_argument("--noise-model", default="gaussian", choices=["gaussian", "challenge"],
                     help="challenge: 1일차 4종 노이즈를 흐림 뒤에 얹는다 (3일차 조건)")
     ap.add_argument("--unroll-iters", type=int, default=5)
+    ap.add_argument("--lam-map", action="store_true",
+                    help="λ 를 주파수마다 따로 학습한다 (2일차 교훈). --lr-spectral 을 크게 줄 것")
+    ap.add_argument("--refine-iters", type=int, default=0,
+                    help="twostage: 역필터 뒤 이미지 영역 다듬기 횟수")
     ap.add_argument("--sigma-map", action="store_true",
                     help="측정치에서 σ 를 읽어 디노이저에 조건으로 준다 (--refine drunet 전용). "
                          "3일차 σ 는 이미지마다 200배 차이가 난다")
@@ -293,12 +298,42 @@ def main() -> None:
     scaler = torch.amp.GradScaler("cuda", enabled=ok and amp_dtype is torch.float16)
 
     in_ch = 2 if args.input == "both" else 1
-    if args.model == "unrolled":
+    if args.model == "twostage":
+        if args.patch:
+            print("[주의] twostage 는 전역 연산이라 크롭을 못 한다. --patch 를 무시한다")
+            args.patch = None
+        net = TwoStageNet(model=args.refine, features=args.features,
+                          sigma_map=args.sigma_map, lam_map=args.lam_map,
+                          refine_iters=args.refine_iters).to(device)
+        if net.sigma_map:
+            print("sigma-map: 측정치의 널 원뿔에서 σ 를 읽어 디노이저에 준다")
+        if args.init_refine:
+            ck = torch.load(args.init_refine, map_location="cpu", weights_only=False)
+            sd = ck.get("state_dict", ck)
+            subs = [net.denoiser] + list(net.refiners)
+            n_ok = n_skip = 0
+            for sub in subs:
+                tgt = sub.state_dict(); fit = {}
+                for k, v in sd.items():
+                    if k not in tgt:
+                        continue
+                    if tgt[k].shape == v.shape:
+                        fit[k] = v
+                    elif tgt[k].dim() == 4 and tgt[k].shape[1] == v.shape[1] + 1                             and tgt[k].shape[0] == v.shape[0]:
+                        w = tgt[k].clone().zero_(); w[:, : v.shape[1]] = v; fit[k] = w
+                    else:
+                        n_skip += 1
+                sub.load_state_dict(fit, strict=False); n_ok += len(fit)
+            print(f"디노이저 초기화: {Path(args.init_refine).name} "
+                  f"(1일차 val PSNR {ck.get('val_psnr', float('nan')):.2f}, "
+                  f"{n_ok}/{len(sd) * len(subs)} 텐서 적재)")
+    elif args.model == "unrolled":
         if args.patch:
             print("[주의] unrolled 는 전역 연산이라 크롭을 못 한다. --patch 를 무시한다")
             args.patch = None
         net = UnrolledNet(n_iter=args.unroll_iters, model=args.refine, features=args.features,
-                          share_weights=args.share_weights, sigma_map=args.sigma_map).to(device)
+                          share_weights=args.share_weights, sigma_map=args.sigma_map,
+                          lam_map=args.lam_map).to(device)
         if args.sigma_map and not net.sigma_map:
             print("[주의] --sigma-map 은 --refine drunet 에서만 쓴다. 무시한다")
         elif net.sigma_map:
@@ -383,7 +418,9 @@ def main() -> None:
     # 같은 lr 을 쓰면 최대 4.8 배에서 멈춘다 (정답 44,074).
     spec_params, other_params = [], []
     for n_, p_ in net.named_parameters():
-        (spec_params if "spec." in n_ else other_params).append(p_)
+        # log_lam_map 도 주파수별 계수다 — 2일차에서 같은 lr 로는 안 움직였다
+        is_spec = "spec." in n_ or "log_lam_map" in n_
+        (spec_params if is_spec else other_params).append(p_)
     groups = [{"params": other_params, "lr": args.lr}]
     if spec_params:
         groups.append({"params": spec_params, "lr": args.lr_spectral})
@@ -451,7 +488,8 @@ def main() -> None:
                         "in_ch": in_ch, "state_dict": net.state_dict(), "epoch": ep,
                         "val_psnr": psnr, "val_ssim": ssim, "target": args.target,
                         "tau": args.tau, "refine": args.refine, "unroll_iters": args.unroll_iters,
-                        "sigma_map": args.sigma_map, "share_weights": args.share_weights},
+                        "sigma_map": args.sigma_map, "share_weights": args.share_weights,
+                        "lam_map": args.lam_map, "refine_iters": args.refine_iters},
                        run / "checkpoints" / "checkpoint_best.ckpt")
             mark = "  <- best"
         print(f"[ep {ep:02d}] loss {hist[-1]['loss']:.5f}  val PSNR {psnr:.3f}  SSIM {ssim:.4f}"

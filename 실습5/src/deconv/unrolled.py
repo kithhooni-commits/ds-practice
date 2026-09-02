@@ -104,18 +104,26 @@ def _otf(shape: tuple[int, int], b0: tuple[float, float], device, dtype) -> Tens
 
 
 def data_consistency(z: Tensor, measure: Tensor, lam: Tensor,
-                     b0: tuple[float, float] = (0.0, 1.0)) -> Tensor:
+                     b0: tuple[float, float] = (0.0, 1.0),
+                     lam_map: Tensor | None = None) -> Tensor:
     """argmin_x ‖D·x − g‖² + λ‖x − z‖² 의 닫힌 해.
 
         X = (D*·G + λ·Z) / (|D|² + λ)
 
     D 가 실수 대각이므로 D* = D 다. λ 는 양수여야 하고, 배치마다 다를 수 있다.
+
+    `lam_map` 을 주면 λ 가 **주파수마다 달라진다** (λ · lam_map(k)). 2일차에서
+    배운 것이다 — 주파수별로 따로 계수를 두면 하나의 스칼라로는 못 하는 일을 한다.
+    |D| 가 큰 곳은 측정치를 믿고, 영널 원뿔 근처는 사전지식에 기대는 것이 최적인데,
+    스칼라 λ 하나로는 그 둘을 동시에 못 맞춘다.
     """
     D = _otf(tuple(z.shape[-2:]), b0, z.device, torch.float32)
-    lam = lam.view(-1, 1, 1, 1).to(z.dtype)
+    lam = lam.view(-1, 1, 1, 1).to(torch.float32)
+    if lam_map is not None:
+        lam = lam * lam_map.to(torch.float32)
     G = torch.fft.fft2(measure.float())
     Z = torch.fft.fft2(z.float())
-    X = (D * G + lam.float() * Z) / (D**2 + lam.float())
+    X = (D * G + lam * Z) / (D**2 + lam)
     return torch.fft.ifft2(X).real.to(z.dtype)
 
 
@@ -136,6 +144,8 @@ class UnrolledNet(nn.Module):
         share_weights: bool = True,
         init_lam: float = 0.05,
         sigma_map: bool = False,
+        lam_map: bool = False,
+        shape: tuple[int, int] = (256, 256),
     ) -> None:
         super().__init__()
         self.n_iter = n_iter
@@ -148,6 +158,9 @@ class UnrolledNet(nn.Module):
             [build_model(model, features=features, num_of_layers=17, **kw) for _ in range(n_net)]
         )
         self.log_lam = nn.Parameter(torch.full((n_iter,), float(torch.log(torch.tensor(init_lam)))))
+        # 주파수별 λ 배율. 1(=스칼라와 동일)에서 시작해 필요한 만큼만 벌어진다.
+        # 2일차 교훈: 이 층은 학습률을 따로 크게 줘야 움직인다 (--lr-spectral)
+        self.log_lam_map = nn.Parameter(torch.zeros(n_iter, *shape)) if lam_map else None
 
     def net(self, k: int) -> nn.Module:
         return self.nets[0] if self.share_weights else self.nets[k]
@@ -164,5 +177,6 @@ class UnrolledNet(nn.Module):
         for k in range(self.n_iter):
             z = self.net(k)(x, sigma) if self.sigma_map else self.net(k)(x)
             lam = self.log_lam[k].exp().expand(measure.shape[0])
-            x = data_consistency(z, measure, lam, b0)
+            lmap = self.log_lam_map[k].exp() if self.log_lam_map is not None else None
+            x = data_consistency(z, measure, lam, b0, lmap)
         return x

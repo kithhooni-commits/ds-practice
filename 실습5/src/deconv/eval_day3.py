@@ -57,7 +57,13 @@ def load_net(path: Path, device):
         return net.to(device).eval(), "배포 베이스라인 (End2End U-Net)"
 
     name = ck.get("model", "unet")
-    if name == "unrolled":
+    if name == "twostage":
+        from twostage import TwoStageNet
+        net = TwoStageNet(model=ck.get("refine", "drunet"), features=ck.get("features", 64),
+                          sigma_map=ck.get("sigma_map", False),
+                          lam_map=ck.get("lam_map", False),
+                          refine_iters=ck.get("refine_iters", 0))
+    elif name == "unrolled":
         from unrolled import UnrolledNet
         net = UnrolledNet(n_iter=ck.get("unroll_iters", 5), model=ck.get("refine", "unet"),
                           features=ck.get("features", 32),
