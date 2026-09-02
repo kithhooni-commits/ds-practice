@@ -311,12 +311,26 @@ def main() -> None:
         print(f"λ 초기값 {args.init_lam:.3g}  (원시 측정치의 val 최적 K. 디노이저가 "
               f"좋아지는 만큼 학습으로 내려간다)")
         if args.lam_map and args.lr_spectral > 5e-3:
-            print(f"[주의] --lam-map 은 log 공간이다. --lr-spectral {args.lr_spectral} 은 크다 "
-                  f"— 1e-3 ~ 3e-3 을 권한다")
+            # 경고만 하면 오래된 셀을 다시 돌렸을 때 그대로 지나가 버린다. log 공간에서
+            # lr 0.05 는 한 에폭에 λ 를 e^37 배 옮기고, clamp 에 부딪힌 주파수는 gradient 가
+            # 0 이 되어 거기 얼어붙는다. 몇 시간을 버리느니 여기서 낮춘다.
+            print(f"[자동 조정] --lam-map 은 log 공간이라 --lr-spectral {args.lr_spectral} 은 "
+                  f"너무 크다 (한 에폭에 λ 가 e^{args.lr_spectral * 908:.0f} 배). 2e-3 으로 낮춘다. "
+                  f"의도한 값이면 --lr-spectral 을 5e-3 이하로 직접 줄 것")
+            args.lr_spectral = 2e-3
         if net.sigma_map:
             print("sigma-map: 측정치의 널 원뿔에서 σ 를 읽어 디노이저에 준다")
         if args.init_refine:
             ck = torch.load(args.init_refine, map_location="cpu", weights_only=False)
+            # 1일차 디노이저인지 확인한다. 2·3일차 deconv 체크포인트는 "input" 키를
+            # 갖는다 (train_deconv 가 저장). 그걸 사전지식 자리에 넣으면 이미지 영역
+            # 역산을 배운 가중치를 측정치 영역 디노이저로 쓰는 셈이라 도움이 안 된다.
+            if "input" in ck or "unroll_iters" in ck:
+                raise SystemExit(
+                    f"[중단] {Path(args.init_refine).name} 은 1일차 디노이저가 아니라 "
+                    f"deconv 체크포인트다 (model={ck.get('model')}, input={ck.get('input')}, "
+                    f"val {ck.get('val_psnr', float('nan')):.2f}). "
+                    f"1일차 train.py 로 만든 것을 주거나 --init-refine 을 빼고 돌릴 것")
             sd = ck.get("state_dict", ck)
             subs = [net.denoiser] + list(net.refiners)
             n_ok = n_skip = 0
