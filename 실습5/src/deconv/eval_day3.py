@@ -93,6 +93,9 @@ def main() -> None:
     ap.add_argument("--sweep-K", action="store_true",
                     help="--post-wiener 의 K 를 스윕한다 — **val 에서** 고른다")
     ap.add_argument("--n-val", type=int, default=100, help="스윕에 쓸 val 장수")
+    ap.add_argument("--sigma-ablation", action="store_true",
+                    help="σ 조건화 모델에 일부러 틀린 σ 를 먹여 얼마나 쓰고 있는지 잰다. "
+                         "학습이 필요 없는 ablation 이다")
     ap.add_argument("--self-ensemble", action="store_true",
                     help="4x self-ensemble. dipole 이 견디는 대칭만 쓴다 (좌우/상하/180도). "
                          "90도 회전은 B0 방향을 돌려버려 못 쓴다")
@@ -178,6 +181,29 @@ def main() -> None:
             print(f"val 최적 K={bk[0]:.0e}")
             args.post_wiener = bk[0]
             res["post_wiener_best_on_val"] = {"K": bk[0], "val_psnr": bk[1], "val_ssim": bk[2]}
+
+        if args.sigma_ablation:
+            # σ 를 어떻게 주느냐만 바꾼다. 가중치는 그대로 — 학습 비용 0
+            import unrolled as _u
+
+            real = _u.estimate_sigma
+            variants = {
+                "추정 σ (정상)": real,
+                "σ = 0 (없다고 알려줌)": lambda m, **kw: torch.zeros(m.shape[0], device=m.device),
+                "σ 뒤섞음 (다른 장의 값)": lambda m, **kw: real(m, **kw).flip(0),
+                "σ 2배 (과대평가)": lambda m, **kw: real(m, **kw) * 2,
+            }
+            print()
+            print("[σ ablation — 가중치는 그대로, σ 입력만 바꾼다]")
+            print(f"{'σ 를 어떻게 주는가':<26}{'PSNR':>10}{'SSIM':>10}")
+            print("-" * 46)
+            for lab, fn in variants.items():
+                _u.estimate_sigma = fn
+                r = run(args.post_wiener)
+                print(f"{lab:<26}{np.mean([x[1] for x in r]):>10.2f}"
+                      f"{np.mean([x[2] for x in r]):>10.4f}")
+            _u.estimate_sigma = real
+            res["sigma_ablation"] = True
 
         rows = run(args.post_wiener)
         suffix = f" + Wiener K={args.post_wiener:.0e}" if args.post_wiener else ""
