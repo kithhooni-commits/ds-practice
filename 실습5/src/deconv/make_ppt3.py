@@ -15,13 +15,23 @@
 각자 최고인 도구인데 합치면 진다. 그 이유가 이 발표의 내용이고, 답은
 "선형 역산이 포기한 주파수를 비선형 사전지식으로 메운다" 다.
 
-## 요구사항 대응
+## 구성 (18장)
 
-    1. pipeline                 슬라이드 5
-    2. before/after/error/GT    슬라이드 8-9 (figures_day3.py 가 만든 그림)
-    3. 왜 그 방법인가            슬라이드 3-4, 6-7
-    4. label-free (보너스)       슬라이드 11
-    + 시도별 결과와 개선점 한 페이지  슬라이드 12
+결론을 먼저 말하고 근거를 뒤에 둔다. 요약과 목차를 앞에 놓고 파이프라인을 바로 보인다 —
+"무엇을 만들었나" 를 알아야 뒤의 근거 슬라이드가 읽힌다.
+
+     1  표지               제출값
+     2  요약               문제·발견·한계·답 네 줄
+     3  목차
+     4  파이프라인          요구사항 1
+     5-7 문제와 근거        왜 안 합쳐지나 · 선형의 천장          요구사항 3
+     8-9 설계 선택          왜 전개형인가 · σ 를 라벨 없이        요구사항 3
+    10-12 복원 결과         before/after/difference/GT · 격자   요구사항 2
+    13-14 결과 분석         최종 결과 · σ ablation
+    15  label-free         정답을 한 장도 쓰지 않고              요구사항 4 (보너스)
+    16  이미지 type 취약점                                   배포 tips
+    17  시도별 요약 한 페이지
+    18  검증 규칙          test 는 채점에만
 """
 
 from __future__ import annotations
@@ -50,6 +60,42 @@ def build(prs, name: str, M: dict, R: dict) -> None:
     """M: 최종 모델 결과. R: run_day3.py 가 낸 학습 없는 조합 결과."""
     p, s = M["psnr"], M["ssim"]
     gain = p - BASELINE
+
+    # ---------------------------------------------------------- (파이프라인 본체)
+    # 앞쪽(슬라이드 4)에서 호출한다. 발표에서 "무엇을 만들었나" 를 먼저 보여야
+    # 뒤의 근거 슬라이드들이 읽힌다.
+    def slide_pipeline():
+        sl = blank(prs); bg(sl)
+        title(sl, "파이프라인", "전개형 — 데이터 정합과 사전지식을 번갈아 4번",
+              eyebrow="요구사항 1")
+        xs = Inches(0.75)
+        boxes = [("측정치 g", "h*f + n", SURF),
+                 ("Wiener 초기화", "x₀ = D·G\n   /(D²+λ₀)", SURF),
+                 ("사전지식\nDRUNet", "z = net(x, σ)\nσ 는 측정치에서", ACCENT_SOFT),
+                 ("데이터 정합", "x = (D·G+λZ)\n     /(D²+λ)", SURF),
+                 ("복원 f̂", f"{p:.2f} dB", ACCENT_SOFT)]
+        for i, (h1, h2, fill) in enumerate(boxes):
+            card(sl, xs, Inches(2.3), Inches(2.0), Inches(1.6), fill,
+                 ACCENT if fill == ACCENT_SOFT else RULE)
+            text(sl, xs + Inches(0.1), Inches(2.45), Inches(1.8), Inches(0.5),
+                 h1, size=13, color=INK, bold=True, align=PP_ALIGN.CENTER)
+            text(sl, xs + Inches(0.1), Inches(2.95), Inches(1.8), Inches(0.8),
+                 h2, size=10.5, color=MUTED, align=PP_ALIGN.CENTER, font=MONO)
+            xs += Inches(2.25)
+            if i < len(boxes) - 1:
+                arrow(sl, xs - Inches(0.22), Inches(2.98), Inches(0.2), Inches(0.24))
+        # 되돌아가는 화살표
+        text(sl, Inches(3.0), Inches(4.05), Inches(6.5), Inches(0.4),
+             "↑____________ 4번 반복 ____________|", size=12, color=ACCENT,
+             bold=True, align=PP_ALIGN.CENTER, font=MONO)
+
+        card(sl, Inches(0.9), Inches(4.8), Inches(11.5), Inches(1.6), ACCENT_SOFT, ACCENT)
+        text(sl, Inches(1.2), Inches(5.0), Inches(11), Inches(1.3),
+             [("데이터 정합은 학습 파라미터가 없다. dipole 은 주파수 영역에서 대각 연산자라 닫힌 해로 정확히 풀린다.",
+               {"bold": True, "color": INK}),
+              ("네트워크는 '아는 주파수를 다시 맞히는' 일을 배울 필요가 없고, 모르는 주파수를 채우는 데만 용량을 쓴다.", {}),
+              ("λ 는 단계마다 따로 학습해 '이번엔 측정치를 얼마나 믿을지'를 스스로 정한다.", {})],
+             size=13, color=INK2)
 
     # ---------------------------------------------------------- 1. 표지
     sl = blank(prs); bg(sl)
@@ -81,7 +127,66 @@ def build(prs, name: str, M: dict, R: dict) -> None:
     if name:
         footer(sl, name)
 
-    # ---------------------------------------------------------- 2. 문제
+    # ---------------------------------------------------------- 2. 요약
+    # 결론을 먼저 말한다. 뒤 슬라이드는 전부 이 세 줄의 근거다.
+    sl = blank(prs); bg(sl)
+    title(sl, "요약", "한 장으로", eyebrow="Summary")
+    ys = Inches(1.7)
+    for tag, head, body in [
+        ("문제", "흐림과 노이즈가 겹쳤다  g = h * f + n",
+         "1일차는 노이즈만, 2일차는 흐림만이었다. 3일차는 둘이 겹쳐 각자의 답이 통하지 않는다."),
+        ("발견", "각자 최고인 도구를 이어 붙이면 진다 — 21.06 dB",
+         "1일차 디노이저(37.42)와 2일차 Wiener(109.86)를 이어도 배포 baseline(25.01)에 진다. "
+         "역산이 노이즈를 +51.5 dB 증폭하기 때문이다."),
+        ("한계", "선형 방법의 천장은 19.80 dB",
+         "정답을 알고 만든 최고의 선형 필터(오라클 위너)조차 그렇다. 그 위는 비선형 사전지식의 몫이다."),
+        ("답", "전개형 — 물리 제약과 학습된 사전지식을 번갈아",
+         "역산은 닫힌 해로 정확히 풀고, 네트워크는 역산이 포기한 주파수를 메우는 데만 용량을 쓴다. "
+         "σ 는 측정치에서 읽어 장마다 다른 노이즈 세기에 맞춘다."),
+    ]:
+        card(sl, Inches(0.9), ys, Inches(11.5), Inches(1.05))
+        text(sl, Inches(1.15), ys + Inches(0.28), Inches(1.1), Inches(0.4),
+             tag, size=12, color=ACCENT, bold=True, font=MONO)
+        text(sl, Inches(2.3), ys + Inches(0.12), Inches(9.9), Inches(0.35),
+             head, size=14, color=INK, bold=True)
+        text(sl, Inches(2.3), ys + Inches(0.5), Inches(9.9), Inches(0.5),
+             body, size=11.5, color=MUTED)
+        ys += Inches(1.15)
+
+    card(sl, Inches(0.9), Inches(6.05), Inches(11.5), Inches(0.85), ACCENT_SOFT, ACCENT)
+    text(sl, Inches(1.15), Inches(6.22), Inches(11), Inches(0.5),
+         f"결과   {p:.2f} dB / {s:.4f}   ·   배포 baseline {BASELINE:.2f} / {BASELINE_S:.4f} 대비 "
+         f"{gain:+.2f} dB · {s - BASELINE_S:+.4f}   ·   통과 기준 26 / 0.83",
+         size=13, color=INK, bold=True)
+
+    # ---------------------------------------------------------- 3. 목차
+    sl = blank(prs); bg(sl)
+    title(sl, "목차", None, eyebrow="Contents")
+    items = [("1", "파이프라인", "무엇을 만들었나", "요구사항 1"),
+             ("2", "문제와 근거", "왜 1일차 + 2일차가 안 되는가 · 선형의 천장", "요구사항 3"),
+             ("3", "설계 선택", "왜 전개형인가 · σ 를 라벨 없이 읽는 법", "요구사항 3"),
+             ("4", "복원 결과", "before / after / difference / GT · 노이즈별 격자", "요구사항 2"),
+             ("5", "결과 분석", "어떤 노이즈·어떤 이미지에 취약한가 · σ ablation", "tips"),
+             ("6", "label-free", "정답을 한 장도 쓰지 않고 푼다", "요구사항 4 · 보너스"),
+             ("7", "시도별 요약", "무엇을 해봤고 무엇을 배웠나 · 검증 규칙", "")]
+    ys = Inches(1.75)
+    for num, head, body, req in items:
+        card(sl, Inches(0.9), ys, Inches(11.5), Inches(0.62))
+        text(sl, Inches(1.15), ys + Inches(0.13), Inches(0.5), Inches(0.4),
+             num, size=15, color=ACCENT, bold=True, font=MONO)
+        text(sl, Inches(1.8), ys + Inches(0.14), Inches(3.0), Inches(0.4),
+             head, size=13.5, color=INK, bold=True)
+        text(sl, Inches(4.9), ys + Inches(0.17), Inches(5.4), Inches(0.4),
+             body, size=11.5, color=MUTED)
+        if req:
+            text(sl, Inches(10.3), ys + Inches(0.17), Inches(1.9), Inches(0.4),
+                 req, size=10.5, color=ACCENT, font=MONO, align=PP_ALIGN.RIGHT)
+        ys += Inches(0.72)
+
+    # ---------------------------------------------------------- 4. 파이프라인 (요구사항 1)
+    slide_pipeline()
+
+    # ---------------------------------------------------------- 5. 문제
     sl = blank(prs); bg(sl)
     title(sl, "문제 — 두 열화가 겹쳤다", "g = h * f + n. 노이즈가 흐림 **뒤에** 붙는다",
           eyebrow="Day 3")
@@ -150,39 +255,7 @@ def build(prs, name: str, M: dict, R: dict) -> None:
           ("이미지 사전지식으로 메우는 문제다.", {})],
          size=14, color=INK2)
 
-    # ---------------------------------------------------------- 5. 파이프라인 (요구사항 1)
-    sl = blank(prs); bg(sl)
-    title(sl, "파이프라인", "전개형 — 데이터 정합과 사전지식을 번갈아 4번",
-          eyebrow="요구사항 1")
-    xs = Inches(0.75)
-    boxes = [("측정치 g", "h*f + n", SURF),
-             ("Wiener 초기화", "x₀ = D·G\n   /(D²+λ₀)", SURF),
-             ("사전지식\nDRUNet", "z = net(x, σ)\nσ 는 측정치에서", ACCENT_SOFT),
-             ("데이터 정합", "x = (D·G+λZ)\n     /(D²+λ)", SURF),
-             ("복원 f̂", f"{p:.2f} dB", ACCENT_SOFT)]
-    for i, (h1, h2, fill) in enumerate(boxes):
-        card(sl, xs, Inches(2.3), Inches(2.0), Inches(1.6), fill,
-             ACCENT if fill == ACCENT_SOFT else RULE)
-        text(sl, xs + Inches(0.1), Inches(2.45), Inches(1.8), Inches(0.5),
-             h1, size=13, color=INK, bold=True, align=PP_ALIGN.CENTER)
-        text(sl, xs + Inches(0.1), Inches(2.95), Inches(1.8), Inches(0.8),
-             h2, size=10.5, color=MUTED, align=PP_ALIGN.CENTER, font=MONO)
-        xs += Inches(2.25)
-        if i < len(boxes) - 1:
-            arrow(sl, xs - Inches(0.22), Inches(2.98), Inches(0.2), Inches(0.24))
-    # 되돌아가는 화살표
-    text(sl, Inches(3.0), Inches(4.05), Inches(6.5), Inches(0.4),
-         "↑____________ 4번 반복 ____________|", size=12, color=ACCENT,
-         bold=True, align=PP_ALIGN.CENTER, font=MONO)
-
-    card(sl, Inches(0.9), Inches(4.8), Inches(11.5), Inches(1.6), ACCENT_SOFT, ACCENT)
-    text(sl, Inches(1.2), Inches(5.0), Inches(11), Inches(1.3),
-         [("데이터 정합은 학습 파라미터가 없다. dipole 은 주파수 영역에서 대각 연산자라 닫힌 해로 정확히 풀린다.",
-           {"bold": True, "color": INK}),
-          ("네트워크는 '아는 주파수를 다시 맞히는' 일을 배울 필요가 없고, 모르는 주파수를 채우는 데만 용량을 쓴다.", {}),
-          ("λ 는 단계마다 따로 학습해 '이번엔 측정치를 얼마나 믿을지'를 스스로 정한다.", {})],
-         size=13, color=INK2)
-
+    # ---------------------------------------------------------- 6. 왜 이 구조인가 (요구사항 3)
     # ---------------------------------------------------------- 6. 왜 이 구조인가 (요구사항 3)
     sl = blank(prs); bg(sl)
     title(sl, "왜 전개형인가 — DC-Net 이 죽은 자리에서", "2일차 최고 구조가 3일차에서 실패한 이유",
