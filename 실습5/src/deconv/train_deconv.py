@@ -268,6 +268,9 @@ def main() -> None:
                          "3일차 σ 는 이미지마다 200배 차이가 난다")
     ap.add_argument("--init-refine", type=Path, default=None,
                     help="사전지식 자리를 1일차 디노이저 체크포인트로 초기화한다")
+    ap.add_argument("--init-model", type=Path, default=None,
+                    help="같은 구조의 체크포인트에서 이어서 학습한다. 손실을 바꿔 미세조정할 때 쓴다 "
+                         "— Charbonnier 로 PSNR 을 벌어 두고 SSIM 을 얹는 식")
     ap.add_argument("--share-weights", action="store_true", default=True)
     ap.add_argument("--no-share-weights", dest="share_weights", action="store_false")
     ap.add_argument("--epochs", type=int, default=30)
@@ -462,6 +465,30 @@ def main() -> None:
                                                 ensure_ascii=False, indent=2), encoding="utf-8")
 
     print(f"run    : {run}")
+    if args.init_model:
+        # 손실을 바꿔 이어서 학습한다. Charbonnier 로 PSNR 을 벌어 두고 SSIM 을 얹는 식.
+        # SSIM 을 처음부터 걸면 덜 학습된 모델을 "정답과 맞든 아니든 국소 대비를 키우는"
+        # 쪽으로 밀어 PSNR 이 떨어진다 (실측: ep00 18.73 -> ep05 17.53).
+        ck0 = torch.load(args.init_model, map_location="cpu", weights_only=False)
+        sd0 = ck0.get("state_dict", ck0)
+        want = (f"model={ck0.get('model')} refine={ck0.get('refine')} "
+                f"features={ck0.get('features')} unroll_iters={ck0.get('unroll_iters')} "
+                f"sigma_map={ck0.get('sigma_map')}")
+        try:
+            miss = net.load_state_dict(sd0, strict=False)
+        except RuntimeError:
+            # 텐서 모양이 다르면 수백 줄이 쏟아진다. 필요한 것만 보여준다
+            raise SystemExit(
+                f"[중단] 구조가 맞지 않는다. 체크포인트는 {want} 로 만들어졌다. "
+                f"--init-model 은 같은 인자로 돌릴 때만 쓸 수 있다") from None
+        if miss.missing_keys or miss.unexpected_keys:
+            raise SystemExit(
+                f"[중단] 구조가 다르다 — 없는 키 {len(miss.missing_keys)}개, "
+                f"남는 키 {len(miss.unexpected_keys)}개. 체크포인트는 {want} 다")
+        print(f"이어서 학습: {Path(args.init_model).name} "
+              f"(ep {ck0.get('epoch')}, val {ck0.get('val_psnr', float('nan')):.2f} dB / "
+              f"{ck0.get('val_ssim', float('nan')):.4f})")
+
     print(f"model  : {args.model} f{args.features} | 입력 {args.input} ({in_ch}ch) | loss {args.loss}")
     if args.noise_model == "challenge":
         print("노이즈 : 1일차 4종 (gaussian/rician/uniform/salt&pepper) 을 흐림 뒤에 — 3일차 조건")
