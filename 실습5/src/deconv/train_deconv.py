@@ -294,6 +294,9 @@ def main() -> None:
     ap.add_argument("--warmup", type=int, default=200, help="lr 을 0 에서 올리는 step 수")
     ap.add_argument("--data", type=Path, default=DEFAULT_DATA)
     ap.add_argument("--out", type=Path, default=ROOT / "runs")
+    ap.add_argument("--limit-train", type=int, default=0,
+                    help="학습에 쓸 장수를 제한한다 (0=전부 7268). 배포 tips 의 "
+                         "'적은 수의 데이터로 학습하기'. 데이터가 얼마나 필요한지 잰다")
     ap.add_argument("--tag", default="")
     ap.add_argument("--mirror", type=Path, default=None,
                     help="best 가 갱신될 때마다 이 디렉터리로도 복사한다. Drive 를 주면 "
@@ -448,6 +451,12 @@ def main() -> None:
 
     train_ds = DeconvDataset(args.data / "train", True, args.patch, args.noise,
                              args.noise_random, args.input, args.noise_model, args.target)
+    if args.limit_train:
+        # 고르게 뽑는다 — 앞에서부터 자르면 파일명 순서가 곧 이미지 종류 순서일 수 있다
+        idx = np.linspace(0, len(train_ds.files) - 1, args.limit_train).astype(int)
+        train_ds.files = [train_ds.files[i] for i in sorted(set(idx))]
+        print(f"적은 데이터로 학습: {len(train_ds.files)}장만 쓴다 (전체의 "
+              f"{100 * len(train_ds.files) / 7268:.1f}%)")
     valid_ds = DeconvDataset(args.data / "val", False, None, args.noise, False, args.input, args.noise_model, args.target)
     train_loader = DataLoader(train_ds, batch_size=args.batch, shuffle=True,
                               num_workers=args.workers, pin_memory=True, drop_last=True,
