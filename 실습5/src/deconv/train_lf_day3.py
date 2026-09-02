@@ -169,8 +169,8 @@ def main() -> None:
         ck0 = torch.load(args.eval_only, map_location="cpu", weights_only=False)
         net.load_state_dict(ck0["state_dict"]); net.eval()
         print(f"채점만 한다: {args.eval_only.name} "
-              f"(ep {ck0.get('epoch')}, 학습 당시 val {ck0.get('val_psnr', float('nan')):.2f})
-")
+              f"(ep {ck0.get('epoch')}, 학습 당시 val {ck0.get('val_psnr', float('nan')):.2f})")
+        print()
         # λ 규칙 비교. 제출용은 라벨 없이 고른 쪽이다
         print(f"{'λ 를 어떻게 정하는가':<34}{'val PSNR':>10}{'val SSIM':>10}")
         print("-" * 54)
@@ -190,9 +190,9 @@ def main() -> None:
                 best_k = (float(K), float(np.mean(ps)), float(np.mean(ss)))
         print(f"{'(참고) val 에서 고른 고정 K=' + f'{best_k[0]:.2g}':<34}"
               f"{best_k[1]:>10.2f}{best_k[2]:>10.4f}")
-        print("
-제출용은 라벨 없이 고른 쪽이다. 고정 K 는 얼마나 손해인지 보려고 같이 잰다.
-")
+        print()
+        print("제출용은 라벨 없이 고른 쪽이다. 고정 K 는 얼마나 손해인지 보려고 같이 잰다.")
+        print()
         rows = [(nz, calculate_psnr(restore(net, g), gt).item(),
                  calculate_ssim(restore(net, g), gt).item()) for nz, g, gt in test]
         print(f"[label-free · λ 도 측정치에서 · 4× self-ensemble — test {len(rows)}장]")
@@ -203,8 +203,8 @@ def main() -> None:
             if s_:
                 print(f"{nz:<18}{len(s_):>4}{np.mean([r[1] for r in s_]):>10.2f}"
                       f"{np.mean([r[2] for r in s_]):>10.4f}")
-        print(f"
-제출값(label-free) → PSNR {np.mean([r[1] for r in rows]):.2f}  "
+        print()
+        print(f"제출값(label-free) → PSNR {np.mean([r[1] for r in rows]):.2f}  "
               f"SSIM {np.mean([r[2] for r in rows]):.4f}")
         return
 
