@@ -88,7 +88,9 @@ def main() -> None:
     ap.add_argument("--wiener", action="store_true", help="고전 Wiener K 스윕도 잰다")
     ap.add_argument("--post-wiener", type=float, default=None,
                     help="모델 출력에 Wiener 를 한 번 더 건다. --target measure 로 학습한 모델용")
-    ap.add_argument("--sweep-K", action="store_true", help="--post-wiener 의 K 를 스윕한다")
+    ap.add_argument("--sweep-K", action="store_true",
+                    help="--post-wiener 의 K 를 스윕한다 — **val 에서** 고른다")
+    ap.add_argument("--n-val", type=int, default=100, help="스윕에 쓸 val 장수")
     ap.add_argument("--out", type=Path, default=None)
     args = ap.parse_args()
 
@@ -103,23 +105,35 @@ def main() -> None:
               np.load(args.data / "test_label" / r["file"]).astype(np.float64)) for r in meta]
     print(f"test_deconv_noise {len(items)}장 · g = dipole(f) + n")
 
+    # K 스윕은 **val 에서** 한다. test 로 고르면 학습이 아니어도 test 를 쓴 것이다
+    def val_items():
+        from day3_common import load_val
+
+        return [(nz, g.numpy()[0, 0].astype(np.float64), gt.numpy()[0, 0].astype(np.float64))
+                for nz, g, gt in load_val(args.data, args.n_val)]
+
     res = {}
     rows = [(nz, *sc(g.astype(np.float32), gt.astype(np.float32))) for nz, g, gt in items]
     res["input"] = table("입력 (blur + noise)", rows)
 
     if args.wiener:
         best = (None, -1, 0)
-        print(f"\n[Wiener K 스윕]")
+        vitems = val_items()
+        print(f"\n[Wiener K 스윕 — val {len(vitems)}장. test 는 건드리지 않는다]")
         print(f"{'K':>10}{'PSNR':>10}{'SSIM':>10}")
         print("-" * 30)
         for K in (1e-3, 1e-2, 3e-2, 1e-1, 3e-1):
-            r = [(nz, *sc(wiener(g, K).astype(np.float32), gt.astype(np.float32))) for nz, g, gt in items]
+            r = [(nz, *sc(wiener(g, K).astype(np.float32), gt.astype(np.float32))) for nz, g, gt in vitems]
             p, s = float(np.mean([x[1] for x in r])), float(np.mean([x[2] for x in r]))
             if p > best[1]:
                 best = (K, p, s)
             print(f"{K:>10.0e}{p:>10.2f}{s:>10.4f}")
-        print(f"최적 K={best[0]:.0e}  {best[1]:.2f} / {best[2]:.4f}")
-        res["wiener_best"] = {"K": best[0], "psnr": best[1], "ssim": best[2]}
+        print(f"val 최적 K={best[0]:.0e}  {best[1]:.2f} / {best[2]:.4f}")
+        res["wiener_best_on_val"] = {"K": best[0], "val_psnr": best[1], "val_ssim": best[2]}
+        # 고른 K 로 test 채점 — test 는 여기서 한 번만 본다
+        r = [(nz, *sc(wiener(g, best[0]).astype(np.float32), gt.astype(np.float32)))
+             for nz, g, gt in items]
+        res["wiener_test"] = table(f"Wiener K={best[0]:.0e} (val 에서 고름)", r)
 
     if args.ckpt:
         net, label = load_net(args.ckpt, device)
@@ -131,10 +145,10 @@ def main() -> None:
             return data_consistency(torch.zeros_like(x), x,
                                     torch.full((x.shape[0],), float(K), device=x.device))
 
-        def run(K):
+        def run(K, its=None):
             rs = []
             with torch.no_grad():
-                for nz, g, gt in items:
+                for nz, g, gt in (items if its is None else its):
                     a = torch.from_numpy(g.astype(np.float32))[None, None].to(device)
                     b = torch.from_numpy(gt.astype(np.float32))[None, None].to(device)
                     rs.append((nz, *sc(post(net(a), K), b)))
@@ -142,19 +156,20 @@ def main() -> None:
 
         if args.sweep_K:
             print()
-            print("[출력에 Wiener 를 한 번 더 — K 스윕]")
+            vit = val_items()
+            print(f"[출력에 Wiener 를 한 번 더 — K 스윕, val {len(vit)}장]")
             print(f"{'K':>10}{'PSNR':>10}{'SSIM':>10}")
             print("-" * 30)
             bk = (None, -1, 0)
             for K in (1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2, 1e-1):
-                r = run(K)
+                r = run(K, vit)
                 p_, s_ = float(np.mean([x[1] for x in r])), float(np.mean([x[2] for x in r]))
                 if p_ > bk[1]:
                     bk = (K, p_, s_)
                 print(f"{K:>10.0e}{p_:>10.2f}{s_:>10.4f}")
-            print(f"최적 K={bk[0]:.0e}")
+            print(f"val 최적 K={bk[0]:.0e}")
             args.post_wiener = bk[0]
-            res["post_wiener_best"] = {"K": bk[0], "psnr": bk[1], "ssim": bk[2]}
+            res["post_wiener_best_on_val"] = {"K": bk[0], "val_psnr": bk[1], "val_ssim": bk[2]}
 
         rows = run(args.post_wiener)
         suffix = f" + Wiener K={args.post_wiener:.0e}" if args.post_wiener else ""

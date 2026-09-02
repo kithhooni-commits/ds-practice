@@ -90,8 +90,10 @@ def main() -> None:
     ap.add_argument("--iters", type=int, default=8)
     ap.add_argument("--lam0", type=float, default=0.3)
     ap.add_argument("--lam1", type=float, default=0.01)
-    ap.add_argument("--sweep", action="store_true", help="반복 횟수와 λ 범위를 훑는다")
+    ap.add_argument("--sweep", action="store_true",
+                    help="반복 횟수와 λ 범위를 훑는다 — **val 에서** 고른다")
     ap.add_argument("--n", type=int, default=0, help="평가 장수 제한 (0=전부)")
+    ap.add_argument("--n-val", type=int, default=100, help="스윕에 쓸 val 장수")
     ap.add_argument("--out", type=Path, default=None)
     args = ap.parse_args()
 
@@ -110,31 +112,36 @@ def main() -> None:
         gt = torch.from_numpy(np.load(args.data / "test_label" / r["file"]).astype(np.float32))[None, None].to(device)
         items.append((r["noise_type"], g, gt))
 
-    def run(n_iter, lam0, lam1):
+    def run(items_, n_iter, lam0, lam1):
         rows = []
-        for nz, g, gt in items:
+        for nz, g, gt in items_:
             x = pnp(g, net, n_iter, lam0, lam1)
             rows.append((nz, calculate_psnr(x, gt).item(), calculate_ssim(x, gt).item()))
         return rows
 
     results = {}
     if args.sweep:
+        # **val 에서 고른다.** test 로 고르면 학습이 아니어도 test 를 쓴 것이다
+        from day3_common import load_val
+
+        val = load_val(args.data, args.n_val, device)
+        print(f"[λ 스윕 — val {len(val)}장. test 는 건드리지 않는다]")
         print(f"{'iters':>6}{'lam0':>8}{'lam1':>8}{'PSNR':>9}{'SSIM':>9}")
         print("-" * 40)
         best = (None, -1, 0)
         for n_iter in (1, 4, 8, 16):
             for lam0, lam1 in ((0.3, 0.01), (0.1, 0.003), (0.5, 0.03), (0.05, 0.005)):
-                rows = run(n_iter, lam0, lam1)
+                rows = run(val, n_iter, lam0, lam1)
                 p, s = float(np.mean([r[1] for r in rows])), float(np.mean([r[2] for r in rows]))
                 if p > best[1]:
                     best = ((n_iter, lam0, lam1), p, s)
                 print(f"{n_iter:>6}{lam0:>8.3g}{lam1:>8.3g}{p:>9.2f}{s:>9.4f}")
-        print(f"\n최적: iters={best[0][0]} λ {best[0][1]}→{best[0][2]}   {best[1]:.2f} / {best[2]:.4f}")
+        print(f"\nval 최적: iters={best[0][0]} λ {best[0][1]}→{best[0][2]}   {best[1]:.2f} / {best[2]:.4f}")
         args.iters, args.lam0, args.lam1 = best[0]
-        results["sweep_best"] = {"iters": best[0][0], "lam0": best[0][1], "lam1": best[0][2],
-                                 "psnr": best[1], "ssim": best[2]}
+        results["sweep_best_on_val"] = {"iters": best[0][0], "lam0": best[0][1], "lam1": best[0][2],
+                                        "val_psnr": best[1], "val_ssim": best[2]}
 
-    rows = run(args.iters, args.lam0, args.lam1)
+    rows = run(items, args.iters, args.lam0, args.lam1)
     print(f"\n[plug-and-play · iters={args.iters} λ {args.lam0}→{args.lam1}]")
     print(f"{'noise':<18}{'n':>4}{'PSNR':>10}{'SSIM':>10}")
     print("-" * 42)

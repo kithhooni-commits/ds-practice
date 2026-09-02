@@ -1,0 +1,124 @@
+{
+  "입력 (blur + noise)": {
+    "psnr": 8.651977634429931,
+    "ssim": 0.005070386733859777,
+    "category": "—",
+    "per_noise": {
+      "uniform": 8.516913197257303,
+      "rician": 9.406475146611532,
+      "salt_and_pepper": 8.521543216705322,
+      "gaussian": 7.75713232585362
+    }
+  },
+  "Wiener 단독 (K=0.0316)": {
+    "psnr": 14.984435606002808,
+    "ssim": 0.4497813550755382,
+    "category": "Others",
+    "per_noise": {
+      "uniform": 15.578644145618785,
+      "rician": 14.877881209055582,
+      "salt_and_pepper": 14.610791301727295,
+      "gaussian": 14.767121587480817
+    }
+  },
+  "wiener_K": 0.03162277660168379,
+  "mean 3×3 → Wiener (K=0.01)": {
+    "psnr": 19.294385480880738,
+    "ssim": 0.5444487184286118,
+    "category": "Others",
+    "per_noise": {
+      "uniform": 20.77311715212735,
+      "rician": 17.08790461222331,
+      "salt_and_pepper": 19.64489850997925,
+      "gaussian": 20.252470016479492
+    }
+  },
+  "median 3×3 → Wiener (K=0.01)": {
+    "psnr": 19.442753672599792,
+    "ssim": 0.578337537869811,
+    "category": "Others",
+    "per_noise": {
+      "uniform": 19.80128929831765,
+      "rician": 16.677207072575886,
+      "salt_and_pepper": 22.188107872009276,
+      "gaussian": 19.69834300449916
+    }
+  },
+  "adaptive 5×5 → Wiener (K=0.01)": {
+    "psnr": 19.32195897102356,
+    "ssim": 0.5461991101503372,
+    "category": "Others",
+    "per_noise": {
+      "uniform": 21.853197964754973,
+      "rician": 17.344664096832275,
+      "salt_and_pepper": 17.9587194442749,
+      "gaussian": 20.68143108912877
+    }
+  },
+  "1일차 label-free → Wiener (K=0.01)": {
+    "psnr": 18.869585609436037,
+    "ssim": 0.48864161791279914,
+    "category": "Self-supervised",
+    "per_noise": {
+      "uniform": 20.003572030500933,
+      "rician": 16.78058711687724,
+      "salt_and_pepper": 19.503026390075682,
+      "gaussian": 19.76383181980678
+    }
+  },
+  "1일차 supervised → Wiener (K=0.00562)": {
+    "psnr": 20.970166444778442,
+    "ssim": 0.5994086723774672,
+    "category": "Supervised",
+    "per_noise": {
+      "uniform": 23.901066346602008,
+      "rician": 19.190722306569416,
+      "salt_and_pepper": 18.120951461791993,
+      "gaussian": 23.485249383108957
+    }
+  },
+  "Wiener → 1일차 label-free (K=0.01)": {
+    "psnr": 19.94387767314911,
+    "ssim": 0.5770977437496185,
+    "category": "Self-supervised",
+    "per_noise": {
+      "uniform": 21.51522272283381,
+      "rician": 17.552278916041057,
+      "salt_and_pepper": 20.083578205108644,
+      "gaussian": 21.374932561601913
+    }
+  },
+  "Wiener → 1일차 supervised (K=0.0178)": {
+    "psnr": 16.88066210746765,
+    "ssim": 0.4969742251560092,
+    "category": "Supervised",
+    "per_noise": {
+      "uniform": 18.262755827470258,
+      "rician": 16.516935507456463,
+      "salt_and_pepper": 15.598342514038086,
+      "gaussian": 17.164216995239258
+    }
+  },
+  "plug-and-play · 1일차 label-free (iters=4, λ 0.5→0.03)": {
+    "psnr": 17.994782543182374,
+    "ssim": 0.4791917594149709,
+    "category": "Self-supervised",
+    "per_noise": {
+      "uniform": 21.023844198747113,
+      "rician": 15.980324188868204,
+      "salt_and_pepper": 16.519310188293456,
+      "gaussian": 18.796003341674805
+    }
+  },
+  "plug-and-play · 1일차 supervised (iters=2, λ 0.5→0.03)": {
+    "psnr": 16.02439796924591,
+    "ssim": 0.45505774337798355,
+    "category": "Supervised",
+    "per_noise": {
+      "uniform": 17.499079357494008,
+      "rician": 15.361417770385742,
+      "salt_and_pepper": 15.030123329162597,
+      "gaussian": 16.26397132873535
+    }
+  }
+}
