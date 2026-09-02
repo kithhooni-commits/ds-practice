@@ -86,20 +86,21 @@ def label_free_lambda(measure: Tensor, b0: tuple[float, float] = (0.0, 1.0)) -> 
 def restore(net, measure: Tensor, lam: Tensor | None = None, se: bool = True) -> Tensor:
     """z = 디노이저(g) -> x = Wiener(z, λ). λ 를 안 주면 라벨 없이 정한다.
 
-    ## λ 는 **디노이징 뒤** 상태로 정해야 한다
+    ## λ 는 **입력** 측정치에서 정한다 (디노이징 뒤가 아니다)
 
-    처음에는 입력 측정치의 σ 로 λ 를 정했는데 그것이 틀렸다. 디노이저가 노이즈를
-    지우고 나면 남은 노이즈가 훨씬 작으므로 λ 도 그만큼 작아야 한다. 전달 곡선에서
-    최적 K 가 디노이징 품질에 따라 1e-2 에서 1e-8 까지 네 자릿수를 움직인다.
-    입력 기준 λ 를 그대로 쓰면 "노이즈가 아직 그대로" 라고 가정하는 셈이라 과하게
-    뭉갠다 (실측: label-free val 이 16.8 에서 멈췄다).
+    한때 "디노이저가 노이즈를 지웠으니 λ 도 작아져야 한다" 고 보고 출력 z 의 널
+    원뿔에서 잔여 σ 를 재 봤다. **더 나빴다** (val 16.30 vs 17.90).
 
-    남은 노이즈는 **디노이저 출력의 널 원뿔** 에서 잰다. 거기엔 신호가 실려올 수
-    없으므로 z 에 남아 있는 것은 전부 잔여 노이즈다. 여전히 정답을 쓰지 않는다.
+    이유는 디노이저가 널 원뿔의 노이즈까지 같이 뭉개기 때문이다. 그러면 잔여 σ 가
+    실제보다 작게 나오고 λ 가 지나치게 작아져 노이즈를 덜 막는다. 디노이징 뒤의
+    널 원뿔은 잔여 노이즈의 공정한 표본이 아니다 — 거기만 유독 세게 지워져 있다.
+
+    입력 기준 λ 는 val 에서 고른 고정 K(17.77) 보다도 낫다. 정답을 한 번도 쓰지
+    않고 그렇다.
     """
     z = self_ensemble(net, measure) if se else net(measure)
     if lam is None:
-        lam = label_free_lambda(z)
+        lam = label_free_lambda(measure)
     elif not torch.is_tensor(lam):
         lam = torch.full((measure.shape[0],), float(lam), device=measure.device)
     return data_consistency(torch.zeros_like(z), z, lam)
@@ -175,9 +176,10 @@ def main() -> None:
         print(f"{'λ 를 어떻게 정하는가':<34}{'val PSNR':>10}{'val SSIM':>10}")
         print("-" * 54)
         for lab, fn in [
-            ("라벨 없이 (디노이징 뒤 잔여 σ)", lambda g: restore(net, g)),
-            ("라벨 없이 (입력 σ — 예전 방식)",
-             lambda g: restore(net, g, label_free_lambda(g))),
+            ("라벨 없이 (입력 σ) — 제출용", lambda g: restore(net, g)),
+            ("라벨 없이 (디노이징 뒤 잔여 σ)",
+             lambda g: restore(net, g, label_free_lambda(
+                 self_ensemble(net, g) if True else g))),
         ]:
             ps = [calculate_psnr(fn(g), gt).item() for _, g, gt in val]
             ss = [calculate_ssim(fn(g), gt).item() for _, g, gt in val]
