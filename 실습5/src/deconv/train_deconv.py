@@ -272,13 +272,31 @@ def main() -> None:
             # 훨씬 나은 곳에서 시작한다 — 어차피 그 자리가 할 일이 '노이즈 지우기'다
             ck = torch.load(args.init_refine, map_location="cpu", weights_only=False)
             sd = ck.get("state_dict", ck)
-            n_ok = 0
+            n_ok = n_skip = 0
             for sub in net.nets:
-                miss = sub.load_state_dict(sd, strict=False)
-                n_ok += len(sd) - len(miss.unexpected_keys)
+                tgt = sub.state_dict()
+                fit = {}
+                for k, v in sd.items():
+                    if k not in tgt:
+                        continue
+                    if tgt[k].shape == v.shape:
+                        fit[k] = v
+                    elif tgt[k].dim() == 4 and tgt[k].shape[1] == v.shape[1] + 1 \
+                            and tgt[k].shape[0] == v.shape[0]:
+                        # σ 조건화로 입력 채널이 하나 늘었다. 원래 가중치는 0번 채널에
+                        # 그대로 넣고 σ 채널은 0 으로 둔다 — 시작 시점엔 1일차
+                        # 디노이저와 **정확히 같게** 동작하고, 거기서부터 σ 를 배운다
+                        w = tgt[k].clone().zero_()
+                        w[:, : v.shape[1]] = v
+                        fit[k] = w
+                    else:
+                        n_skip += 1
+                sub.load_state_dict(fit, strict=False)
+                n_ok += len(fit)
             print(f"refine 초기화: {Path(args.init_refine).name} "
                   f"(1일차 val PSNR {ck.get('val_psnr', float('nan')):.2f}, "
-                  f"{n_ok}/{len(sd) * len(net.nets)} 텐서 적재)")
+                  f"{n_ok}/{len(sd) * len(net.nets)} 텐서 적재"
+                  + (f", 모양 안 맞아 건너뜀 {n_skip}" if n_skip else "") + ")")
     elif args.model == "dcnet":
         if args.patch:
             print(f"[주의] dcnet 은 전역 연산이라 크롭을 못 한다. --patch 를 무시한다")
