@@ -492,6 +492,23 @@ def main() -> None:
         want = (f"model={ck0.get('model')} refine={ck0.get('refine')} "
                 f"features={ck0.get('features')} unroll_iters={ck0.get('unroll_iters')} "
                 f"sigma_map={ck0.get('sigma_map')}")
+        # 조건 채널이 늘어난 경우(σ 하나 -> σ·왜도·첨도)는 이어받을 수 있다.
+        # 첫 conv 의 입력 채널만 다르므로 원래 가중치를 앞 채널에 넣고 나머지는 0 으로
+        # 둔다. 그러면 **시작 시점엔 원본과 정확히 같게** 동작하고, 거기서부터 새
+        # 통계를 쓰는 법을 배운다 (σ 조건화를 처음 붙일 때 쓴 것과 같은 수법이다).
+        tgt0 = net.state_dict()
+        grown = 0
+        for k, v in list(sd0.items()):
+            if k in tgt0 and tgt0[k].shape != v.shape and tgt0[k].dim() == 4 \
+                    and tgt0[k].shape[0] == v.shape[0] and tgt0[k].shape[1] > v.shape[1] \
+                    and tgt0[k].shape[2:] == v.shape[2:]:
+                w = tgt0[k].clone().zero_()
+                w[:, : v.shape[1]] = v
+                sd0[k] = w
+                grown += 1
+        if grown:
+            print(f"조건 채널이 늘어난 텐서 {grown}개를 0 으로 채워 이어받는다 "
+                  f"— 시작 시점엔 원본과 동일하게 동작한다")
         try:
             miss = net.load_state_dict(sd0, strict=False)
         except RuntimeError:
