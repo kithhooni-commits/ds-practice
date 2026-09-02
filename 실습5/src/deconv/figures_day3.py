@@ -78,6 +78,8 @@ def main() -> None:
     ap.add_argument("--ckpt", type=Path, default=None, help="학습한 모델 (있으면 비교에 넣는다)")
     ap.add_argument("--post-wiener", type=float, default=None, help="--target measure 모델용")
     ap.add_argument("--wiener-K", type=float, default=0.03, help="val 에서 고른 K")
+    ap.add_argument("--self-ensemble", action="store_true",
+                    help="학습 모델에 4x self-ensemble. 보고하는 숫자와 그림을 맞춘다")
     ap.add_argument("--out", type=Path, default=FIG)
     args = ap.parse_args()
 
@@ -110,10 +112,15 @@ def main() -> None:
         methods["1일차 디노이저 → Wiener"] = lambda g: wien(dens["supervised"](g), args.wiener_K)
     if args.ckpt and args.ckpt.exists():
         from eval_day3 import load_net
+        from unrolled import self_ensemble
+
         net, label = load_net(args.ckpt, device)
         K = args.post_wiener
-        methods[f"학습 모델\n{label.split()[0]}"] = (
-            lambda g: wien(net(g), K)) if K else (lambda g: net(g))
+        # 그림과 보고 숫자를 같은 조건으로 맞춘다
+        infer = (lambda a: self_ensemble(net, a)) if args.self_ensemble else net
+        tag = "학습 모델" + (" (4× SE)" if args.self_ensemble else "")
+        methods[f"{tag}\n{label.split()[0]}"] = (
+            lambda g: wien(infer(g), K)) if K else (lambda g: infer(g))
 
     # ---------------------------------------------------------- 1. forward chain
     nz0, (f0, s0) = "gaussian", picks["gaussian"]
