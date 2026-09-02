@@ -249,22 +249,26 @@ def build(prs, name: str, M: dict, R: dict) -> None:
     sl = blank(prs); bg(sl)
     title(sl, "시도 ① 의 한계 — 선형은 21.95 dB 에서 끝난다",
           "정답의 파워 스펙트럼을 알려줘도 그렇다", eyebrow="요구사항 3")
-    rows = [("필터", "PSNR", "성격"),
+    rows = [("필터 / 방법", "PSNR", "성격"),
             ("Wiener 상수 K (val 에서 고름)", "13.72", "실제로 쓸 수 있는 것"),
-            ("오라클 · 여러 장 평균 스펙트럼", "19.00", "정답을 봐야 만듦"),
-            ("오라클 · 장마다 참 스펙트럼", "21.95", "선형의 천장. 만들 수 없다"),
             ("1일차 디노이저 → Wiener", "21.06", "학습 없는 조합 중 최고"),
-            ("우리 최종", f"{p:.2f}", "학습된 비선형 + 물리")]
-    table(sl, Inches(0.9), Inches(1.8), Inches(6.6), Inches(2.1), rows,
+            ("오라클 위너 (장마다 참 스펙트럼)", "21.95", "선형의 천장. 만들 수 없다"),
+            ("원뿔을 포기하는 방법의 상한", "25.08", "비선형이어도 넘을 수 없다"),
+            ("배포 baseline (End2End U-Net)", f"{BASELINE:.2f}", "그 상한에 붙어 있다"),
+            ("우리 최종", f"{p:.2f}", "원뿔을 실제로 메우고 있다")]
+    table(sl, Inches(0.9), Inches(1.8), Inches(6.6), Inches(2.4), rows,
           col_w=[3.6, 1.3, 3.0], highlight_row=len(rows) - 1)
-    card(sl, Inches(7.9), Inches(1.8), Inches(4.5), Inches(2.1), ACCENT_SOFT, ACCENT)
-    text(sl, Inches(8.15), Inches(2.0), Inches(4.0), Inches(1.8),
-         [("학습 없는 조합(21.06)이", N), ("오라클(21.95)에 0.89 dB 까지", B),
-          ("닿아 있다. 선형으로 짜낼 것은", N), ("다 짜냈다는 뜻이다.", N), ("", N),
-          (f"그 위 {p - 21.95:.2f} dB 는 학습된", B), ("사전지식의 몫이다.", B)],
-         size=12.5, color=INK2)
+    card(sl, Inches(7.9), Inches(1.8), Inches(4.5), Inches(2.4), ACCENT_SOFT, ACCENT)
+    text(sl, Inches(8.15), Inches(2.0), Inches(4.0), Inches(2.1),
+         [("천장이 두 개다.", B), ("", N),
+          ("선형은 21.95 에서 끝난다.", N),
+          ("원뿔을 포기하면 비선형이라도", N), ("25.08 이 한계다 —", B),
+          ("우리 오차(정답의 0.77%)가", N),
+          ("원뿔에 든 정답(2.24%)보다 작다.", N), ("", N),
+          (f"{p:.2f} 는 원뿔의 최소 65% 를", B), ("메우고 있다는 뜻이다.", B)],
+         size=12, color=INK2)
 
-    text(sl, Inches(0.9), Inches(4.2), Inches(11.5), Inches(0.4),
+    text(sl, Inches(0.9), Inches(4.45), Inches(11.5), Inches(0.4),
          "왜 정답을 봐도 완벽하지 못한가", size=14, color=ACCENT, bold=True)
     rows = [("이유", "설명"),
             ("위상은 모른다", "파워 스펙트럼은 '어느 굵기 무늬가 얼마나' 만 안다. "
@@ -274,7 +278,7 @@ def build(prs, name: str, M: dict, R: dict) -> None:
                                     "버린 만큼이 오차로 남는다"),
             ("오차의 68% 는 새어든 노이즈", "살린 주파수에서는 신호를 완벽히 살리는 것과 "
                                      "노이즈를 완전히 막는 것을 동시에 못 한다")]
-    table(sl, Inches(0.9), Inches(4.65), Inches(11.5), Inches(1.7), rows,
+    table(sl, Inches(0.9), Inches(4.9), Inches(11.5), Inches(1.5), rows,
           col_w=[2.6, 8.9], size=10.5)
 
     # ============================================================ 8. 시도 ② DC-Net
