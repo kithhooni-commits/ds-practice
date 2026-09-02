@@ -199,36 +199,49 @@ def main() -> None:
             # σ 를 어떻게 주느냐만 바꾼다. 가중치는 그대로 — 학습 비용 0
             import unrolled as _u
 
-            real = _u.estimate_sigma
+            # --noise-stats 모델은 estimate_noise_stats 를 부른다. 그쪽도 같이
+            # 가로채지 않으면 ablation 이 아무 일도 하지 않는다.
+            uses_stats = bool(getattr(net, "noise_stats", False))
+            name_fn = "estimate_noise_stats" if uses_stats else "estimate_sigma"
+            real = getattr(_u, name_fn)
+            print(f"({name_fn} 을 가로챈다)")
             # 평가는 한 장씩 돌리므로 배치 안에서 뒤섞는 것은 무의미하다 (flip(0) 이
             # 크기 1 텐서에서는 항등이다). 대신 **전체 평균 σ 로 고정**해 본다 —
             # "장마다 다른 σ 를 주는 것" 대 "하나의 값으로 뭉뚱그리는 것" 을 비교하는
             # 쪽이 조건화의 값어치를 훨씬 직접적으로 보여준다.
             with torch.no_grad():
-                sig_all = torch.cat([real(g.float().to(device) if not torch.is_tensor(g)
-                                          else torch.from_numpy(g.astype(np.float32))[None, None].to(device))
-                                     for _, g, _ in items])
-            s_mean = float(sig_all.mean())
-            print(f"측정 σ: 최소 {sig_all.min():.4f} 중앙 {sig_all.median():.4f} "
-                  f"최대 {sig_all.max():.4f} 평균 {s_mean:.4f}")
+                s_all = torch.cat([real(torch.from_numpy(g.astype(np.float32))[None, None].to(device))
+                                   .view(1, -1) for _, g, _ in items])
+            print("측정된 통계 (열별 최소/중앙/최대)")
+            for j in range(s_all.shape[1]):
+                c = s_all[:, j]
+                nm = ["σ", "왜도", "첨도"][j] if uses_stats else "σ"
+                print(f"  {nm:<6}{c.min():>10.4f}{c.median():>10.4f}{c.max():>10.4f}")
             variants = {
-                "추정 σ (정상)": real,
-                "σ = 0 (없다고 알려줌)": lambda m, **kw: torch.zeros(m.shape[0], device=m.device),
-                f"σ 를 전체 평균 {s_mean:.3f} 로 고정":
-                    lambda m, **kw: torch.full((m.shape[0],), s_mean, device=m.device),
-                "σ 2배 (과대평가)": lambda m, **kw: real(m, **kw) * 2,
-                "σ 절반 (과소평가)": lambda m, **kw: real(m, **kw) * 0.5,
+                "추정값 (정상)": real,
+                "전부 0 (노이즈가 없다고 알려줌)": lambda m, **kw: real(m, **kw) * 0,
+                "전체 평균으로 고정": lambda m, **kw: real(m, **kw) * 0 + s_all.mean(0),
+                "2배 (과대평가)": lambda m, **kw: real(m, **kw) * 2,
+                "절반 (과소평가)": lambda m, **kw: real(m, **kw) * 0.5,
             }
+            if uses_stats:
+                # 통계 셋 중 어느 것이 일하는지 하나씩 지운다
+                variants["σ 만 (왜도·첨도 제거)"] = (
+                    lambda m, **kw: real(m, **kw) * torch.tensor(
+                        [1., 0., 0.], device=m.device))
+                variants["첨도 제거 (rician 을 못 알아본다)"] = (
+                    lambda m, **kw: real(m, **kw) * torch.tensor(
+                        [1., 1., 0.], device=m.device))
             print()
             print("[σ ablation — 가중치는 그대로, σ 입력만 바꾼다]")
             print(f"{'σ 를 어떻게 주는가':<26}{'PSNR':>10}{'SSIM':>10}")
             print("-" * 46)
             for lab, fn in variants.items():
-                _u.estimate_sigma = fn
+                setattr(_u, name_fn, fn)
                 r = run(args.post_wiener)
                 print(f"{lab:<26}{np.mean([x[1] for x in r]):>10.2f}"
                       f"{np.mean([x[2] for x in r]):>10.4f}")
-            _u.estimate_sigma = real
+            setattr(_u, name_fn, real)
             res["sigma_ablation"] = True
 
         if args.sharpen:
