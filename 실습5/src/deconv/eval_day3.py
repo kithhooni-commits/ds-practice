@@ -86,6 +86,9 @@ def main() -> None:
     ap.add_argument("--ckpt", type=Path, default=None)
     ap.add_argument("--baseline", action="store_true", help="배포 베이스라인 체크포인트를 쓴다")
     ap.add_argument("--wiener", action="store_true", help="고전 Wiener K 스윕도 잰다")
+    ap.add_argument("--post-wiener", type=float, default=None,
+                    help="모델 출력에 Wiener 를 한 번 더 건다. --target measure 로 학습한 모델용")
+    ap.add_argument("--sweep-K", action="store_true", help="--post-wiener 의 K 를 스윕한다")
     ap.add_argument("--out", type=Path, default=None)
     args = ap.parse_args()
 
@@ -120,13 +123,42 @@ def main() -> None:
 
     if args.ckpt:
         net, label = load_net(args.ckpt, device)
-        rows = []
-        with torch.no_grad():
-            for nz, g, gt in items:
-                a = torch.from_numpy(g.astype(np.float32))[None, None].to(device)
-                b = torch.from_numpy(gt.astype(np.float32))[None, None].to(device)
-                rows.append((nz, *sc(net(a), b)))
-        res["model"] = table(label, rows)
+        from unrolled import data_consistency
+
+        def post(x, K):
+            if K is None:
+                return x
+            return data_consistency(torch.zeros_like(x), x,
+                                    torch.full((x.shape[0],), float(K), device=x.device))
+
+        def run(K):
+            rs = []
+            with torch.no_grad():
+                for nz, g, gt in items:
+                    a = torch.from_numpy(g.astype(np.float32))[None, None].to(device)
+                    b = torch.from_numpy(gt.astype(np.float32))[None, None].to(device)
+                    rs.append((nz, *sc(post(net(a), K), b)))
+            return rs
+
+        if args.sweep_K:
+            print()
+            print("[출력에 Wiener 를 한 번 더 — K 스윕]")
+            print(f"{'K':>10}{'PSNR':>10}{'SSIM':>10}")
+            print("-" * 30)
+            bk = (None, -1, 0)
+            for K in (1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2, 1e-1):
+                r = run(K)
+                p_, s_ = float(np.mean([x[1] for x in r])), float(np.mean([x[2] for x in r]))
+                if p_ > bk[1]:
+                    bk = (K, p_, s_)
+                print(f"{K:>10.0e}{p_:>10.2f}{s_:>10.4f}")
+            print(f"최적 K={bk[0]:.0e}")
+            args.post_wiener = bk[0]
+            res["post_wiener_best"] = {"K": bk[0], "psnr": bk[1], "ssim": bk[2]}
+
+        rows = run(args.post_wiener)
+        suffix = f" + Wiener K={args.post_wiener:.0e}" if args.post_wiener else ""
+        res["model"] = table(label + suffix, rows)
         print(f"\n제출값 →  PSNR_total {res['model'][0]:.2f}   SSIM_total {res['model'][1]:.4f}")
 
     if args.out:

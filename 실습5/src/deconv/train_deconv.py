@@ -86,7 +86,8 @@ class DeconvDataset(Dataset):
 
     def __init__(self, root: Path, training: bool, patch: int | None = None,
                  noise: float = 0.0, noise_random: bool = False,
-                 input_mode: str = "measure", noise_model: str = "gaussian") -> None:
+                 input_mode: str = "measure", noise_model: str = "gaussian",
+                 target: str = "label") -> None:
         self.files = sorted(glob.glob(str(root / "*.npy")))
         if not self.files:
             raise FileNotFoundError(root)
@@ -101,6 +102,11 @@ class DeconvDataset(Dataset):
         # 3일차 test_deconv_noise 가 정확히 그렇게 만들어졌다 (파일별 종류·σ 가 1일차와 동일).
         self.noise_model = noise_model
         self.sim = RandomNoiseSimulator() if noise_model == "challenge" else None
+        # target="measure": 노이즈 **없는** dipole blur 를 맞히게 한다. 배포 노트북의
+        # 방법 B — 디컨볼루션은 학습이 아니라 Wiener 가 맡고, 네트워크는 측정치 영역에서
+        # 노이즈만 지운다. 노이즈가 흐림 뒤에 붙었으므로 측정치 위에서는 백색이고,
+        # 그게 디노이저가 가장 잘하는 조건이다.
+        self.target = target
 
     def __len__(self) -> int:
         return len(self.files)
@@ -120,6 +126,7 @@ class DeconvDataset(Dataset):
         # 크롭은 흐리게 만든 **뒤에** 한다. dipole 은 전역 연산이라 자르고 흐리게 하면
         # 경계에서 실제와 다른 측정치가 만들어진다.
         g = forward_t(gt.unsqueeze(0)).squeeze(0)
+        g_clean = g.clone()   # 노이즈 얹기 전. target="measure" 의 정답
 
         if self.noise_model == "challenge":
             # 검증은 파일명 seed 로 고정해 epoch 마다 값이 흔들리지 않게 한다 (1일차와 같은 방식)
@@ -149,7 +156,8 @@ class DeconvDataset(Dataset):
             g = g[:, y:y + p, x:x + p]
             net_in = net_in[:, y:y + p, x:x + p]
 
-        return gt, g, net_in, Path(self.files[i]).name
+        tgt = gt if self.target == "label" else g_clean
+        return tgt, g, net_in, Path(self.files[i]).name
 
 
 class ModelLoss(nn.Module):
@@ -205,6 +213,9 @@ def main() -> None:
     ap.add_argument("--model-loss-weight", type=float, default=0.8)
     ap.add_argument("--noise", type=float, default=0.0, help="측정치에 얹을 노이즈 σ (0 이면 배포 조건)")
     ap.add_argument("--noise-random", action="store_true", help="[0, σ] 에서 매번 다시 뽑는다")
+    ap.add_argument("--target", default="label", choices=["label", "measure"],
+                    help="measure: 노이즈 없는 dipole blur 를 맞힌다. 디컨볼루션은 Wiener 가 맡는다 "
+                         "(배포 노트북 방법 B). 평가 때 --post-wiener 로 K 를 준다")
     ap.add_argument("--noise-model", default="gaussian", choices=["gaussian", "challenge"],
                     help="challenge: 1일차 4종 노이즈를 흐림 뒤에 얹는다 (3일차 조건)")
     ap.add_argument("--unroll-iters", type=int, default=5)
@@ -283,8 +294,8 @@ def main() -> None:
         put(new_conv)
 
     train_ds = DeconvDataset(args.data / "train", True, args.patch, args.noise,
-                             args.noise_random, args.input, args.noise_model)
-    valid_ds = DeconvDataset(args.data / "val", False, None, args.noise, False, args.input, args.noise_model)
+                             args.noise_random, args.input, args.noise_model, args.target)
+    valid_ds = DeconvDataset(args.data / "val", False, None, args.noise, False, args.input, args.noise_model, args.target)
     train_loader = DataLoader(train_ds, batch_size=args.batch, shuffle=True,
                               num_workers=args.workers, pin_memory=True, drop_last=True,
                               persistent_workers=args.workers > 0)
@@ -362,7 +373,8 @@ def main() -> None:
             best = {"psnr": psnr, "ssim": ssim, "epoch": ep}
             torch.save({"model": args.model, "features": args.features, "input": args.input,
                         "in_ch": in_ch, "state_dict": net.state_dict(), "epoch": ep,
-                        "val_psnr": psnr, "val_ssim": ssim},
+                        "val_psnr": psnr, "val_ssim": ssim, "target": args.target,
+                        "tau": args.tau, "refine": args.refine, "unroll_iters": args.unroll_iters},
                        run / "checkpoints" / "checkpoint_best.ckpt")
             mark = "  <- best"
         print(f"[ep {ep:02d}] loss {hist[-1]['loss']:.5f}  val PSNR {psnr:.3f}  SSIM {ssim:.4f}"
