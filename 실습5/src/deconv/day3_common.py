@@ -36,6 +36,26 @@ from data import RandomNoiseSimulator  # noqa: E402
 from challenge import forward  # noqa: E402
 
 DEFAULT_DATA = Path(os.environ.get("DS_DATA", ROOT / "data" / "dataset"))
+
+
+def _assert_official_metrics() -> None:
+    """채점에 쓰는 구현이 맞는지 못을 박는다.
+
+    src/deconv 에도 예전 skimage 기반 metrics 가 있었다. sys.path 순서가 한 번만
+    어긋나도 SSIM 창 모양과 data_range 가 달라져 우리가 재는 숫자와 채점 숫자가
+    조용히 갈린다. 실제로 한 번 밟았다. 그래서 매번 확인한다.
+    """
+    import metrics
+
+    if Path(metrics.__file__).parent.name != "denoise":
+        raise RuntimeError(
+            f"배포 metric 이 아닌 구현이 잡혔다: {metrics.__file__} — "
+            f"src/denoise/metrics.py 가 sys.path 앞에 오도록 할 것")
+    if not hasattr(metrics, "SSIMcal"):
+        raise RuntimeError(f"SSIMcal 이 없다 — 배포 구현이 아니다: {metrics.__file__}")
+
+
+_assert_official_metrics()
 NZ = ["gaussian", "rician", "uniform", "salt_and_pepper"]
 _SIM = RandomNoiseSimulator()
 

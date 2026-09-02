@@ -20,7 +20,7 @@ import numpy as np
 
 from baselines import cosmos, direct_inverse, tikhonov, tkd, wiener
 from dipole import forward, make_orientations
-from metrics import scores
+from metrics_legacy_skimage import scores
 from noise import estimate_noise
 
 HERE = Path(__file__).resolve().parent
