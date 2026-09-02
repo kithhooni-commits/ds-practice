@@ -156,8 +156,8 @@ def build(prs, name: str, M: dict, R: dict) -> None:
           eyebrow="요구사항 1")
     xs = Inches(0.75)
     boxes = [("측정치 g", "h*f + n", SURF),
-             ("σ 추정", "널 원뿔에서\n라벨 없이", ACCENT_SOFT),
-             ("사전지식\nDRUNet", "z = net(x, σ)\n노이즈를 지운다", ACCENT_SOFT),
+             ("Wiener 초기화", "x₀ = D·G\n   /(D²+λ₀)", SURF),
+             ("사전지식\nDRUNet", "z = net(x, σ)\nσ 는 측정치에서", ACCENT_SOFT),
              ("데이터 정합", "x = (D·G+λZ)\n     /(D²+λ)", SURF),
              ("복원 f̂", f"{p:.2f} dB", ACCENT_SOFT)]
     for i, (h1, h2, fill) in enumerate(boxes):
@@ -201,10 +201,10 @@ def build(prs, name: str, M: dict, R: dict) -> None:
           col_w=[3.4, 2.4, 2.6, 2.4])
     card(sl, Inches(0.9), Inches(5.05), Inches(11.5), Inches(1.3), ACCENT_SOFT, ACCENT)
     text(sl, Inches(1.2), Inches(5.25), Inches(11), Inches(1.0),
-         [("τ 를 키우면 DC 가 무의미해지고 줄이면 폭발한다 — ", 0),
-          ("3일차엔 좋은 τ 가 없다", 1), (".\n", 0),
-          ("고칠 방법은 못박지 말고 무게를 두는 것. 그게 soft DC 이고 ", 0),
-          ("전개형이 곧 DC-Net 의 노이즈 대응 일반형", 1), ("이다 (λ→0 이면 DC-Net).", 0)],
+         [("τ 를 키우면 DC 가 무의미해지고 줄이면 폭발한다 — 3일차엔 좋은 τ 가 없다.",
+           {"bold": True, "color": INK}),
+          ("고칠 방법은 못박지 말고 무게를 두는 것. 그게 soft DC 이고,", {}),
+          ("전개형이 곧 DC-Net 의 노이즈 대응 일반형이다 (λ→0 이면 DC-Net 이 된다).", {})],
          size=13.5, color=INK2)
 
     # ---------------------------------------------------------- 7. σ 조건화
@@ -212,10 +212,10 @@ def build(prs, name: str, M: dict, R: dict) -> None:
     title(sl, "σ 를 라벨 없이 읽어 모델에 알려준다", "3일차 σ 는 이미지마다 200배 차이난다",
           eyebrow="요구사항 3")
     text(sl, Inches(0.9), Inches(1.75), Inches(11.5), Inches(1.0),
-         [("|D| < 0.02 인 주파수엔 ", 0), ("신호가 실려올 수 없다", 1),
-          (" — dipole 이 그리로 아무것도 보내지 않기 때문이다.\n", 0),
-          ("거기 남은 것은 전부 노이즈다. 파세발로 E|G|² = N·σ².  ", 0),
-          ("정답도 noise_meta.json 도 쓰지 않는다.", 1)], size=14, color=INK2)
+         [("|D| < 0.02 인 주파수엔 신호가 실려올 수 없다 — dipole 이 그리로 아무것도 보내지 않는다.", {}),
+          ("거기 남은 것은 전부 노이즈다. 파세발로 E|G|² = N·σ².", {}),
+          ("정답도 noise_meta.json 도 쓰지 않는다.", {"bold": True, "color": INK})],
+         size=14, color=INK2)
     rows = [("", "값"),
             ("σ 범위 (test 100장)", "0.0007 ~ 0.1325  (200배)"),
             ("추정 상대오차 중앙값", "1.9%"),
@@ -224,13 +224,16 @@ def build(prs, name: str, M: dict, R: dict) -> None:
     table(sl, Inches(0.9), Inches(3.0), Inches(6.4), Inches(1.7), rows, col_w=[3.2, 3.2])
     card(sl, Inches(7.6), Inches(3.0), Inches(4.8), Inches(1.7), ACCENT_SOFT, ACCENT)
     text(sl, Inches(7.85), Inches(3.2), Inches(4.3), Inches(1.4),
-         [("blind 모델 하나로 200배 범위를 덮으려면\n", 0), ("평균에 타협", 1),
-          ("해야 한다.\n\nσ 를 알려주면 매 장에 맞는 세기로 지운다.", 0)],
+         [("blind 모델 하나로 200배 범위를 덮으려면", {}),
+          ("평균에 타협해야 한다.", {"bold": True, "color": INK}),
+          ("", {}),
+          ("σ 를 알려주면 매 장에 맞는 세기로 지운다.", {})],
          size=13, color=INK2)
     card(sl, Inches(0.9), Inches(5.0), Inches(11.5), Inches(1.2), ACCENT_SOFT, ACCENT)
     text(sl, Inches(1.2), Inches(5.2), Inches(11), Inches(0.9),
-         [("warm start: 1일차 DRUNet 가중치를 사전지식 자리에 넣고 σ 채널은 0 으로 둔다.\n", 0),
-          ("시작 시점엔 1일차 디노이저와 정확히 같게 동작하고(차이 0.00e+00), 거기서부터 σ 를 배운다.", 1)],
+         [("σ 는 이미지마다 200배 차이나는데, 그 값을 아는 것만으로 지울 세기를 매 장에 맞출 수 있다.", {}),
+          ("커널을 알기에 쓸 수 있는 추정기다 — MAD 와 달리 이미지의 고주파를 노이즈로 착각하지 않는다.",
+           {"bold": True, "color": INK})],
          size=13, color=INK2)
 
     # ---------------------------------------------------------- 8. 4장 비교 (요구사항 2)
@@ -307,7 +310,9 @@ def build(prs, name: str, M: dict, R: dict) -> None:
             ("1일차 디노이저 → Wiener", "21.06", "오라클 선형(19.80)을 넘었다. 비선형이 필요하다는 증거"),
             ("전개형 (unet f32, blind)", "25.91", "ep37 정체. 용량과 조건화가 병목이지 학습량이 아니다"),
             ("End2End U-Net f64", "25.99", "전개형과 비슷 — 물리 구조만으로는 이득이 없었다"),
-            ("전개형 + DRUNet + σ + warm start", f"{p:.2f}", "σ 200배 차이를 조건화로 흡수. ep15 에 이전 최고 초과")]
+            ("2단 분해 (측정치 영역 → 역필터)", "15.6", "실패. 역필터가 오차를 1/D 로 증폭해 40 dB 디노이징을 요구한다"),
+            ("전개형 + DRUNet + σ 조건화", "26.85", "σ 200배 차이를 흡수. PSNR 통과, SSIM 0.77 로 미달"),
+            ("+ 채점 SSIM 을 손실에", f"{p:.2f}", "L1 은 뭉개는 쪽으로 수렴한다. 채점 함수를 그대로 미분했다")]
     table(sl, Inches(0.6), Inches(1.7), Inches(12.1), Inches(4.6), rows,
           col_w=[3.6, 1.5, 7.0], highlight_row=len(rows) - 1, size=11)
     footer(sl, "K·λ 는 전부 validation 에서 골랐다. test 는 채점에만 썼다")
