@@ -99,6 +99,11 @@ def main() -> None:
     ap.add_argument("--sweep-K", action="store_true",
                     help="--post-wiener 의 K 를 스윕한다 — **val 에서** 고른다")
     ap.add_argument("--n-val", type=int, default=100, help="스윕에 쓸 val 장수")
+    ap.add_argument("--sharpen", action="store_true",
+                    help="과평활을 되돌리는 언샤프 후처리. amount·sigma 는 val 에서 고른다. "
+                         "PSNR 은 조금 내주고 SSIM 을 산다")
+    ap.add_argument("--sharpen-floor", type=float, default=0.5,
+                    help="--sharpen 이 허용하는 PSNR 손실 한도 (dB)")
     ap.add_argument("--sigma-ablation", action="store_true",
                     help="σ 조건화 모델에 일부러 틀린 σ 를 먹여 얼마나 쓰고 있는지 잰다. "
                          "학습이 필요 없는 ablation 이다")
@@ -211,8 +216,25 @@ def main() -> None:
             _u.estimate_sigma = real
             res["sigma_ablation"] = True
 
+        if args.sharpen:
+            # 후처리 계수도 val 에서 고른다 — test 로 고르면 test 를 쓴 것이다
+            from day3_common import load_val, score
+            from sharpen import tune_sharpen, unsharp
+
+            vi = load_val(args.data, args.n_val, device)
+            cur = (lambda g: post(infer(g), args.post_wiener))
+            p0, _ = score(vi, cur)
+            amt, sg = tune_sharpen(vi, cur, min_psnr=p0 - args.sharpen_floor)
+            if amt:
+                _orig = post
+                def post(x, K, _o=_orig, _a=amt, _s=sg):  # noqa: F811
+                    return unsharp(_o(x, K), _a, _s)
+                res["sharpen"] = {"amount": amt, "sigma": sg}
+
         rows = run(args.post_wiener)
         suffix = f" + Wiener K={args.post_wiener:.0e}" if args.post_wiener else ""
+        if args.sharpen and res.get("sharpen"):
+            suffix += f" + 언샤프({res['sharpen']['amount']:.2f}, {res['sharpen']['sigma']:.1f})"
         res["model"] = table(label + suffix, rows)
         print(f"\n제출값 →  PSNR_total {res['model'][0]:.2f}   SSIM_total {res['model'][1]:.4f}")
 
