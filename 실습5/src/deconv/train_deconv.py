@@ -88,7 +88,7 @@ class DeconvDataset(Dataset):
     def __init__(self, root: Path, training: bool, patch: int | None = None,
                  noise: float = 0.0, noise_random: bool = False,
                  input_mode: str = "measure", noise_model: str = "gaussian",
-                 target: str = "label") -> None:
+                 target: str = "label", rot90: bool = True) -> None:
         self.files = sorted(glob.glob(str(root / "*.npy")))
         if not self.files:
             raise FileNotFoundError(root)
@@ -108,6 +108,11 @@ class DeconvDataset(Dataset):
         # 노이즈만 지운다. 노이즈가 흐림 뒤에 붙었으므로 측정치 위에서는 백색이고,
         # 그게 디노이저가 가장 잘하는 조건이다.
         self.target = target
+        # dipole 은 B0 방향을 가진다. 90도 회전한 clean 을 흐리게 만든 쌍은 물리적으로
+        # 유효하지만 **test 에 없는 방향**의 이미지다. 모델이 아직 underfit 인데
+        # 불필요한 다양성에 용량을 쓰는 셈일 수 있어 끌 수 있게 둔다.
+        # (뒤집기는 dipole 이 견디는 대칭이라 그대로 쓴다 — self_ensemble 과 같은 근거)
+        self.rot90 = rot90
 
     def __len__(self) -> int:
         return len(self.files)
@@ -120,9 +125,10 @@ class DeconvDataset(Dataset):
                 gt = torch.flip(gt, dims=[1])
             if random.random() < 0.5:
                 gt = torch.flip(gt, dims=[2])
-            k = random.randint(0, 3)
-            if k:
-                gt = torch.rot90(gt, k, dims=[1, 2])
+            if self.rot90:
+                k = random.randint(0, 3)
+                if k:
+                    gt = torch.rot90(gt, k, dims=[1, 2])
 
         # 크롭은 흐리게 만든 **뒤에** 한다. dipole 은 전역 연산이라 자르고 흐리게 하면
         # 경계에서 실제와 다른 측정치가 만들어진다.
@@ -294,6 +300,9 @@ def main() -> None:
     ap.add_argument("--warmup", type=int, default=200, help="lr 을 0 에서 올리는 step 수")
     ap.add_argument("--data", type=Path, default=DEFAULT_DATA)
     ap.add_argument("--out", type=Path, default=ROOT / "runs")
+    ap.add_argument("--no-rot90", action="store_true",
+                    help="학습 augmentation 에서 90도 회전을 뺀다. dipole 은 방향이 있어 "
+                         "회전한 이미지는 test 에 없는 방향이 된다. 뒤집기는 유지한다")
     ap.add_argument("--limit-train", type=int, default=0,
                     help="학습에 쓸 장수를 제한한다 (0=전부 7268). 배포 tips 의 "
                          "'적은 수의 데이터로 학습하기'. 데이터가 얼마나 필요한지 잰다")
@@ -450,7 +459,10 @@ def main() -> None:
         put(new_conv)
 
     train_ds = DeconvDataset(args.data / "train", True, args.patch, args.noise,
-                             args.noise_random, args.input, args.noise_model, args.target)
+                             args.noise_random, args.input, args.noise_model, args.target,
+                             rot90=not args.no_rot90)
+    if args.no_rot90:
+        print("augmentation: 뒤집기만 (90도 회전 제외 — dipole 은 방향이 있다)")
     if args.limit_train:
         # 고르게 뽑는다 — 앞에서부터 자르면 파일명 순서가 곧 이미지 종류 순서일 수 있다
         idx = np.linspace(0, len(train_ds.files) - 1, args.limit_train).astype(int)
@@ -506,6 +518,18 @@ def main() -> None:
         # 둔다. 그러면 **시작 시점엔 원본과 정확히 같게** 동작하고, 거기서부터 새
         # 통계를 쓰는 법을 배운다 (σ 조건화를 처음 붙일 때 쓴 것과 같은 수법이다).
         tgt0 = net.state_dict()
+        # 반복 횟수를 바꾸면 log_lam 길이가 달라진다. 늘어난 만큼은 마지막 λ 를 복제해
+        # 채운다 — 수렴 근처에서 같은 세기로 한 번 더 다듬는 자리부터 학습을 시작한다.
+        for k in ("log_lam",):
+            if k in sd0 and k in tgt0 and sd0[k].shape != tgt0[k].shape:
+                old, new = sd0[k], tgt0[k].clone()
+                n = min(len(old), len(new))
+                new[:n] = old[:n]
+                if len(new) > len(old):
+                    new[len(old):] = old[-1]
+                sd0[k] = new
+                print(f"log_lam {tuple(old.shape)} -> {tuple(new.shape)} "
+                      f"(늘어난 단계는 마지막 λ 로 채웠다)")
         grown = 0
         for k, v in list(sd0.items()):
             if k in tgt0 and tgt0[k].shape != v.shape and tgt0[k].dim() == 4 \
