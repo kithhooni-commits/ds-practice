@@ -79,7 +79,12 @@ class TwoStageNet(nn.Module):
         features: int = 64,
         sigma_map: bool = False,
         lam_map: bool = False,
-        init_lam: float = 3e-3,      # 전달 곡선에서 40 dB 일 때의 최적 K
+        # **시작 시점**에 맞는 λ 를 준다. 원시 측정치의 val 최적 K 가 3.16e-2 다.
+        # 수렴 후의 최적값(40 dB 일 때 1.8e-3)으로 시작하면 아직 아무것도 지우지
+        # 않은 입력을 그 λ 로 역산하게 되어 노이즈를 크게 증폭한 채 출발한다
+        # (K=3e-3 이면 원시 측정치에서 11 dB 언저리, K=3.16e-2 면 14.10 dB).
+        # λ 는 학습되므로 디노이저가 좋아지는 만큼 알아서 내려간다.
+        init_lam: float = 3.16e-2,
         refine_iters: int = 0,
         shape: tuple[int, int] = (256, 256),
     ) -> None:
@@ -98,9 +103,16 @@ class TwoStageNet(nn.Module):
             torch.full((n_lam,), float(torch.log(torch.tensor(init_lam)))))
         self.log_lam_map = nn.Parameter(torch.zeros(n_lam, *shape)) if lam_map else None
 
+    # 주파수별 배율이 벗어날 수 있는 범위. log 공간이라 ±3 이면 e^±3 = 20배다.
+    # 제한이 없으면 어떤 주파수는 폭주하고 어떤 주파수는 0 이 되어 학습이 깨진다
+    # (Adam 은 gradient 크기와 무관하게 스텝당 대략 lr 만큼 움직인다).
+    LAM_MAP_CLAMP = 3.0
+
     def _lam(self, k: int, b: int, device):
         lam = self.log_lam[k].exp().expand(b)
-        lmap = self.log_lam_map[k].exp() if self.log_lam_map is not None else None
+        lmap = None
+        if self.log_lam_map is not None:
+            lmap = self.log_lam_map[k].clamp(-self.LAM_MAP_CLAMP, self.LAM_MAP_CLAMP).exp()
         return lam, lmap
 
     def forward(self, measure: Tensor, b0: tuple[float, float] = (0.0, 1.0)) -> Tensor:

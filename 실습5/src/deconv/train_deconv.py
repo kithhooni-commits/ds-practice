@@ -257,7 +257,10 @@ def main() -> None:
                     help="challenge: 1일차 4종 노이즈를 흐림 뒤에 얹는다 (3일차 조건)")
     ap.add_argument("--unroll-iters", type=int, default=5)
     ap.add_argument("--lam-map", action="store_true",
-                    help="λ 를 주파수마다 따로 학습한다 (2일차 교훈). --lr-spectral 을 크게 줄 것")
+                    help="λ 를 주파수마다 따로 학습한다. log 공간 파라미터라 --lr-spectral 은 "
+                         "1e-3 ~ 3e-3 이 적당하다 (2일차 스펙트럼 층은 직접 배율이라 컸다)")
+    ap.add_argument("--init-lam", type=float, default=3.16e-2,
+                    help="λ 초기값. 기본은 원시 측정치의 val 최적 K")
     ap.add_argument("--refine-iters", type=int, default=0,
                     help="twostage: 역필터 뒤 이미지 영역 다듬기 횟수")
     ap.add_argument("--sigma-map", action="store_true",
@@ -304,7 +307,12 @@ def main() -> None:
             args.patch = None
         net = TwoStageNet(model=args.refine, features=args.features,
                           sigma_map=args.sigma_map, lam_map=args.lam_map,
-                          refine_iters=args.refine_iters).to(device)
+                          init_lam=args.init_lam, refine_iters=args.refine_iters).to(device)
+        print(f"λ 초기값 {args.init_lam:.3g}  (원시 측정치의 val 최적 K. 디노이저가 "
+              f"좋아지는 만큼 학습으로 내려간다)")
+        if args.lam_map and args.lr_spectral > 5e-3:
+            print(f"[주의] --lam-map 은 log 공간이다. --lr-spectral {args.lr_spectral} 은 크다 "
+                  f"— 1e-3 ~ 3e-3 을 권한다")
         if net.sigma_map:
             print("sigma-map: 측정치의 널 원뿔에서 σ 를 읽어 디노이저에 준다")
         if args.init_refine:
