@@ -109,6 +109,8 @@ def main() -> None:
     ap.add_argument("--window", type=int, default=5, help="이웃을 뽑는 창 크기")
     ap.add_argument("--limit-train", type=int, default=0)
     ap.add_argument("--workers", type=int, default=8)
+    ap.add_argument("--n-val", type=int, default=40, help="에폭마다 잴 val 장수")
+    ap.add_argument("--n-test", type=int, default=0, help="마지막 채점 장수 (0=전부)")
     ap.add_argument("--clip-grad", type=float, default=1.0)
     ap.add_argument("--out", type=Path, default=ROOT / "runs")
     ap.add_argument("--mirror", type=Path, default=None)
@@ -145,8 +147,8 @@ def main() -> None:
     print(f"amp    : {amp_dtype if ok else 'disabled'}\n")
 
     # 평가용 — 여기서만 정답을 본다 (점수를 재기 위해서지 학습에 쓰지 않는다)
-    val = load_val(args.data, 40, device)
-    test = load_test(args.data, 0, device)
+    val = load_val(args.data, args.n_val, device)
+    test = load_test(args.data, args.n_test, device)
 
     best = -1.0
     for ep in range(args.epochs):
