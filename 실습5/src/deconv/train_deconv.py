@@ -328,12 +328,22 @@ def main() -> None:
             # 1일차 디노이저인지 확인한다. 2·3일차 deconv 체크포인트는 "input" 키를
             # 갖는다 (train_deconv 가 저장). 그걸 사전지식 자리에 넣으면 이미지 영역
             # 역산을 배운 가중치를 측정치 영역 디노이저로 쓰는 셈이라 도움이 안 된다.
-            if "input" in ck or "unroll_iters" in ck:
+            # 받아도 되는 것은 두 가지다.
+            #   (a) 1일차 디노이저 — "input" 키가 없다 (train.py 가 저장)
+            #   (b) --target measure 로 학습한 측정치 영역 디노이저 — 이것이야말로
+            #       이 자리가 할 일을 그대로 배운 가중치다 (배포 방법 B 의 1단계)
+            # 막아야 하는 것은 --target label 로 학습한 **이미지 영역** 모델이다.
+            # 그것은 역산까지 배운 가중치라 측정치 영역 디노이저로 쓰면 맞지 않는다.
+            bad = ("unroll_iters" in ck and ck.get("model") in ("unrolled", "dcnet")) or (
+                "input" in ck and ck.get("target", "label") == "label")
+            if bad:
                 raise SystemExit(
-                    f"[중단] {Path(args.init_refine).name} 은 1일차 디노이저가 아니라 "
-                    f"deconv 체크포인트다 (model={ck.get('model')}, input={ck.get('input')}, "
-                    f"val {ck.get('val_psnr', float('nan')):.2f}). "
-                    f"1일차 train.py 로 만든 것을 주거나 --init-refine 을 빼고 돌릴 것")
+                    f"[중단] {Path(args.init_refine).name} 은 이미지 영역 모델이다 "
+                    f"(model={ck.get('model')}, target={ck.get('target')}, "
+                    f"val {ck.get('val_psnr', float('nan')):.2f}). 여기는 측정치 영역 디노이저 "
+                    f"자리다 — 1일차 체크포인트나 --target measure 로 학습한 것을 줄 것")
+            if ck.get("target") == "measure":
+                print("측정치 영역 디노이저를 이어받는다 (배포 방법 B 의 1단계)")
             sd = ck.get("state_dict", ck)
             subs = [net.denoiser] + list(net.refiners)
             n_ok = n_skip = 0
