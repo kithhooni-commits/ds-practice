@@ -47,9 +47,53 @@ from models import build_model  # noqa: E402
 
 from challenge import dipole_otf  # noqa: E402
 
-__all__ = ["UnrolledNet", "data_consistency"]
+__all__ = ["UnrolledNet", "data_consistency", "estimate_sigma", "self_ensemble"]
 
 _CACHE: dict = {}
+
+
+def estimate_sigma(measure: Tensor, tol: float = 0.02,
+                   b0: tuple[float, float] = (0.0, 1.0)) -> Tensor:
+    """측정치만 보고 σ 를 읽는다. 정답이 필요 없다.
+
+    `|D| < tol` 인 주파수에는 신호가 실려올 수 없다 — dipole 이 그리로 아무것도
+    보내지 않기 때문이다. 거기 남은 것은 전부 노이즈다. 파세발로
+
+        E|G|² = N·σ²
+
+    3일차 σ 는 이미지마다 0.0007 ~ 0.13 으로 **200배** 차이가 난다. 하나의 blind
+    모델로 그 범위를 다 덮으려면 평균적으로 타협해야 하지만, σ 를 알려주면 매 장에
+    맞는 세기로 지울 수 있다. val 40장에서 상대오차 중앙값 1.9%.
+
+    커널을 알기에 쓸 수 있는 추정기다. MAD 와 달리 이미지의 고주파를 노이즈로
+    착각하지 않는다 — 1일차 σ 게이트가 실패한 원인이 그것이었다.
+    """
+    D = _otf(tuple(measure.shape[-2:]), b0, measure.device, torch.float32)
+    mask = D.abs() < tol
+    G = torch.fft.fft2(measure.float())
+    n_pix = measure.shape[-1] * measure.shape[-2]
+    return ((G.abs() ** 2)[..., mask].mean(-1) / n_pix).sqrt().view(-1)
+
+
+# dipole 이 견디는 대칭. transpose·90도 회전은 B0 방향을 돌려버려서 못 쓴다
+# (직접 확인: flip x/y·180도는 오차 1e-16, transpose·rot90 은 3.17)
+_SYMS = [
+    (lambda a: a, lambda a: a),
+    (lambda a: a.flip(-1), lambda a: a.flip(-1)),
+    (lambda a: a.flip(-2), lambda a: a.flip(-2)),
+    (lambda a: a.flip(-1, -2), lambda a: a.flip(-1, -2)),
+]
+
+
+@torch.no_grad()
+def self_ensemble(fn, measure: Tensor) -> Tensor:
+    """4× self-ensemble. 학습 없이 먹는 점수다.
+
+    1일차엔 8× (뒤집기 + 90도 회전) 를 썼지만 3일차엔 4개만 유효하다. dipole 은
+    B0 방향을 가지므로 회전하면 **연산자 자체가 바뀐다** — 돌린 입력에 안 돌린
+    커널을 적용하는 꼴이 되어 오히려 손해다.
+    """
+    return torch.stack([inv(fn(t(measure))) for t, inv in _SYMS]).mean(0)
 
 
 def _otf(shape: tuple[int, int], b0: tuple[float, float], device, dtype) -> Tensor:
@@ -91,13 +135,17 @@ class UnrolledNet(nn.Module):
         features: int = 64,
         share_weights: bool = True,
         init_lam: float = 0.05,
+        sigma_map: bool = False,
     ) -> None:
         super().__init__()
         self.n_iter = n_iter
         n_net = 1 if share_weights else n_iter
         self.share_weights = share_weights
+        # σ 조건화는 DRUNet 만 받는다 (여분 채널로 σ 를 넣는 구조)
+        self.sigma_map = sigma_map and model == "drunet"
+        kw = {"sigma_map": True} if self.sigma_map else {}
         self.nets = nn.ModuleList(
-            [build_model(model, features=features, num_of_layers=17) for _ in range(n_net)]
+            [build_model(model, features=features, num_of_layers=17, **kw) for _ in range(n_net)]
         )
         self.log_lam = nn.Parameter(torch.full((n_iter,), float(torch.log(torch.tensor(init_lam)))))
 
@@ -110,8 +158,11 @@ class UnrolledNet(nn.Module):
         x = x0 if x0 is not None else data_consistency(
             torch.zeros_like(measure), measure, self.log_lam[0].exp().expand(measure.shape[0]), b0)
 
+        # σ 는 측정치에서 읽는다 — 정답도, 메타데이터도 쓰지 않는다
+        sigma = estimate_sigma(measure, b0=b0) if self.sigma_map else None
+
         for k in range(self.n_iter):
-            z = self.net(k)(x)
+            z = self.net(k)(x, sigma) if self.sigma_map else self.net(k)(x)
             lam = self.log_lam[k].exp().expand(measure.shape[0])
             x = data_consistency(z, measure, lam, b0)
         return x

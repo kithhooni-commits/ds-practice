@@ -60,7 +60,9 @@ def load_net(path: Path, device):
     if name == "unrolled":
         from unrolled import UnrolledNet
         net = UnrolledNet(n_iter=ck.get("unroll_iters", 5), model=ck.get("refine", "unet"),
-                          features=ck.get("features", 32))
+                          features=ck.get("features", 32),
+                          share_weights=ck.get("share_weights", True),
+                          sigma_map=ck.get("sigma_map", False))
     elif name == "dcnet":
         from dcnet import DCNet
         net = DCNet(model=ck.get("refine", "unet"), features=ck.get("features", 32),
@@ -91,6 +93,9 @@ def main() -> None:
     ap.add_argument("--sweep-K", action="store_true",
                     help="--post-wiener 의 K 를 스윕한다 — **val 에서** 고른다")
     ap.add_argument("--n-val", type=int, default=100, help="스윕에 쓸 val 장수")
+    ap.add_argument("--self-ensemble", action="store_true",
+                    help="4x self-ensemble. dipole 이 견디는 대칭만 쓴다 (좌우/상하/180도). "
+                         "90도 회전은 B0 방향을 돌려버려 못 쓴다")
     ap.add_argument("--out", type=Path, default=None)
     args = ap.parse_args()
 
@@ -145,13 +150,16 @@ def main() -> None:
             return data_consistency(torch.zeros_like(x), x,
                                     torch.full((x.shape[0],), float(K), device=x.device))
 
+        from unrolled import self_ensemble
+        infer = (lambda a: self_ensemble(net, a)) if args.self_ensemble else net
+
         def run(K, its=None):
             rs = []
             with torch.no_grad():
                 for nz, g, gt in (items if its is None else its):
                     a = torch.from_numpy(g.astype(np.float32))[None, None].to(device)
                     b = torch.from_numpy(gt.astype(np.float32))[None, None].to(device)
-                    rs.append((nz, *sc(post(net(a), K), b)))
+                    rs.append((nz, *sc(post(infer(a), K), b)))
             return rs
 
         if args.sweep_K:

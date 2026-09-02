@@ -219,6 +219,11 @@ def main() -> None:
     ap.add_argument("--noise-model", default="gaussian", choices=["gaussian", "challenge"],
                     help="challenge: 1일차 4종 노이즈를 흐림 뒤에 얹는다 (3일차 조건)")
     ap.add_argument("--unroll-iters", type=int, default=5)
+    ap.add_argument("--sigma-map", action="store_true",
+                    help="측정치에서 σ 를 읽어 디노이저에 조건으로 준다 (--refine drunet 전용). "
+                         "3일차 σ 는 이미지마다 200배 차이가 난다")
+    ap.add_argument("--init-refine", type=Path, default=None,
+                    help="사전지식 자리를 1일차 디노이저 체크포인트로 초기화한다")
     ap.add_argument("--share-weights", action="store_true", default=True)
     ap.add_argument("--no-share-weights", dest="share_weights", action="store_false")
     ap.add_argument("--epochs", type=int, default=30)
@@ -257,7 +262,23 @@ def main() -> None:
             print("[주의] unrolled 는 전역 연산이라 크롭을 못 한다. --patch 를 무시한다")
             args.patch = None
         net = UnrolledNet(n_iter=args.unroll_iters, model=args.refine, features=args.features,
-                          share_weights=args.share_weights).to(device)
+                          share_weights=args.share_weights, sigma_map=args.sigma_map).to(device)
+        if args.sigma_map and not net.sigma_map:
+            print("[주의] --sigma-map 은 --refine drunet 에서만 쓴다. 무시한다")
+        elif net.sigma_map:
+            print("sigma-map: 측정치의 널 원뿔에서 σ 를 읽어 매 단계 디노이저에 준다")
+        if args.init_refine:
+            # 1일차 디노이저를 사전지식 자리의 출발점으로 쓴다. 무작위 초기화보다
+            # 훨씬 나은 곳에서 시작한다 — 어차피 그 자리가 할 일이 '노이즈 지우기'다
+            ck = torch.load(args.init_refine, map_location="cpu", weights_only=False)
+            sd = ck.get("state_dict", ck)
+            n_ok = 0
+            for sub in net.nets:
+                miss = sub.load_state_dict(sd, strict=False)
+                n_ok += len(sd) - len(miss.unexpected_keys)
+            print(f"refine 초기화: {Path(args.init_refine).name} "
+                  f"(1일차 val PSNR {ck.get('val_psnr', float('nan')):.2f}, "
+                  f"{n_ok}/{len(sd) * len(net.nets)} 텐서 적재)")
     elif args.model == "dcnet":
         if args.patch:
             print(f"[주의] dcnet 은 전역 연산이라 크롭을 못 한다. --patch 를 무시한다")
@@ -374,7 +395,8 @@ def main() -> None:
             torch.save({"model": args.model, "features": args.features, "input": args.input,
                         "in_ch": in_ch, "state_dict": net.state_dict(), "epoch": ep,
                         "val_psnr": psnr, "val_ssim": ssim, "target": args.target,
-                        "tau": args.tau, "refine": args.refine, "unroll_iters": args.unroll_iters},
+                        "tau": args.tau, "refine": args.refine, "unroll_iters": args.unroll_iters,
+                        "sigma_map": args.sigma_map, "share_weights": args.share_weights},
                        run / "checkpoints" / "checkpoint_best.ckpt")
             mark = "  <- best"
         print(f"[ep {ep:02d}] loss {hist[-1]['loss']:.5f}  val PSNR {psnr:.3f}  SSIM {ssim:.4f}"
