@@ -182,6 +182,39 @@ class Charbonnier(nn.Module):
         return torch.sqrt((pred - target) ** 2 + self.eps2).mean()
 
 
+class CharbonnierSSIM(nn.Module):
+    """Charbonnier + (1 − SSIM). **채점에 쓰는 그 SSIM 을 그대로 미분한다.**
+
+    `metrics.calculate_ssim` 은 conv2d 와 사칙연산뿐이라 전부 미분 가능하다. 일반
+    MS-SSIM 라이브러리를 쓰면 창 모양(11×11 box)과 data_range 가 달라 채점과 어긋나므로
+    배포된 구현을 그대로 최적화한다.
+
+    ## 왜 필요한가
+
+    Charbonnier 만 쓰면 PSNR 은 오르는데 SSIM 이 안 따라온다. 실제로
+
+        우리 전개형   26.85 dB / 0.7705
+        배포 baseline 25.01 dB / 0.8149   <- PSNR 은 낮은데 SSIM 이 높다
+
+    L1/L2 계열 손실은 **뭉개는 쪽**으로 수렴한다. 평균을 맞추면 오차 제곱은 줄지만
+    국소 대비(variance)와 상관(covariance)은 잃는다. SSIM 이 재는 게 정확히 그것이다.
+    이 데이터는 주기적인 격자 무늬라 국소 대비를 잃으면 SSIM 이 크게 깎인다.
+
+    참고: Zhao et al., "Loss Functions for Image Restoration with Neural Networks",
+    IEEE TCI 2017 — L1 과 SSIM 계열을 섞으면 둘 다 좋아진다.
+    """
+
+    def __init__(self, alpha: float = 0.5, eps: float = 1e-3) -> None:
+        super().__init__()
+        self.alpha = alpha
+        self.eps2 = eps * eps
+
+    def forward(self, pred, target, measure=None):
+        l1 = torch.sqrt((pred - target) ** 2 + self.eps2).mean()
+        ssim = calculate_ssim(pred, target).mean()
+        return (1 - self.alpha) * l1 + self.alpha * (1 - ssim)
+
+
 # ------------------------------------------------------------------ 학습
 
 
@@ -209,7 +242,10 @@ def main() -> None:
                     choices=["dncnn", "unet", "drunet", "spectral", "spectral_dncnn",
                              "spectral_unet", "dcnet", "unrolled"])
     ap.add_argument("--input", default="measure", choices=["measure", "wiener", "both"])
-    ap.add_argument("--loss", default="charbonnier", choices=["l2", "charbonnier", "model_loss"])
+    ap.add_argument("--loss", default="charbonnier",
+                    choices=["l2", "charbonnier", "model_loss", "charbonnier_ssim"])
+    ap.add_argument("--ssim-weight", type=float, default=0.5,
+                    help="charbonnier_ssim 에서 SSIM 항의 비중. 채점 SSIM 을 그대로 미분한다")
     ap.add_argument("--model-loss-weight", type=float, default=0.8)
     ap.add_argument("--noise", type=float, default=0.0, help="측정치에 얹을 노이즈 σ (0 이면 배포 조건)")
     ap.add_argument("--noise-random", action="store_true", help="[0, σ] 에서 매번 다시 뽑는다")
@@ -341,7 +377,8 @@ def main() -> None:
     valid_loader = DataLoader(valid_ds, batch_size=1, num_workers=0)
 
     crit = {"l2": nn.MSELoss(), "charbonnier": Charbonnier(),
-            "model_loss": ModelLoss(args.model_loss_weight)}[args.loss]
+            "model_loss": ModelLoss(args.model_loss_weight),
+            "charbonnier_ssim": CharbonnierSSIM(args.ssim_weight)}[args.loss]
     # 주파수 층은 이득이 수만까지 가야 하므로 학습률을 따로 크게 준다.
     # 같은 lr 을 쓰면 최대 4.8 배에서 멈춘다 (정답 44,074).
     spec_params, other_params = [], []
