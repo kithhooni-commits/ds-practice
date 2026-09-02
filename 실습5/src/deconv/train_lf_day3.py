@@ -84,12 +84,24 @@ def label_free_lambda(measure: Tensor, b0: tuple[float, float] = (0.0, 1.0)) -> 
 
 @torch.no_grad()
 def restore(net, measure: Tensor, lam: Tensor | None = None, se: bool = True) -> Tensor:
-    """z = 디노이저(g) -> x = Wiener(z, λ). λ 를 안 주면 라벨 없이 정한다."""
+    """z = 디노이저(g) -> x = Wiener(z, λ). λ 를 안 주면 라벨 없이 정한다.
+
+    ## λ 는 **디노이징 뒤** 상태로 정해야 한다
+
+    처음에는 입력 측정치의 σ 로 λ 를 정했는데 그것이 틀렸다. 디노이저가 노이즈를
+    지우고 나면 남은 노이즈가 훨씬 작으므로 λ 도 그만큼 작아야 한다. 전달 곡선에서
+    최적 K 가 디노이징 품질에 따라 1e-2 에서 1e-8 까지 네 자릿수를 움직인다.
+    입력 기준 λ 를 그대로 쓰면 "노이즈가 아직 그대로" 라고 가정하는 셈이라 과하게
+    뭉갠다 (실측: label-free val 이 16.8 에서 멈췄다).
+
+    남은 노이즈는 **디노이저 출력의 널 원뿔** 에서 잰다. 거기엔 신호가 실려올 수
+    없으므로 z 에 남아 있는 것은 전부 잔여 노이즈다. 여전히 정답을 쓰지 않는다.
+    """
+    z = self_ensemble(net, measure) if se else net(measure)
     if lam is None:
-        lam = label_free_lambda(measure)
+        lam = label_free_lambda(z)
     elif not torch.is_tensor(lam):
         lam = torch.full((measure.shape[0],), float(lam), device=measure.device)
-    z = self_ensemble(net, measure) if se else net(measure)
     return data_consistency(torch.zeros_like(z), z, lam)
 
 
@@ -115,6 +127,9 @@ def main() -> None:
     ap.add_argument("--out", type=Path, default=ROOT / "runs")
     ap.add_argument("--mirror", type=Path, default=None)
     ap.add_argument("--tag", default="lf_day3")
+    ap.add_argument("--eval-only", type=Path, default=None,
+                    help="학습을 건너뛰고 이 체크포인트를 채점한다. λ 는 모델의 일부가 "
+                         "아니므로 규칙만 고쳐 다시 재는 데 쓴다")
     args = ap.parse_args()
 
     ok = torch.cuda.is_available() and torch.cuda.device_count() > 0
@@ -149,6 +164,49 @@ def main() -> None:
     # 평가용 — 여기서만 정답을 본다 (점수를 재기 위해서지 학습에 쓰지 않는다)
     val = load_val(args.data, args.n_val, device)
     test = load_test(args.data, args.n_test, device)
+
+    if args.eval_only:
+        ck0 = torch.load(args.eval_only, map_location="cpu", weights_only=False)
+        net.load_state_dict(ck0["state_dict"]); net.eval()
+        print(f"채점만 한다: {args.eval_only.name} "
+              f"(ep {ck0.get('epoch')}, 학습 당시 val {ck0.get('val_psnr', float('nan')):.2f})
+")
+        # λ 규칙 비교. 제출용은 라벨 없이 고른 쪽이다
+        print(f"{'λ 를 어떻게 정하는가':<34}{'val PSNR':>10}{'val SSIM':>10}")
+        print("-" * 54)
+        for lab, fn in [
+            ("라벨 없이 (디노이징 뒤 잔여 σ)", lambda g: restore(net, g)),
+            ("라벨 없이 (입력 σ — 예전 방식)",
+             lambda g: restore(net, g, label_free_lambda(g))),
+        ]:
+            ps = [calculate_psnr(fn(g), gt).item() for _, g, gt in val]
+            ss = [calculate_ssim(fn(g), gt).item() for _, g, gt in val]
+            print(f"{lab:<34}{np.mean(ps):>10.2f}{np.mean(ss):>10.4f}")
+        best_k = (None, -1.0, 0.0)
+        for K in np.logspace(-5, -1, 17):
+            ps = [calculate_psnr(restore(net, g, float(K)), gt).item() for _, g, gt in val]
+            if np.mean(ps) > best_k[1]:
+                ss = [calculate_ssim(restore(net, g, float(K)), gt).item() for _, g, gt in val]
+                best_k = (float(K), float(np.mean(ps)), float(np.mean(ss)))
+        print(f"{'(참고) val 에서 고른 고정 K=' + f'{best_k[0]:.2g}':<34}"
+              f"{best_k[1]:>10.2f}{best_k[2]:>10.4f}")
+        print("
+제출용은 라벨 없이 고른 쪽이다. 고정 K 는 얼마나 손해인지 보려고 같이 잰다.
+")
+        rows = [(nz, calculate_psnr(restore(net, g), gt).item(),
+                 calculate_ssim(restore(net, g), gt).item()) for nz, g, gt in test]
+        print(f"[label-free · λ 도 측정치에서 · 4× self-ensemble — test {len(rows)}장]")
+        print(f"{'noise':<18}{'n':>4}{'PSNR':>10}{'SSIM':>10}")
+        print("-" * 42)
+        for nz in ["gaussian", "rician", "uniform", "salt_and_pepper", "ALL"]:
+            s_ = [r for r in rows if nz == "ALL" or r[0] == nz]
+            if s_:
+                print(f"{nz:<18}{len(s_):>4}{np.mean([r[1] for r in s_]):>10.2f}"
+                      f"{np.mean([r[2] for r in s_]):>10.4f}")
+        print(f"
+제출값(label-free) → PSNR {np.mean([r[1] for r in rows]):.2f}  "
+              f"SSIM {np.mean([r[2] for r in rows]):.4f}")
+        return
 
     best = -1.0
     for ep in range(args.epochs):
