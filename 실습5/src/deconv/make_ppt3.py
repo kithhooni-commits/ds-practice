@@ -136,26 +136,27 @@ def build(prs, name: str, M: dict, R: dict) -> None:
     sl = blank(prs); bg(sl)
     title(sl, "여정 — 무엇을 바꿔 무엇이 늘었나", "각 칸이 뒤에서 한 장씩 펼쳐진다",
           eyebrow="한눈에")
-    steps = [("출발", "Wiener 단독", "13.79"),
+    steps = [("출발", "Wiener\n단독", "13.79"),
              ("① 조합", "1일차 디노이저\n→ Wiener", "21.06"),
-             ("② 구조", "전개형\n(물리 + 학습)", "25.91"),
-             ("③ 조건화", "σ 를 측정치에서\n읽어 준다", "29.25"),
-             ("④ 수렴", "끝까지\n더 학습", f"{p:.2f}")]
-    xs = Inches(0.7)
+             ("② 구조", "전개형\n(물리+학습)", "25.91"),
+             ("③ 조건화", "σ 를 측정치\n에서 읽는다", "29.25"),
+             ("④ 수렴", "끝까지\n더 학습", "30.32"),
+             ("⑤ 융합", "다른 구조\n둘을 평균", f"{p:.2f}")]
+    xs = Inches(0.55)
     for i, (tag, what, sc) in enumerate(steps):
         last = i == len(steps) - 1
-        card(sl, xs, Inches(1.85), Inches(2.05), Inches(1.75),
+        card(sl, xs, Inches(1.85), Inches(1.72), Inches(1.75),
              ACCENT_SOFT if last else SURF, ACCENT if last else RULE)
-        text(sl, xs + Inches(0.08), Inches(1.96), Inches(1.9), Inches(0.3),
-             tag, size=11, color=ACCENT, bold=True, font=MONO, align=PP_ALIGN.CENTER)
-        text(sl, xs + Inches(0.08), Inches(2.26), Inches(1.9), Inches(0.72),
-             what, size=11.5, color=INK, bold=True, align=PP_ALIGN.CENTER)
-        text(sl, xs + Inches(0.08), Inches(3.02), Inches(1.9), Inches(0.4),
-             f"{sc} dB", size=15, color=ACCENT if last else INK2,
+        text(sl, xs + Inches(0.06), Inches(1.96), Inches(1.6), Inches(0.3),
+             tag, size=10.5, color=ACCENT, bold=True, font=MONO, align=PP_ALIGN.CENTER)
+        text(sl, xs + Inches(0.06), Inches(2.26), Inches(1.6), Inches(0.72),
+             what, size=10.5, color=INK, bold=True, align=PP_ALIGN.CENTER)
+        text(sl, xs + Inches(0.06), Inches(3.02), Inches(1.6), Inches(0.4),
+             f"{sc} dB", size=13.5, color=ACCENT if last else INK2,
              bold=True, font=MONO, align=PP_ALIGN.CENTER)
-        xs += Inches(2.4)
+        xs += Inches(2.02)
         if not last:
-            arrow(sl, xs - Inches(0.31), Inches(2.62), Inches(0.24), Inches(0.26))
+            arrow(sl, xs - Inches(0.27), Inches(2.62), Inches(0.2), Inches(0.24))
 
     rows = [("단계", "무엇을 바꿨나", "왜 올랐나", "이득"),
             ("① 조합", "역산 전에 노이즈를 먼저 지운다",
@@ -164,8 +165,11 @@ def build(prs, name: str, M: dict, R: dict) -> None:
              "역산은 닫힌 해로 끝내고 네트워크는 모르는 주파수만 채운다", "+4.9"),
             ("③ 조건화", "σ 를 널 원뿔에서 읽어 넣는다",
              "σ 가 장마다 200배 차이난다. 하나로 뭉뚱그리면 평균에 타협한다", "+3.3"),
-            ("④ 수렴", "60 → 116 에폭",
-             "매번 마지막 에폭까지 오르고 있었다. 수렴을 안 했던 것이다", f"+{p - 29.25:.2f}")]
+            ("④ 수렴", "세 번에 걸쳐 230 에폭",
+             "늘릴 때마다 마지막 에폭이 best 였다. 세 번 다 수렴 전이었다", "+1.07"),
+            ("⑤ 융합", "4단계 · 6단계 모델을 평균",
+             "구조가 다르니 틀리는 방식도 달라 오차가 상쇄된다 (무게는 val 에서)",
+             f"+{p - 30.32:.2f}")]
     table(sl, Inches(0.7), Inches(3.95), Inches(11.9), Inches(2.1), rows,
           col_w=[1.5, 3.0, 6.0, 1.0], highlight_row=len(rows) - 1, size=11)
     footer(sl, f"출발 13.79 → 최종 {p:.2f}   ·   통과 기준 {BAR_P:.0f} / {BAR_S:.2f}   ·   "
@@ -432,8 +436,8 @@ def build(prs, name: str, M: dict, R: dict) -> None:
 
     # ============================================================ 13. 안 통한 것들
     sl = blank(prs); bg(sl)
-    title(sl, "시도 ⑤ — 안 통한 것 여섯 가지", "왜 안 되는지 아는 것도 결과다",
-          eyebrow="실패 기록")
+    title(sl, "시도 ⑤ — 안 통한 것들, 그리고 고쳐서 통한 것",
+          "왜 안 되는지 알면 고칠 수 있다", eyebrow="실패 기록")
     rows = [("시도", "결과", "왜 안 됐나"),
             ("SSIM 을 처음부터 손실에", "17.5",
              "덜 학습된 모델을 '정답과 맞든 아니든 국소 대비를 키우는' 쪽으로 민다"),
@@ -441,12 +445,14 @@ def build(prs, name: str, M: dict, R: dict) -> None:
              "잔차까지 키워 σx 만 커진다. 잃은 국소 대비는 사후에 만들 수 없다"),
             ("노이즈 통계 조건화 (왜도·첨도)", "29.59",
              "첨도가 rician 을 가르지만(10.4 vs 2.9~3.8) 모델이 쓰지 않았다 (−0.03 dB)"),
-            ("모델 융합 (서로 다른 셋을 평균)", "29.66",
-             "같은 체크포인트의 형제라 틀리는 방식이 같다. 오차 상관이 높으면 이득이 없다"),
+            ("모델 융합 1차 — 형제 셋", "29.66",
+             "실패. 같은 체크포인트에서 이어받은 형제라 틀리는 방식이 같다"),
             ("추론 때 반복 횟수 늘리기", "20.99",
              "4단계로 학습한 모델은 5단계에서 분포를 벗어난다. val 이 4를 골랐다"),
             ("end-to-end DRUNet (대조군)", "24.6",
-             "전개형보다 5 dB 아래. 물리 구조가 실제로 이득이라는 증거")]
+             "전개형보다 5 dB 아래. 물리 구조가 실제로 이득이라는 증거"),
+            ("모델 융합 2차 — 4단계 + 6단계", f"{p:.2f}",
+             "성공. 구조가 다르니 오차 상관이 낮다. 1차 실패의 원인을 고친 것이다")]
     table(sl, Inches(0.7), Inches(1.85), Inches(11.9), Inches(3.0), rows,
           col_w=[3.2, 1.2, 7.5], size=11)
     card(sl, Inches(0.7), Inches(5.2), Inches(11.9), Inches(1.15), ACCENT_SOFT, ACCENT)
@@ -464,7 +470,7 @@ def build(prs, name: str, M: dict, R: dict) -> None:
             ("입력 (blur + noise)", "8.02", "−0.0187", "출발점"),
             ("배포 baseline (End2End U-Net)", f"{BASELINE:.2f}", f"{BASELINE_S:.3f}", "미달"),
             ("다른 조 (2-step + 4× SE)", f"{OTHER_P:.2f}", f"{OTHER_S:.4f}", "SSIM 미달"),
-            ("우리 (전개형 + σ + 4× SE)", f"{p:.2f}", f"{s:.4f}", "통과")]
+            ("우리 (전개형 + σ + 4× SE + 융합)", f"{p:.2f}", f"{s:.4f}", "통과")]
     table(sl, Inches(0.9), Inches(1.8), Inches(11.5), Inches(2.2), rows,
           col_w=[5.2, 2.0, 2.0, 2.3], highlight_row=len(rows) - 1)
 
@@ -475,7 +481,7 @@ def build(prs, name: str, M: dict, R: dict) -> None:
           col_w=[2.8, 1.3, 1.3])
     card(sl, Inches(6.7), Inches(4.3), Inches(5.7), Inches(1.7), ACCENT_SOFT, ACCENT)
     text(sl, Inches(6.95), Inches(4.5), Inches(5.2), Inches(1.4),
-         [("rician 만 22.87 로 7 dB 뒤진다.", B),
+         [("rician 만 23.39 로 7 dB 뒤진다.", B),
           ("정류가 밝기를 +0.0396 밀어 올리는데", N),
           ("dipole 은 DC 를 1/3 로 보존하므로", N),
           ("역산에서 3배가 되어 0.119 로 남는다", N),
@@ -599,8 +605,8 @@ def main() -> None:
 
     # eval_day3.py 가 test 100장에서 실제로 낸 값. 다시 재면 여기만 고친다.
     R = {
-        "per_noise": {"gaussian": (30.15, 0.8843), "rician": (22.87, 0.7558),
-                      "uniform": (29.51, 0.9084), "salt_and_pepper": (36.27, 0.9825)},
+        "per_noise": {"gaussian": (30.45, 0.8895), "rician": (23.39, 0.7692),
+                      "uniform": (29.87, 0.9150), "salt_and_pepper": (37.76, 0.9863)},
         "ablation": [("추정 σ (장마다 다르게)", (29.59, 0.8817)),
                      ("전체 평균 하나로 고정", (25.37, 0.7751)),
                      ("σ 2배 (과대평가)", (22.52, 0.7890)),
