@@ -114,10 +114,29 @@ def main() -> None:
     methods = {
         "측정치 (입력)": lambda g: g,
         f"Wiener 단독\nK={args.wiener_K:.3g}": lambda g: wien(g, args.wiener_K),
-        f"median → Wiener\nK={args.wiener_K:.3g}": lambda g: wien(median_filter(g, 3), args.wiener_K),
     }
-    if "supervised" in dens:
-        methods["1일차 디노이저 → Wiener"] = lambda g: wien(dens["supervised"](g), args.wiener_K)
+    if not args.no_classical:
+        methods[f"median → Wiener\nK={args.wiener_K:.3g}"] = (
+            lambda g: wien(median_filter(g, 3), args.wiener_K))
+        if "supervised" in dens:
+            methods["1일차 디노이저 → Wiener"] = lambda g: wien(dens["supervised"](g),
+                                                             args.wiener_K)
+
+    # 우리 시도들을 나란히 놓는다. '이름=경로' 로 받고, 이름의 | 는 줄바꿈이 된다.
+    # 3번 슬라이드의 세 갈래(end-to-end · 전개형 초기 · 전개형 최종)를 그림으로 보이려는 것
+    for spec in args.ckpts:
+        nm, _, path = spec.partition("=")
+        pth = Path(path or nm)
+        if not pth.exists():
+            print(f"[건너뜀] {pth} 없음")
+            continue
+        from eval_day3 import load_net
+        from unrolled import self_ensemble as _se
+
+        nt, _lab = load_net(pth, device)
+        methods[nm.replace("|", "\n")] = (
+            (lambda g, n=nt: _se(n, g, shifts=args.shift_ensemble))
+            if args.self_ensemble else (lambda g, n=nt: n(g)))
     if args.ckpt and args.ckpt.exists():
         from eval_day3 import load_net
         from unrolled import self_ensemble
