@@ -172,10 +172,11 @@ def main() -> None:
         methods[nm.replace("|", NL)] = make(need(path or nm))
     if args.ckpt:
         paths = need(args.ckpt)
-        tag = "우리 모델" + (" (16x SE)" if args.shift_ensemble else
-                          " (4x SE)" if args.self_ensemble else "")
-        if len(paths) > 1:
-            tag += NL + "융합 " + "+".join(q.stem[:10] for q in paths)
+        # 범례에 체크포인트 파일명이 나오면 남의 것처럼 보인다. 제출물임을 밝힌다
+        tag = "우리 모델 (제출)" if len(paths) > 1 else "우리 모델"
+        tag += NL + ("16× self-ensemble · 두 모델 융합" if len(paths) > 1 else
+                     "16× self-ensemble" if args.shift_ensemble else
+                     "4× self-ensemble" if args.self_ensemble else "단일 추론")
         methods[tag] = make(paths, args.post_wiener)
 
     # ---------------------------------------------------------- 1. forward chain
