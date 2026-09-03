@@ -13,20 +13,20 @@
      2  목차
      3  여정                무엇을 바꿔 몇 dB 올랐나 — 이 발표의 지도
      4  문제                g = h*f + n · 기호 넷
-     5  문제 (그림)          clean → blur → +noise                  요구사항 2
-     6  시도 ①              1일차 + 2일차 조합. 왜 지는가             요구사항 3
+     5  문제 (그림)          clean → blur → +noise
+     6  시도 ①              1일차 + 2일차 조합. 왜 지는가
      7  시도 ① 한계          선형의 천장 21.95
-     8  시도 ②              DC-Net. 2일차 최고 구조가 죽은 이유        요구사항 3
-     9  시도 ③              2단 분해. 전달 곡선과 실패                요구사항 3
-    10  우리 방법            전개형 파이프라인                        요구사항 1
-    11  시도 ④              σ 조건화                               요구사항 3
+     8  시도 ②              DC-Net. 2일차 최고 구조가 죽은 이유
+     9  시도 ③              2단 분해. 전달 곡선과 실패
+    10  우리 방법            전개형 파이프라인
+    11  시도 ④              σ 조건화
     12  시도 ④ 근거          σ ablation
-    13  시도 ⑤              안 통한 것 여섯 가지
+    13  시도 ⑤              안 통한 것들, 그리고 고쳐서 통한 것
     14  최종 결과            노이즈 종류별 · 비교
-    15  복원 결과 (그림)      노이즈 4종 × 방법별                     요구사항 2
-    16  복원 결과 (그림)      difference map + zoom                요구사항 2
-    17  취약점               어떤 노이즈·어떤 이미지                   배포 tips
-    18  보너스               label-free                           요구사항 4
+    15  복원 결과 (그림)      노이즈 4종 × 방법별
+    16  복원 결과 (그림)      difference map + zoom
+    17  취약점               어떤 노이즈·어떤 이미지
+    18  보너스               label-free
     19  검증 규칙            test 는 채점에만
 
 숫자는 실측이다. 다시 재면 `R` 과 `--psnr/--ssim/--lf-*` 만 바꾸면 된다.
@@ -53,7 +53,6 @@ FIG = ROOT / "figures"
 # 조교가 공지한 배포 baseline (End2End U-Net, test 100장)
 BASELINE, BASELINE_S = 25.02, 0.815
 BAR_P, BAR_S = 26.0, 0.83            # 통과 기준
-OTHER_P, OTHER_S = 26.73, 0.8215     # 공유된 다른 조 결과
 
 B = {"bold": True, "color": INK}     # 강조 문단
 N: dict = {}                         # 보통 문단
@@ -63,9 +62,9 @@ def build(prs, name: str, M: dict, R: dict) -> None:
     p, s = M["psnr"], M["ssim"]
     gain = p - BASELINE
 
-    def image_slide(fname, ttl, sub, foot, mode="wide"):
+    def image_slide(fname, ttl, sub, foot, mode="wide", eyebrow="복원 결과"):
         sl = blank(prs); bg(sl)
-        title(sl, ttl, sub, eyebrow="요구사항 2")
+        title(sl, ttl, sub, eyebrow=eyebrow)
         f = FIG / f"{fname}.png"
         if f.exists():
             if mode == "tall":
@@ -107,29 +106,26 @@ def build(prs, name: str, M: dict, R: dict) -> None:
     # ============================================================ 2. 목차
     sl = blank(prs); bg(sl)
     title(sl, "목차", None, eyebrow="Contents")
-    items = [("여정", "무엇을 바꿔 몇 dB 올랐나", "3", ""),
-             ("문제", "흐림과 노이즈가 겹쳤다", "4–5", "요구사항 2"),
-             ("시도 ①", "1일차 + 2일차 조합 — 왜 지는가 · 선형의 천장", "6–7", "요구사항 3"),
-             ("시도 ②", "DC-Net — 2일차 최고 구조가 죽은 이유", "8", "요구사항 3"),
-             ("시도 ③", "2단 분해 — 전달 곡선과 실패", "9", "요구사항 3"),
-             ("우리 방법", "전개형 파이프라인", "10", "요구사항 1"),
-             ("시도 ④", "σ 조건화 — 성능의 절반", "11–12", "요구사항 3"),
-             ("시도 ⑤", "안 통한 것 여섯 가지", "13", ""),
-             ("결과", "최종 점수 · 복원 이미지 · 취약점", "14–17", "요구사항 2"),
-             ("보너스", "label-free — 정답을 한 장도 쓰지 않고", "18", "요구사항 4"),
-             ("규칙", "test 는 채점에만 썼다", "19", "")]
+    items = [("여정", "무엇을 바꿔 몇 dB 올랐나", "3"),
+             ("문제", "흐림과 노이즈가 겹쳤다", "4–5"),
+             ("시도 ①", "1일차 + 2일차 조합 — 왜 지는가 · 선형의 천장", "6–7"),
+             ("시도 ②", "DC-Net — 2일차 최고 구조가 죽은 이유", "8"),
+             ("시도 ③", "2단 분해 — 전달 곡선과 실패", "9"),
+             ("우리 방법", "전개형 파이프라인", "10"),
+             ("시도 ④", "σ 조건화 — 성능의 절반", "11–12"),
+             ("시도 ⑤", "안 통한 것들, 그리고 고쳐서 통한 것", "13"),
+             ("결과", "최종 점수 · 복원 이미지 · 취약점", "14–17"),
+             ("보너스", "label-free — 정답을 한 장도 쓰지 않고", "18"),
+             ("규칙", "test 는 채점에만 썼다", "19")]
     ys = Inches(1.62)
-    for head, body, pg, req in items:
+    for head, body, pg in items:
         card(sl, Inches(0.9), ys, Inches(11.5), Inches(0.44))
-        text(sl, Inches(1.15), ys + Inches(0.06), Inches(1.6), Inches(0.34),
+        text(sl, Inches(1.15), ys + Inches(0.06), Inches(1.8), Inches(0.34),
              head, size=12.5, color=ACCENT, bold=True)
-        text(sl, Inches(2.9), ys + Inches(0.08), Inches(6.6), Inches(0.34),
+        text(sl, Inches(3.1), ys + Inches(0.08), Inches(7.6), Inches(0.34),
              body, size=11.5, color=INK2)
-        text(sl, Inches(9.6), ys + Inches(0.08), Inches(1.2), Inches(0.34),
+        text(sl, Inches(11.0), ys + Inches(0.08), Inches(1.2), Inches(0.34),
              pg, size=11, color=MUTED, font=MONO, align=PP_ALIGN.RIGHT)
-        if req:
-            text(sl, Inches(10.9), ys + Inches(0.08), Inches(1.4), Inches(0.34),
-                 req, size=10, color=ACCENT, font=MONO, align=PP_ALIGN.RIGHT)
         ys += Inches(0.49)
 
     # ============================================================ 3. 여정
@@ -208,12 +204,13 @@ def build(prs, name: str, M: dict, R: dict) -> None:
                 "문제가 어떻게 만들어지는가",
                 "clean → dipole blur → + noise. 학습 쌍도 같은 방식으로 만든다",
                 "노이즈가 흐림 **뒤에** 붙는다 — 오른쪽 끝이 노이즈만 뽑아낸 것이다. "
-                "그래서 측정치 위에서는 백색이고, 역산 전에 지워야 한다")
+                "그래서 측정치 위에서는 백색이고, 역산 전에 지워야 한다",
+                eyebrow="문제")
 
     # ============================================================ 6. 시도 ①
     sl = blank(prs); bg(sl)
     title(sl, "시도 ① — 1일차 + 2일차를 이어 붙인다", "각자 최고인 도구인데 합치면 진다",
-          eyebrow="요구사항 3")
+          eyebrow="시도 ①")
     rows = [("순서", "방법", "PSNR"),
             ("디노이징 먼저", "1일차 디노이저 → Wiener", "21.06"),
             ("", "median 3×3 → Wiener", "19.20"),
@@ -252,7 +249,7 @@ def build(prs, name: str, M: dict, R: dict) -> None:
     # ============================================================ 7. 선형의 천장
     sl = blank(prs); bg(sl)
     title(sl, "시도 ① 의 한계 — 선형은 21.95 dB 에서 끝난다",
-          "정답의 파워 스펙트럼을 알려줘도 그렇다", eyebrow="요구사항 3")
+          "정답의 파워 스펙트럼을 알려줘도 그렇다", eyebrow="한계")
     rows = [("필터 / 방법", "PSNR", "성격"),
             ("Wiener 상수 K (val 에서 고름)", "13.72", "실제로 쓸 수 있는 것"),
             ("1일차 디노이저 → Wiener", "21.06", "학습 없는 조합 중 최고"),
@@ -288,7 +285,7 @@ def build(prs, name: str, M: dict, R: dict) -> None:
     # ============================================================ 8. 시도 ② DC-Net
     sl = blank(prs); bg(sl)
     title(sl, "시도 ② — DC-Net. 2일차 최고 구조를 그대로",
-          "2일차 42.93 dB → 3일차 14.80 dB", eyebrow="요구사항 3")
+          "2일차 42.93 dB → 3일차 14.80 dB", eyebrow="시도 ②")
     text(sl, Inches(0.9), Inches(1.75), Inches(11.5), Inches(0.4),
          "hard DC 는 |D|>τ 인 주파수를 G/D 로 못박는다. 그런데 G = D·F + N 이므로",
          size=13.5, color=INK2)
@@ -316,7 +313,7 @@ def build(prs, name: str, M: dict, R: dict) -> None:
     # ============================================================ 9. 시도 ③ 2단 분해
     sl = blank(prs); bg(sl)
     title(sl, "시도 ③ — 2단 분해. 1일차 문제로 환원하기",
-          "노이즈가 흐림 뒤에 붙으니 측정치 위에서는 1일차 문제다", eyebrow="요구사항 3")
+          "노이즈가 흐림 뒤에 붙으니 측정치 위에서는 1일차 문제다", eyebrow="시도 ③")
     xs = Inches(1.6)
     for h1, h2 in [("측정치 g", "h*f + n"), ("디노이저", "z ≈ h*f\n1일차 문제"),
                    ("역필터", "x = D·Z/(D²+λ)\n2일차 답"), ("복원", "15.6 dB\n실패")]:
@@ -352,7 +349,7 @@ def build(prs, name: str, M: dict, R: dict) -> None:
     # ============================================================ 10. 우리 방법
     sl = blank(prs); bg(sl)
     title(sl, "우리 방법 — 전개형", "데이터 정합과 사전지식을 번갈아 4번",
-          eyebrow="요구사항 1")
+          eyebrow="방법")
     xs = Inches(0.75)
     boxes = [("측정치 g", "h*f + n", SURF),
              ("Wiener 초기화", "x₀ = D·G\n   /(D²+λ₀)", SURF),
@@ -389,7 +386,7 @@ def build(prs, name: str, M: dict, R: dict) -> None:
     # ============================================================ 11. σ 조건화
     sl = blank(prs); bg(sl)
     title(sl, "시도 ④ — σ 를 라벨 없이 읽어 모델에 알려준다",
-          "3일차 σ 는 장마다 200배 차이난다", eyebrow="요구사항 3")
+          "3일차 σ 는 장마다 200배 차이난다", eyebrow="시도 ④")
     text(sl, Inches(0.9), Inches(1.75), Inches(11.5), Inches(0.8),
          [("|D| < 0.02 인 주파수엔 dipole 이 신호를 보내지 않는다. 거기 있는 것은 전부 노이즈다.", B),
           ("파세발로 E|G|² = N·σ².  정답도 noise_meta.json 도 쓰지 않는다 — 측정치 하나에서 나온다.", N)],
@@ -469,7 +466,6 @@ def build(prs, name: str, M: dict, R: dict) -> None:
             ("통과 기준", f"{BAR_P:.0f}", f"{BAR_S:.2f}", "—"),
             ("입력 (blur + noise)", "8.02", "−0.0187", "출발점"),
             ("배포 baseline (End2End U-Net)", f"{BASELINE:.2f}", f"{BASELINE_S:.3f}", "미달"),
-            ("다른 조 (2-step + 4× SE)", f"{OTHER_P:.2f}", f"{OTHER_S:.4f}", "SSIM 미달"),
             ("우리 (전개형 + σ + 4× SE + 융합)", f"{p:.2f}", f"{s:.4f}", "통과")]
     table(sl, Inches(0.9), Inches(1.8), Inches(11.5), Inches(2.2), rows,
           col_w=[5.2, 2.0, 2.0, 2.3], highlight_row=len(rows) - 1)
@@ -487,7 +483,7 @@ def build(prs, name: str, M: dict, R: dict) -> None:
           ("역산에서 3배가 되어 0.119 로 남는다", N),
           ("— 이미지 std 가 0.222 인데 그렇다.", N)], size=12, color=INK2)
     footer(sl, f"배포 baseline 대비 {gain:+.2f} dB · {s - BASELINE_S:+.4f}   ·   "
-               f"다른 조 대비 {p - OTHER_P:+.2f} dB · {s - OTHER_S:+.4f}")
+               f"통과 기준 대비 {p - BAR_P:+.2f} dB · {s - BAR_S:+.4f}")
 
     # ============================================================ 15~16. 복원 결과
     image_slide("day3_methods_grid",
@@ -507,7 +503,7 @@ def build(prs, name: str, M: dict, R: dict) -> None:
     sl = blank(prs); bg(sl)
     title(sl, "취약점 분석 — 어떤 노이즈, 어떤 이미지에 약한가",
           "노이즈는 meta 가 알려주지만 이미지 종류는 라벨이 없다. 이미지 자체 특징으로 가른다",
-          eyebrow="배포 tips")
+          eyebrow="결과 분석")
     f = FIG / "day3_image_types.png"
     if f.exists():
         pic(sl, f, Inches(0.7), Inches(1.6), w=Inches(11.9))
@@ -525,7 +521,7 @@ def build(prs, name: str, M: dict, R: dict) -> None:
     sl = blank(prs); bg(sl)
     title(sl, "보너스 — label-free. 정답을 한 장도 쓰지 않고",
           "노이즈가 측정치 위에서 백색이므로 Noise2Void 가 그대로 통한다",
-          eyebrow="요구사항 4")
+          eyebrow="보너스")
     text(sl, Inches(0.9), Inches(1.7), Inches(11.5), Inches(0.75),
          [("g 의 일부 화소를 이웃으로 덮고, 덮은 자리에서 g 를 맞히게 한다.", B),
           ("가린 화소를 못 보니 이웃에서 신호를 추정할 수밖에 없고, 잡음은 화소마다 독립이라 "
