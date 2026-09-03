@@ -155,25 +155,32 @@ def build(prs, name: str, M: dict, R: dict) -> None:
         if not last:
             arrow(sl, xs - Inches(0.27), Inches(2.28), Inches(0.2), Inches(0.24))
 
-    # ② 자리에서 갈라진 두 갈래 — 둘 다 막다른 길이었다
-    x2 = Inches(0.55) + Inches(2.02) * 2          # ② 카드의 x
-    text(sl, x2 + Inches(0.5), Inches(3.16), Inches(0.8), Inches(0.28),
-         "↓", size=14, color=WARN, bold=True, align=PP_ALIGN.CENTER)
-    text(sl, Inches(0.55), Inches(3.2), Inches(2.6), Inches(0.3),
-         "② 에서 갈라진 다른 길", size=11, color=WARN, bold=True)
-    bx = Inches(3.6)
-    for nm, sub, sc in [("end-to-end", "네트워크 하나가 한 방에\n(물리 제약 없음)", "24.6"),
-                        ("2단 분해", "측정치 영역에서 지우고\n역필터를 한 번만", "15.6")]:
-        card(sl, bx, Inches(3.42), Inches(3.3), Inches(1.0), SURF, WARN)
-        text(sl, bx + Inches(0.12), Inches(3.5), Inches(1.5), Inches(0.3),
-             nm, size=11.5, color=INK, bold=True)
-        text(sl, bx + Inches(0.12), Inches(3.78), Inches(2.2), Inches(0.56),
+    # ② 자리에서 갈린 갈래들. 우리 전개형도 "물리 + 학습" 계열이라 2단 분해와 남남이
+    # 아니다. 갈리는 지점은 물리를 쓰느냐가 아니라 **한 번 쓰느냐 번갈아 반복하느냐** 다.
+    x2 = Inches(0.55) + Inches(2.02) * 2
+    text(sl, x2 + Inches(0.5), Inches(3.14), Inches(0.8), Inches(0.28),
+         "↓", size=14, color=MUTED, bold=True, align=PP_ALIGN.CENTER)
+    text(sl, Inches(0.55), Inches(3.2), Inches(3.4), Inches(0.3),
+         "② 자리에서 갈린 세 갈래", size=11, color=ACCENT, bold=True)
+    bx = Inches(0.55)
+    for nm, sub, sc, ok in [
+        ("물리를 버린다", "end-to-end — 네트워크\n하나가 한 방에", "24.6", False),
+        ("물리를 쓰되 한 번만", "2단 분해 — 측정치 영역에서\n지우고 역필터 한 번", "15.6", False),
+        ("물리와 학습을 번갈아", "전개형 — 매번 측정치로\n되돌리며 4번 반복", "25.91", True),
+    ]:
+        card(sl, bx, Inches(3.5), Inches(3.9), Inches(1.02),
+             ACCENT_SOFT if ok else SURF, ACCENT if ok else WARN)
+        text(sl, bx + Inches(0.12), Inches(3.57), Inches(2.7), Inches(0.3),
+             nm, size=11, color=INK, bold=True)
+        text(sl, bx + Inches(0.12), Inches(3.85), Inches(2.8), Inches(0.56),
              sub, size=9.5, color=MUTED)
-        text(sl, bx + Inches(2.3), Inches(3.62), Inches(0.9), Inches(0.4),
-             f"{sc} dB", size=13, color=WARN, bold=True, font=MONO, align=PP_ALIGN.RIGHT)
-        bx += Inches(3.6)
-    text(sl, Inches(10.9), Inches(3.72), Inches(1.6), Inches(0.3),
-         "막다른 길", size=10.5, color=WARN, font=MONO)
+        text(sl, bx + Inches(2.95), Inches(3.58), Inches(0.85), Inches(0.34),
+             f"{sc} dB", size=12.5, color=ACCENT if ok else WARN,
+             bold=True, font=MONO, align=PP_ALIGN.RIGHT)
+        text(sl, bx + Inches(2.95), Inches(3.94), Inches(0.85), Inches(0.3),
+             "본선" if ok else "막다른 길", size=9, color=ACCENT if ok else WARN,
+             font=MONO, align=PP_ALIGN.RIGHT)
+        bx += Inches(4.02)
 
     rows = [("단계", "무엇을 바꿨나", "왜 올랐나", "이득"),
             ("① 조합", "역산 전에 노이즈를 먼저 지운다",
@@ -619,6 +626,8 @@ def main() -> None:
     ap.add_argument("--ssim", type=float, required=True)
     ap.add_argument("--lf-psnr", type=float, default=None, help="label-free test PSNR")
     ap.add_argument("--lf-ssim", type=float, default=None)
+    ap.add_argument("--only", type=int, default=None,
+                    help="이 번호의 슬라이드 하나만 남긴다 (1부터). 한 장만 고쳐 끼워 넣을 때")
     ap.add_argument("--out", type=Path, default=ROOT / "실습5_day3_발표.pptx")
     args = ap.parse_args()
 
@@ -638,6 +647,12 @@ def main() -> None:
     prs = Presentation()
     prs.slide_width, prs.slide_height = W, H
     build(prs, args.name, {"psnr": args.psnr, "ssim": args.ssim}, R)
+    if args.only:
+        # 나머지를 지운다. 쓰이지 않는 부품이 남지만 파일은 정상으로 열린다
+        lst = prs.slides._sldIdLst
+        for i, sid in enumerate(list(lst), start=1):
+            if i != args.only:
+                lst.remove(sid)
     prs.save(str(args.out))
     print(f"슬라이드 {len(prs.slides._sldIdLst)}장 → {args.out}")
 
