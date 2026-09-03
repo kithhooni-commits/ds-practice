@@ -84,6 +84,11 @@ def main() -> None:
                     help="median → Wiener 와 1일차 디노이저 열을 뺀다 (자리가 좁을 때)")
     ap.add_argument("--post-wiener", type=float, default=None, help="--target measure 모델용")
     ap.add_argument("--wiener-K", type=float, default=0.03, help="val 에서 고른 K")
+    ap.add_argument("--zoom-noise", default="rician", choices=NZ,
+                    help="difference map + zoom 을 어느 노이즈로 그릴지. rician 이 우리 약점이고 "
+                         "밝기 편향이 지도 전체를 고르게 밝히므로 설명하기 좋다")
+    ap.add_argument("--zoom-at", nargs=3, type=int, default=(96, 96, 72),
+                    metavar=("Y", "X", "크기"), help="확대할 자리와 크기")
     ap.add_argument("--self-ensemble", action="store_true",
                     help="학습 모델에 self-ensemble. 보고하는 숫자와 그림을 맞춘다")
     ap.add_argument("--shift-ensemble", action="store_true",
@@ -207,12 +212,12 @@ def main() -> None:
     print("저장:", args.out / "day3_methods_grid.png")
 
     # ---------------------------------------------------------- 3. difference map + zoom
-    f, s = picks["gaussian"]
+    f, s = picks[args.zoom_noise]
     gtn = np.load(args.data / "test_label" / f).astype(np.float32)
     gn = np.load(src / f).astype(np.float32)
     gt_t = torch.from_numpy(gtn)[None, None].to(device)
     g_t = torch.from_numpy(gn)[None, None].to(device)
-    zy, zx, zs = 96, 96, 72   # 확대할 자리
+    zy, zx, zs = args.zoom_at   # 확대할 자리
 
     # 맨 왼쪽은 정답. 확대를 정답과 나란히 놔야 무엇을 잃었는지 보인다
     names = ["정답 (GT)"] + list(methods)[1:]
@@ -238,7 +243,7 @@ def main() -> None:
         axes[2, c].set_title(f"zoom {zs}×{zs}", fontsize=9.5)
         for r in range(3):
             axes[r, c].axis("off")
-    fig.suptitle(f"difference map 과 zoom — {NOISE_KO['gaussian']} σ={s:.3f} · "
+    fig.suptitle(f"difference map 과 zoom — {NOISE_KO[args.zoom_noise]} σ={s:.3f} · "
                  f"위: 복원, 가운데: |복원-정답| (0-{emax:.2f} 공통 스케일), 아래: 확대",
                  fontsize=12)
     fig.tight_layout(rect=(0, 0, 1, 0.955))
