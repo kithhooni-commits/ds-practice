@@ -142,18 +142,38 @@ def build(prs, name: str, M: dict, R: dict) -> None:
     xs = Inches(0.55)
     for i, (tag, what, sc) in enumerate(steps):
         last = i == len(steps) - 1
-        card(sl, xs, Inches(1.85), Inches(1.72), Inches(1.75),
+        card(sl, xs, Inches(1.62), Inches(1.72), Inches(1.52),
              ACCENT_SOFT if last else SURF, ACCENT if last else RULE)
-        text(sl, xs + Inches(0.06), Inches(1.96), Inches(1.6), Inches(0.3),
+        text(sl, xs + Inches(0.06), Inches(1.71), Inches(1.6), Inches(0.28),
              tag, size=10.5, color=ACCENT, bold=True, font=MONO, align=PP_ALIGN.CENTER)
-        text(sl, xs + Inches(0.06), Inches(2.26), Inches(1.6), Inches(0.72),
+        text(sl, xs + Inches(0.06), Inches(1.99), Inches(1.6), Inches(0.64),
              what, size=10.5, color=INK, bold=True, align=PP_ALIGN.CENTER)
-        text(sl, xs + Inches(0.06), Inches(3.02), Inches(1.6), Inches(0.4),
+        text(sl, xs + Inches(0.06), Inches(2.67), Inches(1.6), Inches(0.38),
              f"{sc} dB", size=13.5, color=ACCENT if last else INK2,
              bold=True, font=MONO, align=PP_ALIGN.CENTER)
         xs += Inches(2.02)
         if not last:
-            arrow(sl, xs - Inches(0.27), Inches(2.62), Inches(0.2), Inches(0.24))
+            arrow(sl, xs - Inches(0.27), Inches(2.28), Inches(0.2), Inches(0.24))
+
+    # ② 자리에서 갈라진 두 갈래 — 둘 다 막다른 길이었다
+    x2 = Inches(0.55) + Inches(2.02) * 2          # ② 카드의 x
+    text(sl, x2 + Inches(0.5), Inches(3.16), Inches(0.8), Inches(0.28),
+         "↓", size=14, color=WARN, bold=True, align=PP_ALIGN.CENTER)
+    text(sl, Inches(0.55), Inches(3.2), Inches(2.6), Inches(0.3),
+         "② 에서 갈라진 다른 길", size=11, color=WARN, bold=True)
+    bx = Inches(3.6)
+    for nm, sub, sc in [("end-to-end", "네트워크 하나가 한 방에\n(물리 제약 없음)", "24.6"),
+                        ("2단 분해", "측정치 영역에서 지우고\n역필터를 한 번만", "15.6")]:
+        card(sl, bx, Inches(3.42), Inches(3.3), Inches(1.0), SURF, WARN)
+        text(sl, bx + Inches(0.12), Inches(3.5), Inches(1.5), Inches(0.3),
+             nm, size=11.5, color=INK, bold=True)
+        text(sl, bx + Inches(0.12), Inches(3.78), Inches(2.2), Inches(0.56),
+             sub, size=9.5, color=MUTED)
+        text(sl, bx + Inches(2.3), Inches(3.62), Inches(0.9), Inches(0.4),
+             f"{sc} dB", size=13, color=WARN, bold=True, font=MONO, align=PP_ALIGN.RIGHT)
+        bx += Inches(3.6)
+    text(sl, Inches(10.9), Inches(3.72), Inches(1.6), Inches(0.3),
+         "막다른 길", size=10.5, color=WARN, font=MONO)
 
     rows = [("단계", "무엇을 바꿨나", "왜 올랐나", "이득"),
             ("① 조합", "역산 전에 노이즈를 먼저 지운다",
@@ -167,8 +187,8 @@ def build(prs, name: str, M: dict, R: dict) -> None:
             ("⑤ 융합", "②를 4번 도는 모델과 6번 도는 모델, 둘의 출력을 평균",
              "반복 횟수가 다르면 틀리는 방식도 달라 오차가 서로 상쇄된다 (무게는 val 에서)",
              f"+{p - 30.32:.2f}")]
-    table(sl, Inches(0.7), Inches(3.95), Inches(11.9), Inches(2.1), rows,
-          col_w=[1.5, 3.0, 6.0, 1.0], highlight_row=len(rows) - 1, size=11)
+    table(sl, Inches(0.7), Inches(4.62), Inches(11.9), Inches(1.8), rows,
+          col_w=[1.5, 3.3, 5.7, 1.0], highlight_row=len(rows) - 1, size=10.5)
     footer(sl, f"출발 13.79 → 최종 {p:.2f}   ·   "
                f"통과 기준 = 배포 baseline {BASELINE:.2f} / {BASELINE_S:.3f} 대비 {gain:+.2f} dB")
 
@@ -190,8 +210,8 @@ def build(prs, name: str, M: dict, R: dict) -> None:
 
     rows = [("", "1일차", "2일차", "3일차"),
             ("문제", "g = f + n", "g = h * f", "g = h * f + n"),
-            ("답", "DRUNet", "Wiener K→0", "?"),
-            ("점수", "37.42 dB", "109.86 dB", "—"),
+            ("답", "DRUNet", "Wiener K→0", "전개형 + σ 조건화"),
+            ("점수", "37.42 dB", "109.86 dB", f"{p:.2f} dB"),
             ("입력 SNR", "+8.6 dB", "무한대 (노이즈 없음)", "+0.9 dB")]
     table(sl, Inches(0.9), Inches(3.7), Inches(11.5), Inches(1.7), rows,
           col_w=[1.4, 2.0, 2.6, 2.4], highlight_col=3)
