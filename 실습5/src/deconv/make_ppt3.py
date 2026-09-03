@@ -50,9 +50,10 @@ from make_ppt import (  # noqa: E402
 
 FIG = ROOT / "figures"
 
-# 조교가 공지한 배포 baseline (End2End U-Net, test 100장)
+# 조교가 공지한 배포 baseline (End2End U-Net, test 100장).
+# 통과 기준도 같은 값으로 내려왔으므로 한 줄로 합쳐 보여준다.
 BASELINE, BASELINE_S = 25.02, 0.815
-BAR_P, BAR_S = 26.0, 0.83            # 통과 기준
+BAR_P, BAR_S = BASELINE, BASELINE_S
 
 B = {"bold": True, "color": INK}     # 강조 문단
 N: dict = {}                         # 보통 문단
@@ -168,8 +169,8 @@ def build(prs, name: str, M: dict, R: dict) -> None:
              f"+{p - 30.32:.2f}")]
     table(sl, Inches(0.7), Inches(3.95), Inches(11.9), Inches(2.1), rows,
           col_w=[1.5, 3.0, 6.0, 1.0], highlight_row=len(rows) - 1, size=11)
-    footer(sl, f"출발 13.79 → 최종 {p:.2f}   ·   통과 기준 {BAR_P:.0f} / {BAR_S:.2f}   ·   "
-               f"배포 baseline {BASELINE:.2f} / {BASELINE_S:.3f}")
+    footer(sl, f"출발 13.79 → 최종 {p:.2f}   ·   "
+               f"통과 기준 = 배포 baseline {BASELINE:.2f} / {BASELINE_S:.3f} 대비 {gain:+.2f} dB")
 
     # ============================================================ 4. 문제
     sl = blank(prs); bg(sl)
@@ -463,9 +464,9 @@ def build(prs, name: str, M: dict, R: dict) -> None:
     sl = blank(prs); bg(sl)
     title(sl, "최종 결과", "test_deconv_noise 100장 · 4× self-ensemble", eyebrow="제출값")
     rows = [("", "PSNR", "SSIM", "판정"),
-            ("통과 기준", f"{BAR_P:.0f}", f"{BAR_S:.2f}", "—"),
             ("입력 (blur + noise)", "8.02", "−0.0187", "출발점"),
-            ("배포 baseline (End2End U-Net)", f"{BASELINE:.2f}", f"{BASELINE_S:.3f}", "미달"),
+            ("통과 기준 = 배포 baseline (End2End U-Net)",
+             f"{BASELINE:.2f}", f"{BASELINE_S:.3f}", "넘어야 할 선"),
             ("우리 (전개형 + σ + 4× SE + 융합)", f"{p:.2f}", f"{s:.4f}", "통과")]
     table(sl, Inches(0.9), Inches(1.8), Inches(11.5), Inches(2.2), rows,
           col_w=[5.2, 2.0, 2.0, 2.3], highlight_row=len(rows) - 1)
@@ -482,8 +483,8 @@ def build(prs, name: str, M: dict, R: dict) -> None:
           ("dipole 은 DC 를 1/3 로 보존하므로", N),
           ("역산에서 3배가 되어 0.119 로 남는다", N),
           ("— 이미지 std 가 0.222 인데 그렇다.", N)], size=12, color=INK2)
-    footer(sl, f"배포 baseline 대비 {gain:+.2f} dB · {s - BASELINE_S:+.4f}   ·   "
-               f"통과 기준 대비 {p - BAR_P:+.2f} dB · {s - BAR_S:+.4f}")
+    footer(sl, f"통과 기준(= 배포 baseline) 대비 {gain:+.2f} dB · {s - BASELINE_S:+.4f}   ·   "
+               f"오차 에너지로는 {10 ** (gain / 10):.1f}배 줄었다")
 
     # ============================================================ 15~16. 복원 결과
     image_slide("day3_methods_grid",
