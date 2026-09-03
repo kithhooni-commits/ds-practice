@@ -76,10 +76,18 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", type=Path, default=DEFAULT_DATA)
     ap.add_argument("--ckpt", type=Path, default=None, help="학습한 모델 (있으면 비교에 넣는다)")
+    ap.add_argument("--ckpts", nargs="*", default=[],
+                    help="여러 모델을 '이름=경로' 로 준다. 우리 시도들을 나란히 보이려면 "
+                         "end-to-end · 전개형 초기 · 전개형 최종 을 넣으면 3번 슬라이드의 "
+                         "세 갈래가 그림으로 그대로 보인다")
+    ap.add_argument("--no-classical", action="store_true",
+                    help="median → Wiener 와 1일차 디노이저 열을 뺀다 (자리가 좁을 때)")
     ap.add_argument("--post-wiener", type=float, default=None, help="--target measure 모델용")
     ap.add_argument("--wiener-K", type=float, default=0.03, help="val 에서 고른 K")
     ap.add_argument("--self-ensemble", action="store_true",
-                    help="학습 모델에 4x self-ensemble. 보고하는 숫자와 그림을 맞춘다")
+                    help="학습 모델에 self-ensemble. 보고하는 숫자와 그림을 맞춘다")
+    ap.add_argument("--shift-ensemble", action="store_true",
+                    help="self-ensemble 에 순환 이동을 더해 16x 로")
     ap.add_argument("--out", type=Path, default=FIG)
     args = ap.parse_args()
 
@@ -117,7 +125,8 @@ def main() -> None:
         net, label = load_net(args.ckpt, device)
         K = args.post_wiener
         # 그림과 보고 숫자를 같은 조건으로 맞춘다
-        infer = (lambda a: self_ensemble(net, a)) if args.self_ensemble else net
+        infer = ((lambda a: self_ensemble(net, a, shifts=args.shift_ensemble))
+                 if args.self_ensemble else net)
         tag = "학습 모델" + (" (4× SE)" if args.self_ensemble else "")
         methods[f"{tag}\n{label.split()[0]}"] = (
             lambda g: wien(infer(g), K)) if K else (lambda g: infer(g))
