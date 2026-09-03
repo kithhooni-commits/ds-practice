@@ -112,6 +112,9 @@ def main() -> None:
     ap.add_argument("--sweep-iters", action="store_true",
                     help="추론 때 전개 반복 횟수를 바꿔 본다. share_weights 면 학습 때보다 "
                          "많이 돌릴 수 있다. 학습이 필요 없고 **val 에서** 고른다")
+    ap.add_argument("--shift-ensemble", action="store_true",
+                    help="self-ensemble 에 순환 이동 4개를 더해 16x 로. 이동은 커널과 "
+                         "정확히 교환되고 네트워크는 등변이 아니라 새 예측이 나온다")
     ap.add_argument("--self-ensemble", action="store_true",
                     help="4x self-ensemble. dipole 이 견디는 대칭만 쓴다 (좌우/상하/180도). "
                          "90도 회전은 B0 방향을 돌려버려 못 쓴다")
@@ -170,7 +173,8 @@ def main() -> None:
                                     torch.full((x.shape[0],), float(K), device=x.device))
 
         from unrolled import self_ensemble
-        infer = (lambda a: self_ensemble(net, a)) if args.self_ensemble else net
+        infer = ((lambda a: self_ensemble(net, a, shifts=args.shift_ensemble))
+                 if args.self_ensemble else net)
 
         def run(K, its=None):
             rs = []

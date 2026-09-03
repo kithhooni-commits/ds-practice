@@ -44,6 +44,9 @@ def wien(x, K):
                             torch.full((x.shape[0],), float(K), device=x.device))
 
 
+SHIFT = False
+
+
 def make_infer(ckpt: Path, device, se: bool):
     """체크포인트 하나를 '측정치 -> 복원' 함수로 만든다.
 
@@ -53,7 +56,7 @@ def make_infer(ckpt: Path, device, se: bool):
     net, label = load_net(ckpt, device)
     cfg_p = ckpt.parent.parent / "config.json"
     cfg = json.loads(cfg_p.read_text(encoding="utf-8")) if cfg_p.exists() else {}
-    base = (lambda g: self_ensemble(net, g)) if se else net
+    base = (lambda g: self_ensemble(net, g, shifts=SHIFT)) if se else net
     return base, label, cfg.get("target", "label") == "measure"
 
 
@@ -69,9 +72,13 @@ def main() -> None:
     ap.add_argument("--data", type=Path, default=DEFAULT_DATA)
     ap.add_argument("--n-val", type=int, default=100)
     ap.add_argument("--self-ensemble", action="store_true")
+    ap.add_argument("--shift-ensemble", action="store_true",
+                    help="self-ensemble 에 순환 이동을 더해 16x 로")
     ap.add_argument("--out", type=Path, default=ROOT / "figures" / "day3_fuse.json")
     args = ap.parse_args()
 
+    global SHIFT
+    SHIFT = args.shift_ensemble
     device = torch.device("cuda" if torch.cuda.is_available() and torch.cuda.device_count() else "cpu")
     val = load_val(args.data, args.n_val, device)
     test = load_test(args.data, 0, device)

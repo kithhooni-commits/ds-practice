@@ -129,15 +129,31 @@ _SYMS = [
 ]
 
 
+# 순환 이동. dipole 은 합성곱이라 이동과 **정확히** 교환된다 (실측 오차 6.7e-16).
+# 그런데 DRUNet 은 3번 다운샘플하므로 8의 배수가 아닌 이동에는 등변이 아니다
+# (상대 차이 9.8%). 즉 같은 이미지의 **새로운 예측**이 생기고, 평균하면 이득이 난다.
+# 8의 배수는 거의 같은 답을 주므로 뺀다.
+_SHIFTS = [(0, 0), (5, 3), (3, 5), (11, 7)]
+
+
 @torch.no_grad()
-def self_ensemble(fn, measure: Tensor) -> Tensor:
+def self_ensemble(fn, measure: Tensor, shifts: bool = False) -> Tensor:
     """4× self-ensemble. 학습 없이 먹는 점수다.
 
     1일차엔 8× (뒤집기 + 90도 회전) 를 썼지만 3일차엔 4개만 유효하다. dipole 은
     B0 방향을 가지므로 회전하면 **연산자 자체가 바뀐다** — 돌린 입력에 안 돌린
     커널을 적용하는 꼴이 되어 오히려 손해다.
+
+    `shifts=True` 면 순환 이동까지 섞어 16× 로 늘린다. 이동은 커널과 정확히 교환되고
+    (합성곱이므로), 네트워크는 8의 배수가 아닌 이동에 등변이 아니라 새로운 예측이 나온다.
     """
-    return torch.stack([inv(fn(t(measure))) for t, inv in _SYMS]).mean(0)
+    outs = []
+    for sy, sx in (_SHIFTS if shifts else [(0, 0)]):
+        m = torch.roll(measure, (sy, sx), dims=(-2, -1)) if (sy or sx) else measure
+        for tf, inv in _SYMS:
+            y = inv(fn(tf(m)))
+            outs.append(torch.roll(y, (-sy, -sx), dims=(-2, -1)) if (sy or sx) else y)
+    return torch.stack(outs).mean(0)
 
 
 def _otf(shape: tuple[int, int], b0: tuple[float, float], device, dtype) -> Tensor:
