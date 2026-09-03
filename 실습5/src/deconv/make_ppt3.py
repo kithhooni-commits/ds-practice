@@ -491,7 +491,8 @@ def build(prs, name: str, M: dict, R: dict) -> None:
                 "복원 결과 — 노이즈 4종 × 방법별",
                 "각 종류의 σ 중앙값에 가까운 대표 이미지. 잘 나온 것을 고르지 않았다",
                 "왼쪽에서 오른쪽으로 좋아진다: 정답 · 측정치 8.02 · Wiener 13.79 · "
-                "median→Wiener 19.20 · 1일차 디노이저→Wiener 21.06 · 우리 모델",
+                "median→Wiener 19.20 · 1일차 디노이저→Wiener 21.06 · 우리 모델   |   "
+                "그림의 학습 모델은 단독 최고(30.32). 제출값은 그것과 4단계 모델을 평균한 30.37",
                 mode="tall")
     image_slide("day3_diff_zoom",
                 "복원 결과 — difference map 과 zoom-in",
