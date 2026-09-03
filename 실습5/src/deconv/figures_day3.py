@@ -38,6 +38,7 @@ from unrolled import data_consistency  # noqa: E402
 
 FIG = ROOT / "figures"
 CKPT = ROOT / "checkpoints"
+NL = chr(10)
 NOISE_KO = {"gaussian": "Gaussian", "rician": "Rician",
             "uniform": "Uniform", "salt_and_pepper": "Salt & Pepper"}
 
@@ -129,33 +130,53 @@ def main() -> None:
             methods["1일차 디노이저 → Wiener"] = lambda g: wien(dens["supervised"](g),
                                                              args.wiener_K)
 
-    # 우리 시도들을 나란히 놓는다. '이름=경로' 로 받고, 이름의 | 는 줄바꿈이 된다.
-    # 3번 슬라이드의 세 갈래(end-to-end · 전개형 초기 · 전개형 최종)를 그림으로 보이려는 것
-    for spec in args.ckpts:
-        nm, _, path = spec.partition("=")
-        pth = Path(path or nm)
-        if not pth.exists():
-            print(f"[건너뜀] {pth} 없음")
-            continue
+    def make(paths, K=None):
+        """체크포인트 여럿을 '측정치 -> 복원' 함수 하나로. 여럿이면 균등 평균한다.
+
+        제출값은 두 모델을 0.5:0.5 로 섞은 것이므로, 그림도 그렇게 만들어야
+        슬라이드의 숫자와 그림이 같은 것을 가리킨다.
+        """
         from eval_day3 import load_net
         from unrolled import self_ensemble as _se
 
-        nt, _lab = load_net(pth, device)
-        methods[nm.replace("|", "\n")] = (
-            (lambda g, n=nt: _se(n, g, shifts=args.shift_ensemble))
-            if args.self_ensemble else (lambda g, n=nt: n(g)))
-    if args.ckpt and args.ckpt.exists():
-        from eval_day3 import load_net
-        from unrolled import self_ensemble
+        nets = [load_net(q, device)[0] for q in paths]
+        if args.self_ensemble:
+            def one(n, g): return _se(n, g, shifts=args.shift_ensemble)
+        else:
+            def one(n, g): return n(g)
+        if len(nets) == 1:
+            def base(g): return one(nets[0], g)
+        else:
+            def base(g): return sum(one(n, g) for n in nets) / len(nets)
+        return (lambda g: wien(base(g), K)) if K else base
 
-        net, label = load_net(args.ckpt, device)
-        K = args.post_wiener
-        # 그림과 보고 숫자를 같은 조건으로 맞춘다
-        infer = ((lambda a: self_ensemble(net, a, shifts=args.shift_ensemble))
-                 if args.self_ensemble else net)
-        tag = "학습 모델" + (" (4× SE)" if args.self_ensemble else "")
-        methods[f"{tag}\n{label.split()[0]}"] = (
-            lambda g: wien(infer(g), K)) if K else (lambda g: infer(g))
+    def need(path):
+        """'a.ckpt+b.ckpt' 를 받아 존재를 확인한다. 없으면 조용히 넘기지 않고 멈춘다.
+
+        예전에는 없으면 건너뛰었는데, 그러면 우리 모델 열이 **말없이 빠진** 그림이
+        나온다. 발표 직전에 그걸 알아채는 건 최악이다.
+        """
+        out = []
+        for q in str(path).split("+"):
+            f = Path(q.strip())
+            if not f.exists():
+                raise SystemExit("체크포인트가 없다: " + str(f) + NL +
+                                 "  --ckpt / --ckpts 경로를 확인해라.")
+            out.append(f)
+        return out
+
+    # 우리 시도들을 나란히 놓는다. '이름=경로' 로 받고, 이름의 | 는 줄바꿈이 된다.
+    # 경로를 '+' 로 이으면 그 모델들의 평균이 한 열이 된다 (제출한 융합이 그것이다).
+    for spec in args.ckpts:
+        nm, _, path = spec.partition("=")
+        methods[nm.replace("|", NL)] = make(need(path or nm))
+    if args.ckpt:
+        paths = need(args.ckpt)
+        tag = "우리 모델" + (" (16x SE)" if args.shift_ensemble else
+                          " (4x SE)" if args.self_ensemble else "")
+        if len(paths) > 1:
+            tag += NL + "융합 " + "+".join(q.stem[:10] for q in paths)
+        methods[tag] = make(paths, args.post_wiener)
 
     # ---------------------------------------------------------- 1. forward chain
     nz0, (f0, s0) = "gaussian", picks["gaussian"]
