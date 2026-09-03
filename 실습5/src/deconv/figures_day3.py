@@ -84,9 +84,11 @@ def main() -> None:
                     help="median → Wiener 와 1일차 디노이저 열을 뺀다 (자리가 좁을 때)")
     ap.add_argument("--post-wiener", type=float, default=None, help="--target measure 모델용")
     ap.add_argument("--wiener-K", type=float, default=0.03, help="val 에서 고른 K")
-    ap.add_argument("--zoom-noise", default="rician", choices=NZ,
-                    help="difference map + zoom 을 어느 노이즈로 그릴지. rician 이 우리 약점이고 "
-                         "밝기 편향이 지도 전체를 고르게 밝히므로 설명하기 좋다")
+    ap.add_argument("--zoom-noise", nargs="*", default=list(NZ), choices=NZ,
+                    help="difference map + zoom 을 그릴 노이즈 종류. 기본은 네 종류 전부. "
+                         "종류마다 파일이 따로 나온다 (day3_diff_zoom_<종류>.png). "
+                         "발표에 한 장만 쓴다면 rician 이 낫다 — 우리 약점이고 밝기 편향이 "
+                         "지도 전체를 고르게 밝히므로 설명이 그림으로 보인다")
     ap.add_argument("--zoom-at", nargs=3, type=int, default=(96, 96, 72),
                     metavar=("Y", "X", "크기"), help="확대할 자리와 크기")
     ap.add_argument("--self-ensemble", action="store_true",
@@ -212,44 +214,47 @@ def main() -> None:
     print("저장:", args.out / "day3_methods_grid.png")
 
     # ---------------------------------------------------------- 3. difference map + zoom
-    f, s = picks[args.zoom_noise]
-    gtn = np.load(args.data / "test_label" / f).astype(np.float32)
-    gn = np.load(src / f).astype(np.float32)
-    gt_t = torch.from_numpy(gtn)[None, None].to(device)
-    g_t = torch.from_numpy(gn)[None, None].to(device)
-    zy, zx, zs = args.zoom_at   # 확대할 자리
+    # 종류마다 한 장씩. 노이즈가 다르면 오차가 **어디에** 남는지가 다르다 —
+    # rician 은 편향이라 지도 전체가 고르게 밝고, salt & pepper 는 점으로 남는다.
+    for nz in args.zoom_noise:
+        f, s = picks[nz]
+        gtn = np.load(args.data / "test_label" / f).astype(np.float32)
+        gn = np.load(src / f).astype(np.float32)
+        gt_t = torch.from_numpy(gtn)[None, None].to(device)
+        g_t = torch.from_numpy(gn)[None, None].to(device)
+        zy, zx, zs = args.zoom_at   # 확대할 자리
 
-    # 맨 왼쪽은 정답. 확대를 정답과 나란히 놔야 무엇을 잃었는지 보인다
-    names = ["정답 (GT)"] + list(methods)[1:]
-    fig, axes = plt.subplots(3, len(names), figsize=(3.4 * len(names), 10.6))
-    axes = np.asarray(axes).reshape(3, len(names))
-    with torch.no_grad():
-        outs = {"정답 (GT)": gtn,
-                **{n: methods[n](g_t).cpu().numpy().squeeze() for n in list(methods)[1:]}}
-    emax = float(np.percentile(np.abs(np.stack([outs[n] for n in names[1:]]) - gtn), 99.5))
-    vmax = float(np.percentile(gtn, 99.5))
-    for c, n in enumerate(names):
-        e = outs[n]
-        axes[0, c].imshow(e, cmap="gray", vmin=0, vmax=vmax)
-        if c == 0:
-            axes[0, c].set_title(n, fontsize=10)
-            axes[1, c].text(0.5, 0.5, "기준\n(차이 = 0)", ha="center", va="center", fontsize=11)
-        else:
-            p, ss = sc(torch.from_numpy(e)[None, None].to(device), gt_t)
-            axes[0, c].set_title(f"{n}\n{p:.2f} dB / {ss:.3f}", fontsize=9.5)
-            h = axes[1, c].imshow(np.abs(e - gtn), cmap="magma", vmin=0, vmax=emax)
-            axes[1, c].set_title(f"|difference|  평균 {np.abs(e - gtn).mean():.4f}", fontsize=9.5)
-        axes[2, c].imshow(e[zy:zy + zs, zx:zx + zs], cmap="gray", vmin=0, vmax=vmax)
-        axes[2, c].set_title(f"zoom {zs}×{zs}", fontsize=9.5)
-        for r in range(3):
-            axes[r, c].axis("off")
-    fig.suptitle(f"difference map 과 zoom — {NOISE_KO[args.zoom_noise]} σ={s:.3f} · "
-                 f"위: 복원, 가운데: |복원-정답| (0-{emax:.2f} 공통 스케일), 아래: 확대",
-                 fontsize=12)
-    fig.tight_layout(rect=(0, 0, 1, 0.955))
-    fig.savefig(args.out / "day3_diff_zoom.png", dpi=135, bbox_inches="tight")
-    plt.close(fig)
-    print("저장:", args.out / "day3_diff_zoom.png")
+        # 맨 왼쪽은 정답. 확대를 정답과 나란히 놔야 무엇을 잃었는지 보인다
+        names = ["정답 (GT)"] + list(methods)[1:]
+        fig, axes = plt.subplots(3, len(names), figsize=(3.4 * len(names), 10.6))
+        axes = np.asarray(axes).reshape(3, len(names))
+        with torch.no_grad():
+            outs = {"정답 (GT)": gtn,
+                    **{n: methods[n](g_t).cpu().numpy().squeeze() for n in list(methods)[1:]}}
+        emax = float(np.percentile(np.abs(np.stack([outs[n] for n in names[1:]]) - gtn), 99.5))
+        vmax = float(np.percentile(gtn, 99.5))
+        for c, n in enumerate(names):
+            e = outs[n]
+            axes[0, c].imshow(e, cmap="gray", vmin=0, vmax=vmax)
+            if c == 0:
+                axes[0, c].set_title(n, fontsize=10)
+                axes[1, c].text(0.5, 0.5, "기준\n(차이 = 0)", ha="center", va="center", fontsize=11)
+            else:
+                p, ss = sc(torch.from_numpy(e)[None, None].to(device), gt_t)
+                axes[0, c].set_title(f"{n}\n{p:.2f} dB / {ss:.3f}", fontsize=9.5)
+                h = axes[1, c].imshow(np.abs(e - gtn), cmap="magma", vmin=0, vmax=emax)
+                axes[1, c].set_title(f"|difference|  평균 {np.abs(e - gtn).mean():.4f}", fontsize=9.5)
+            axes[2, c].imshow(e[zy:zy + zs, zx:zx + zs], cmap="gray", vmin=0, vmax=vmax)
+            axes[2, c].set_title(f"zoom {zs}×{zs}", fontsize=9.5)
+            for r in range(3):
+                axes[r, c].axis("off")
+        fig.suptitle(f"difference map 과 zoom — {NOISE_KO[nz]} σ={s:.3f} · "
+                     f"위: 복원, 가운데: |복원-정답| (0-{emax:.2f} 공통 스케일), 아래: 확대",
+                     fontsize=12)
+        fig.tight_layout(rect=(0, 0, 1, 0.955))
+        fig.savefig(args.out / f"day3_diff_zoom_{nz}.png", dpi=135, bbox_inches="tight")
+        plt.close(fig)
+        print("저장:", args.out / f"day3_diff_zoom_{nz}.png")
 
     # ---------------------------------------------------------- 4. 취약점 분석
     rows = []
