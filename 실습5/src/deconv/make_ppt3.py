@@ -138,7 +138,7 @@ def build(prs, name: str, M: dict, R: dict) -> None:
              ("② 구조", "전개형\n(물리+학습)", "25.91"),
              ("③ 조건화", "σ 를 측정치\n에서 읽는다", "29.25"),
              ("④ 수렴", "끝까지\n더 학습", "30.32"),
-             ("⑤ 융합", "다른 구조\n둘을 평균", f"{p:.2f}")]
+             ("⑤ 융합", "반복 4번·6번\n두 모델 평균", f"{p:.2f}")]
     xs = Inches(0.55)
     for i, (tag, what, sc) in enumerate(steps):
         last = i == len(steps) - 1
@@ -164,8 +164,8 @@ def build(prs, name: str, M: dict, R: dict) -> None:
              "σ 가 장마다 200배 차이난다. 하나로 뭉뚱그리면 평균에 타협한다", "+3.3"),
             ("④ 수렴", "세 번에 걸쳐 230 에폭",
              "늘릴 때마다 마지막 에폭이 best 였다. 세 번 다 수렴 전이었다", "+1.07"),
-            ("⑤ 융합", "4단계 · 6단계 모델을 평균",
-             "구조가 다르니 틀리는 방식도 달라 오차가 상쇄된다 (무게는 val 에서)",
+            ("⑤ 융합", "②를 4번 도는 모델과 6번 도는 모델, 둘의 출력을 평균",
+             "반복 횟수가 다르면 틀리는 방식도 달라 오차가 서로 상쇄된다 (무게는 val 에서)",
              f"+{p - 30.32:.2f}")]
     table(sl, Inches(0.7), Inches(3.95), Inches(11.9), Inches(2.1), rows,
           col_w=[1.5, 3.0, 6.0, 1.0], highlight_row=len(rows) - 1, size=11)
@@ -449,7 +449,7 @@ def build(prs, name: str, M: dict, R: dict) -> None:
              "4단계로 학습한 모델은 5단계에서 분포를 벗어난다. val 이 4를 골랐다"),
             ("end-to-end DRUNet (대조군)", "24.6",
              "전개형보다 5 dB 아래. 물리 구조가 실제로 이득이라는 증거"),
-            ("모델 융합 2차 — 4단계 + 6단계", f"{p:.2f}",
+            ("모델 융합 2차 — 반복 4번 + 6번 모델", f"{p:.2f}",
              "성공. 구조가 다르니 오차 상관이 낮다. 1차 실패의 원인을 고친 것이다")]
     table(sl, Inches(0.7), Inches(1.85), Inches(11.9), Inches(3.0), rows,
           col_w=[3.2, 1.2, 7.5], size=11)
@@ -467,7 +467,8 @@ def build(prs, name: str, M: dict, R: dict) -> None:
             ("입력 (blur + noise)", "8.02", "−0.0187", "출발점"),
             ("통과 기준 = 배포 baseline (End2End U-Net)",
              f"{BASELINE:.2f}", f"{BASELINE_S:.3f}", "넘어야 할 선"),
-            ("우리 (전개형 + σ + 4× SE + 융합)", f"{p:.2f}", f"{s:.4f}", "통과")]
+            ("우리 (전개형 + σ 조건화 + 4× self-ensemble + 두 모델 평균)",
+             f"{p:.2f}", f"{s:.4f}", "통과")]
     table(sl, Inches(0.9), Inches(1.8), Inches(11.5), Inches(2.2), rows,
           col_w=[5.2, 2.0, 2.0, 2.3], highlight_row=len(rows) - 1)
 
