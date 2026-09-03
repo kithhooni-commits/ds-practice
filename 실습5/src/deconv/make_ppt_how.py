@@ -98,7 +98,7 @@ def main() -> None:
     x0, cw, gap = Inches(0.62), Inches(3.95), Inches(0.2)
     for i, (num, head, sub, lines) in enumerate(COLS):
         x = x0 + i * (cw + gap)
-        card(sl, x, Inches(1.72), cw, Inches(4.75), fill=SURF)
+        card(sl, x, Inches(1.72), cw, Inches(4.88), fill=SURF)
         text(sl, x + Inches(0.26), Inches(1.92), cw, Inches(0.3), num,
              size=11, color=ACCENT, bold=True, font=MONO)
         text(sl, x + Inches(0.26), Inches(2.16), cw - Inches(0.5), Inches(0.4), head,
